@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 
 type User = {
   id: number;
@@ -258,8 +259,18 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-8">
       <div className="mx-auto max-w-6xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 md:p-6">
-        <h1 className="text-2xl font-semibold">Users</h1>
-        <p className="mt-1 text-sm text-slate-600">Create, edit, delete, and toggle VIP status directly from the page.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Users</h1>
+            <p className="mt-1 text-sm text-slate-600">Create, edit, delete, and toggle VIP status directly from the page.</p>
+          </div>
+          <Link
+            href="/too-req"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            ToO Requests →
+          </Link>
+        </div>
 
         <form onSubmit={handleCreate} className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 md:grid-cols-[1.2fr_0.7fr_1.4fr_auto_auto] md:items-start">
           <div>
