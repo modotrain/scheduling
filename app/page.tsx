@@ -1,36 +1,79 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 type User = {
   id: number;
   name: string;
   age: number;
   email: string;
+  vip: boolean;
 };
 
 type UserInput = {
   name: string;
   age: string;
   email: string;
+  vip: boolean;
 };
+
+type FormErrors = Partial<Record<keyof UserInput, string>>;
 
 const initialForm: UserInput = {
   name: "",
   age: "",
   email: "",
+  vip: false,
 };
 
 export default function Home() {
   const [users, setUsers] = useState<User[]>([]);
   const [createForm, setCreateForm] = useState<UserInput>(initialForm);
   const [editForm, setEditForm] = useState<UserInput>(initialForm);
+  const [createErrors, setCreateErrors] = useState<FormErrors>({});
+  const [editErrors, setEditErrors] = useState<FormErrors>({});
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string>("");
+  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
 
-  async function loadUsers() {
+  function validateForm(values: UserInput): FormErrors {
+    const errors: FormErrors = {};
+
+    if (!values.name.trim()) {
+      errors.name = "Name is required";
+    }
+
+    if (!values.email.trim()) {
+      errors.email = "Email is required";
+    }
+
+    if (!values.age.trim()) {
+      errors.age = "Age is required";
+    } else {
+      const age = Number(values.age);
+      if (Number.isNaN(age)) {
+        errors.age = "Age must be numeric";
+      } else if (age < 0) {
+        errors.age = "Age must be zero or greater";
+      }
+    }
+
+    return errors;
+  }
+
+  function setStatus(nextMessage: string, tone: "success" | "error") {
+    setMessage(nextMessage);
+    setMessageTone(tone);
+  }
+
+  function hasErrors(errors: FormErrors) {
+    return Object.keys(errors).length > 0;
+  }
+
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/users", { cache: "no-store" });
@@ -41,20 +84,26 @@ export default function Home() {
       }
 
       setUsers(data.users ?? []);
-      setMessage("");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to load users");
+      setStatus(error instanceof Error ? error.message : "Failed to load users", "error");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    void loadUsers();
+  }, [loadUsers]);
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const errors = validateForm(createForm);
+    setCreateErrors(errors);
+
+    if (hasErrors(errors)) {
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -62,9 +111,10 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: createForm.name,
+          name: createForm.name.trim(),
           age: Number(createForm.age),
-          email: createForm.email,
+          email: createForm.email.trim(),
+          vip: createForm.vip,
         }),
       });
 
@@ -75,10 +125,11 @@ export default function Home() {
       }
 
       setCreateForm(initialForm);
-      setMessage("User created");
+      setCreateErrors({});
+      setStatus("User created", "success");
       await loadUsers();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to create user");
+      setStatus(error instanceof Error ? error.message : "Failed to create user", "error");
     } finally {
       setSaving(false);
     }
@@ -90,20 +141,30 @@ export default function Home() {
       name: user.name,
       age: String(user.age),
       email: user.email,
+      vip: user.vip,
     });
+    setEditErrors({});
     setMessage("");
   }
 
   async function handleUpdate(id: number) {
+    const errors = validateForm(editForm);
+    setEditErrors(errors);
+
+    if (hasErrors(errors)) {
+      return;
+    }
+
     setSaving(true);
     try {
       const response = await fetch(`/api/users/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: editForm.name,
+          name: editForm.name.trim(),
           age: Number(editForm.age),
-          email: editForm.email,
+          email: editForm.email.trim(),
+          vip: editForm.vip,
         }),
       });
 
@@ -115,19 +176,52 @@ export default function Home() {
 
       setEditingId(null);
       setEditForm(initialForm);
-      setMessage("User updated");
+      setEditErrors({});
+      setStatus("User updated", "success");
       await loadUsers();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to update user");
+      setStatus(error instanceof Error ? error.message : "Failed to update user", "error");
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDelete(id: number) {
+  async function handleVipToggle(user: User) {
     setSaving(true);
     try {
-      const response = await fetch(`/api/users/${id}`, {
+      const response = await fetch(`/api/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vip: !user.vip }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to update vip status");
+      }
+
+      if (editingId === user.id) {
+        setEditForm((previous) => ({ ...previous, vip: !user.vip }));
+      }
+
+      setStatus(user.vip ? "User removed from VIP" : "User marked as VIP", "success");
+      await loadUsers();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update vip status", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteCandidate) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/users/${deleteCandidate.id}`, {
         method: "DELETE",
       });
 
@@ -137,46 +231,78 @@ export default function Home() {
         throw new Error(data.error ?? "Failed to delete user");
       }
 
-      setMessage("User deleted");
+      if (editingId === deleteCandidate.id) {
+        setEditingId(null);
+        setEditForm(initialForm);
+        setEditErrors({});
+      }
+
+      setDeleteCandidate(null);
+      setStatus("User deleted", "success");
       await loadUsers();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to delete user");
+      setStatus(error instanceof Error ? error.message : "Failed to delete user", "error");
     } finally {
       setSaving(false);
     }
   }
 
+  function renderFieldError(messageText?: string) {
+    if (!messageText) {
+      return null;
+    }
+
+    return <p className="mt-1 text-xs text-rose-600">{messageText}</p>;
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-8">
-      <div className="mx-auto max-w-5xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 md:p-6">
+      <div className="mx-auto max-w-6xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 md:p-6">
         <h1 className="text-2xl font-semibold">Users</h1>
-        <p className="mt-1 text-sm text-slate-600">Create, edit, and delete rows in your Neon table.</p>
+        <p className="mt-1 text-sm text-slate-600">Create, edit, delete, and toggle VIP status directly from the page.</p>
 
-        <form onSubmit={handleCreate} className="mt-6 grid gap-3 md:grid-cols-4">
-          <input
-            required
-            placeholder="Name"
-            value={createForm.name}
-            onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-            className="rounded-md border border-slate-300 px-3 py-2"
-          />
-          <input
-            required
-            type="number"
-            min={0}
-            placeholder="Age"
-            value={createForm.age}
-            onChange={(event) => setCreateForm((prev) => ({ ...prev, age: event.target.value }))}
-            className="rounded-md border border-slate-300 px-3 py-2"
-          />
-          <input
-            required
-            type="email"
-            placeholder="Email"
-            value={createForm.email}
-            onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))}
-            className="rounded-md border border-slate-300 px-3 py-2"
-          />
+        <form onSubmit={handleCreate} className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 md:grid-cols-[1.2fr_0.7fr_1.4fr_auto_auto] md:items-start">
+          <div>
+            <input
+              required
+              placeholder="Name"
+              value={createForm.name}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
+              className="w-full rounded-md border border-slate-300 px-3 py-2"
+            />
+            {renderFieldError(createErrors.name)}
+          </div>
+          <div>
+            <input
+              required
+              type="number"
+              min={0}
+              placeholder="Age"
+              value={createForm.age}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, age: event.target.value }))}
+              className="w-full rounded-md border border-slate-300 px-3 py-2"
+            />
+            {renderFieldError(createErrors.age)}
+          </div>
+          <div>
+            <input
+              required
+              type="email"
+              placeholder="Email"
+              value={createForm.email}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))}
+              className="w-full rounded-md border border-slate-300 px-3 py-2"
+            />
+            {renderFieldError(createErrors.email)}
+          </div>
+          <label className="flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={createForm.vip}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, vip: event.target.checked }))}
+            />
+            VIP
+          </label>
           <button
             type="submit"
             disabled={saving}
@@ -186,7 +312,11 @@ export default function Home() {
           </button>
         </form>
 
-        {message ? <p className="mt-3 text-sm text-slate-700">{message}</p> : null}
+        {message ? (
+          <p className={`mt-3 text-sm ${messageTone === "error" ? "text-rose-700" : "text-emerald-700"}`}>
+            {message}
+          </p>
+        ) : null}
 
         <div className="mt-6 overflow-x-auto">
           <table className="min-w-full border-collapse text-left text-sm">
@@ -196,19 +326,20 @@ export default function Home() {
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Age</th>
                 <th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">VIP</th>
                 <th className="px-3 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500" colSpan={5}>
+                  <td className="px-3 py-3 text-slate-500" colSpan={6}>
                     Loading...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500" colSpan={5}>
+                  <td className="px-3 py-3 text-slate-500" colSpan={6}>
                     No users yet.
                   </td>
                 </tr>
@@ -221,43 +352,65 @@ export default function Home() {
                       <td className="px-3 py-2">{user.id}</td>
                       <td className="px-3 py-2">
                         {isEditing ? (
-                          <input
-                            value={editForm.name}
-                            onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))}
-                            className="w-full rounded-md border border-slate-300 px-2 py-1"
-                          />
+                          <div>
+                            <input
+                              value={editForm.name}
+                              onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))}
+                              className="w-full rounded-md border border-slate-300 px-2 py-1"
+                            />
+                            {renderFieldError(editErrors.name)}
+                          </div>
                         ) : (
                           user.name
                         )}
                       </td>
                       <td className="px-3 py-2">
                         {isEditing ? (
-                          <input
-                            type="number"
-                            min={0}
-                            value={editForm.age}
-                            onChange={(event) => setEditForm((prev) => ({ ...prev, age: event.target.value }))}
-                            className="w-full rounded-md border border-slate-300 px-2 py-1"
-                          />
+                          <div>
+                            <input
+                              type="number"
+                              min={0}
+                              value={editForm.age}
+                              onChange={(event) => setEditForm((prev) => ({ ...prev, age: event.target.value }))}
+                              className="w-full rounded-md border border-slate-300 px-2 py-1"
+                            />
+                            {renderFieldError(editErrors.age)}
+                          </div>
                         ) : (
                           user.age
                         )}
                       </td>
                       <td className="px-3 py-2">
                         {isEditing ? (
-                          <input
-                            type="email"
-                            value={editForm.email}
-                            onChange={(event) => setEditForm((prev) => ({ ...prev, email: event.target.value }))}
-                            className="w-full rounded-md border border-slate-300 px-2 py-1"
-                          />
+                          <div>
+                            <input
+                              type="email"
+                              value={editForm.email}
+                              onChange={(event) => setEditForm((prev) => ({ ...prev, email: event.target.value }))}
+                              className="w-full rounded-md border border-slate-300 px-2 py-1"
+                            />
+                            {renderFieldError(editErrors.email)}
+                          </div>
                         ) : (
                           user.email
                         )}
                       </td>
                       <td className="px-3 py-2">
+                        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${user.vip ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
+                          {user.vip ? "VIP" : "Standard"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
                         {isEditing ? (
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
+                            <label className="flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700">
+                              <input
+                                type="checkbox"
+                                checked={editForm.vip}
+                                onChange={(event) => setEditForm((prev) => ({ ...prev, vip: event.target.checked }))}
+                              />
+                              VIP
+                            </label>
                             <button
                               type="button"
                               disabled={saving}
@@ -271,6 +424,7 @@ export default function Home() {
                               onClick={() => {
                                 setEditingId(null);
                                 setEditForm(initialForm);
+                                setEditErrors({});
                               }}
                               className="rounded-md border border-slate-300 px-3 py-1"
                             >
@@ -278,7 +432,7 @@ export default function Home() {
                             </button>
                           </div>
                         ) : (
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
                               disabled={saving}
@@ -290,7 +444,15 @@ export default function Home() {
                             <button
                               type="button"
                               disabled={saving}
-                              onClick={() => handleDelete(user.id)}
+                              onClick={() => handleVipToggle(user)}
+                              className={`rounded-md px-3 py-1 text-white disabled:opacity-60 ${user.vip ? "bg-slate-700" : "bg-indigo-600"}`}
+                            >
+                              {user.vip ? "This is not VIP" : "This is VIP"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={saving}
+                              onClick={() => setDeleteCandidate(user)}
                               className="rounded-md bg-rose-600 px-3 py-1 text-white disabled:opacity-60"
                             >
                               Delete
@@ -306,6 +468,35 @@ export default function Home() {
           </table>
         </div>
       </div>
+
+      {deleteCandidate ? (
+        <div className="fixed inset-0 flex items-center justify-center bg-slate-950/35 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl ring-1 ring-slate-200">
+            <h2 className="text-lg font-semibold">Delete user?</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              This will remove {deleteCandidate.name} from the table. This action cannot be undone.
+            </p>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setDeleteCandidate(null)}
+                className="rounded-md border border-slate-300 px-4 py-2 text-slate-700 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={confirmDelete}
+                className="rounded-md bg-rose-600 px-4 py-2 font-medium text-white disabled:opacity-60"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

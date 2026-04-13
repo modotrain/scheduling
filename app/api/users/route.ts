@@ -4,6 +4,46 @@ import { desc } from "drizzle-orm";
 import { db } from "@/src/db/client";
 import { usersTable } from "@/src/db/schema";
 
+type UserPayload = {
+  name?: string;
+  age?: number;
+  email?: string;
+  vip?: boolean;
+};
+
+type UserValidationResult =
+  | { error: string }
+  | {
+      data: {
+        name: string;
+        age: number;
+        email: string;
+        vip: boolean;
+      };
+    };
+
+function validateUserPayload(payload: UserPayload): UserValidationResult {
+  const name = payload.name?.trim();
+  const email = payload.email?.trim();
+
+  if (!name || !email || typeof payload.age !== "number" || Number.isNaN(payload.age)) {
+    return { error: "name, email, and numeric age are required" };
+  }
+
+  if (payload.age < 0) {
+    return { error: "age must be zero or greater" };
+  }
+
+  return {
+    data: {
+      name,
+      age: payload.age,
+      email,
+      vip: payload.vip ?? false,
+    },
+  };
+}
+
 export async function GET() {
   try {
     const users = await db.select().from(usersTable).orderBy(desc(usersTable.id));
@@ -16,23 +56,16 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { name, age, email } = body as {
-      name?: string;
-      age?: number;
-      email?: string;
-    };
+    const body = (await request.json()) as UserPayload;
+    const validation = validateUserPayload(body);
 
-    if (!name || !email || typeof age !== "number") {
-      return NextResponse.json(
-        { error: "name, email, and numeric age are required" },
-        { status: 400 }
-      );
+    if ("error" in validation) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     const [createdUser] = await db
       .insert(usersTable)
-      .values({ name, age, email })
+      .values(validation.data)
       .returning();
 
     return NextResponse.json({ user: createdUser }, { status: 201 });
