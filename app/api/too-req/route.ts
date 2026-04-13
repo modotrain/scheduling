@@ -31,7 +31,7 @@ export type TooReqPayload = {
   source_id?: number;
   proposal_id?: number;
   proposal_no?: number;
-  toToo?: boolean;
+  to_gp?: boolean;
 };
 
 export async function GET() {

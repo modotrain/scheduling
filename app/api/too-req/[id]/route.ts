@@ -47,14 +47,14 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
-    const body = (await request.json()) as { toToo: boolean };
-    if (typeof body.toToo !== "boolean") {
-      return NextResponse.json({ error: "toToo must be a boolean" }, { status: 400 });
+    const body = (await request.json()) as { to_gp: boolean };
+    if (typeof body.to_gp !== "boolean") {
+      return NextResponse.json({ error: "to_gp must be a boolean" }, { status: 400 });
     }
 
     const [updated] = await db
       .update(tooReqTable)
-      .set({ toToo: body.toToo })
+      .set({ to_gp: body.to_gp })
       .where(eq(tooReqTable.id, id))
       .returning();
 
@@ -64,8 +64,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     return NextResponse.json({ row: updated });
   } catch (error) {
-    console.error("Failed to toggle toToo", error);
-    return NextResponse.json({ error: "Failed to toggle toToo" }, { status: 500 });
+    console.error("Failed to toggle to_gp", error);
+    return NextResponse.json({ error: "Failed to toggle to_gp" }, { status: 500 });
   }
 }
 

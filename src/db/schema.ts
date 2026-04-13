@@ -36,5 +36,5 @@ export const tooReqTable = pgTable("too_req", {
   source_id: integer().notNull().default(0),
   proposal_id: integer().notNull().default(0),
   proposal_no: integer().notNull().default(0),
-  toToo: boolean().notNull().default(false),
+  to_gp: boolean().notNull().default(false),
 });

@@ -90,7 +90,7 @@ async function main() {
     source_id: toInt(row.source_id),
     proposal_id: toInt(row.proposal_id),
     proposal_no: toInt(row.proposal_no),
-    toToo: false,
+    to_gp: false,
   }));
 
   const inserted = await db.insert(tooReqTable).values(records).returning();

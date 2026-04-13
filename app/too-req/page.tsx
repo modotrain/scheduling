@@ -31,10 +31,10 @@ type TooReq = {
   source_id: number;
   proposal_id: number;
   proposal_no: number;
-  toToo: boolean;
+  to_gp: boolean;
 };
 
-type RowInput = Omit<TooReq, "id" | "toToo">;
+type RowInput = Omit<TooReq, "id" | "to_gp">;
 
 const initialInput: RowInput = {
   request_filename: "",
@@ -180,18 +180,18 @@ export default function TooReqPage() {
     void loadRows();
   }, [loadRows]);
 
-  // ── toToo toggle ──────────────────────────────────────────────────────────
-  async function handleToggleToToo(row: TooReq) {
+  // ── to_gp toggle ──────────────────────────────────────────────────────────
+  async function handleToggleto_gp(row: TooReq) {
     setSaving(true);
     try {
       const res = await fetch(`/api/too-req/${row.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toToo: !row.toToo }),
+        body: JSON.stringify({ to_gp: !row.to_gp }),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed");
-      setStatus(row.toToo ? "Removed toToo flag" : "Marked as toToo", "success");
+      setStatus(row.to_gp ? "Removed to_gp flag" : "Marked as to_gp", "success");
       await loadRows();
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Failed to toggle", "error");
@@ -267,7 +267,7 @@ export default function TooReqPage() {
           <div>
             <h1 className="text-2xl font-semibold">ToO Requests</h1>
             <p className="mt-1 text-sm text-slate-600">
-              View, edit, delete, and toggle ToO flag on each observation request.
+              View, edit, delete, and toggle GP flag on each observation request.
             </p>
           </div>
           <Link
@@ -293,7 +293,7 @@ export default function TooReqPage() {
                     {colLabel(col)}
                   </th>
                 ))}
-                <th className="whitespace-nowrap px-3 py-2">ToO</th>
+                <th className="whitespace-nowrap px-3 py-2">GP</th>
                 <th className="px-3 py-2">Actions</th>
               </tr>
             </thead>
@@ -321,10 +321,10 @@ export default function TooReqPage() {
                     <td className="px-3 py-2">
                       <span
                         className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                          row.toToo ? "bg-indigo-100 text-indigo-800" : "bg-slate-100 text-slate-600"
+                          row.to_gp ? "bg-indigo-100 text-indigo-800" : "bg-slate-100 text-slate-600"
                         }`}
                       >
-                        {row.toToo ? "ToO" : "—"}
+                        {row.to_gp ? "GP" : "—"}
                       </span>
                     </td>
                     <td className="px-3 py-2">
@@ -340,12 +340,12 @@ export default function TooReqPage() {
                         <button
                           type="button"
                           disabled={saving}
-                          onClick={() => handleToggleToToo(row)}
+                          onClick={() => handleToggleto_gp(row)}
                           className={`rounded-md px-3 py-1 text-white disabled:opacity-60 ${
-                            row.toToo ? "bg-slate-700" : "bg-indigo-600"
+                            row.to_gp ? "bg-slate-700" : "bg-indigo-600"
                           }`}
                         >
-                          {row.toToo ? "This is not ToO" : "This is ToO"}
+                          {row.to_gp ? "to Too" : "to GP"}
                         </button>
                         <button
                           type="button"
