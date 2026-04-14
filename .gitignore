@@ -12,7 +12,7 @@
 
 # testing
 /coverage
-lagecy/
+/legacy
 
 # next.js
 /.next/
