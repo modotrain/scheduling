@@ -160,6 +160,7 @@ export default function TooReqPage() {
   // search & sort
   const [searchText, setSearchText] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
+  const [showOnlyToGp, setShowOnlyToGp] = useState(false);
 
   // edit modal
   const [editRow, setEditRow] = useState<TooReq | null>(null);
@@ -289,7 +290,11 @@ export default function TooReqPage() {
   }
 
   function getSortedAndFilteredRows() {
-    const result = rows.filter((row) => searchMatches(row, searchText));
+    const result = rows.filter((row) => {
+      const matchesSearch = searchMatches(row, searchText);
+      const matchesGpFilter = showOnlyToGp ? row.to_gp : true;
+      return matchesSearch && matchesGpFilter;
+    });
 
     if (sortConfig.col) {
       result.sort((a, b) => {
@@ -345,7 +350,7 @@ export default function TooReqPage() {
           </p>
         ) : null}
 
-        <div className="mt-6">
+        <div className="mt-6 space-y-3">
           <input
             type="text"
             placeholder="Search all columns..."
@@ -353,6 +358,15 @@ export default function TooReqPage() {
             onChange={(e) => setSearchText(e.target.value)}
             className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm"
           />
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={showOnlyToGp}
+              onChange={(e) => setShowOnlyToGp(e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Show only rows with GP flag
+          </label>
         </div>
 
         <div className="mt-4 overflow-x-auto">
