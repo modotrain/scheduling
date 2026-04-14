@@ -138,12 +138,17 @@ const TABLE_COLS: (keyof TooReq)[] = [
   "request_date",
   "obs_type",
   "requested_obs_duration_in_seconds",
-  "requested_obs_duration_in_orbits",
+//   "requested_obs_duration_in_orbits",
   "right_ascension",
   "declination",
   "user_name",
   "obs_priority",
 ];
+
+type SortConfig = {
+  col: keyof TooReq | null;
+  dir: "asc" | "desc";
+};
 
 export default function TooReqPage() {
   const [rows, setRows] = useState<TooReq[]>([]);
@@ -151,6 +156,10 @@ export default function TooReqPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
+
+  // search & sort
+  const [searchText, setSearchText] = useState("");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
 
   // edit modal
   const [editRow, setEditRow] = useState<TooReq | null>(null);
@@ -262,6 +271,56 @@ export default function TooReqPage() {
     return String(val);
   }
 
+  function searchMatches(row: TooReq, query: string): boolean {
+    if (!query.trim()) return true;
+    const lowerQuery = query.toLowerCase();
+    return Object.values(row).some((val) => {
+      if (val === null || val === undefined) return false;
+      return String(val).toLowerCase().includes(lowerQuery);
+    });
+  }
+
+  function handleSort(col: keyof TooReq) {
+    let newDir: "asc" | "desc" = "asc";
+    if (sortConfig.col === col && sortConfig.dir === "asc") {
+      newDir = "desc";
+    }
+    setSortConfig({ col, dir: newDir });
+  }
+
+  function getSortedAndFilteredRows() {
+    const result = rows.filter((row) => searchMatches(row, searchText));
+
+    if (sortConfig.col) {
+      result.sort((a, b) => {
+        const aVal = a[sortConfig.col!];
+        const bVal = b[sortConfig.col!];
+
+        let aComp = aVal;
+        let bComp = bVal;
+
+        if (aComp == null) aComp = sortConfig.col === "id" ? -Infinity : "";
+        if (bComp == null) bComp = sortConfig.col === "id" ? -Infinity : "";
+
+        let cmp = 0;
+        if (typeof aComp === "number" && typeof bComp === "number") {
+          cmp = aComp - bComp;
+        } else {
+          cmp = String(aComp).localeCompare(String(bComp));
+        }
+
+        return sortConfig.dir === "asc" ? cmp : -cmp;
+      });
+    }
+
+    return result;
+  }
+
+  function SortIcon({ col }: { col: keyof TooReq }) {
+    if (sortConfig.col !== col) return <span className="ml-1 text-slate-300">⇅</span>;
+    return <span className="ml-1 text-indigo-600">{sortConfig.dir === "asc" ? "↑" : "↓"}</span>;
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-8">
       <div className="mx-auto max-w-7xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 md:p-6">
@@ -286,13 +345,30 @@ export default function TooReqPage() {
           </p>
         ) : null}
 
-        <div className="mt-6 overflow-x-auto">
+        <div className="mt-6">
+          <input
+            type="text"
+            placeholder="Search all columns..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm"
+          />
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
           <table className="min-w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-100">
                 {TABLE_COLS.map((col) => (
-                  <th key={col} className="whitespace-nowrap px-3 py-2">
-                    {colLabel(col)}
+                  <th
+                    key={col}
+                    onClick={() => handleSort(col)}
+                    className="cursor-pointer whitespace-nowrap px-3 py-2 select-none hover:bg-slate-200"
+                  >
+                    <span className="flex items-center justify-between">
+                      {colLabel(col)}
+                      <SortIcon col={col} />
+                    </span>
                   </th>
                 ))}
                 <th className="whitespace-nowrap px-3 py-2">GP</th>
@@ -312,8 +388,14 @@ export default function TooReqPage() {
                     No rows yet.
                   </td>
                 </tr>
+              ) : getSortedAndFilteredRows().length === 0 ? (
+                <tr>
+                  <td className="px-3 py-3 text-slate-500" colSpan={TABLE_COLS.length + 2}>
+                    {searchText ? "No matching rows." : "No rows yet."}
+                  </td>
+                </tr>
               ) : (
-                rows.map((row) => (
+                getSortedAndFilteredRows().map((row) => (
                   <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50">
                     {TABLE_COLS.map((col) => (
                       <td key={col} className="whitespace-nowrap px-3 py-2">
