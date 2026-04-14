@@ -257,29 +257,29 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-8">
-      <div className="mx-auto max-w-6xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 md:p-6">
+    <main className="min-h-screen bg-slate-50 p-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:p-8">
+      <div className="mx-auto max-w-6xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Users</h1>
-            <p className="mt-1 text-sm text-slate-600">Create, edit, delete, and toggle VIP status directly from the page.</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Create, edit, delete, and toggle VIP status directly from the page.</p>
           </div>
           <Link
             href="/too-req"
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             ToO Requests →
           </Link>
         </div>
 
-        <form onSubmit={handleCreate} className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 md:grid-cols-[1.2fr_0.7fr_1.4fr_auto_auto] md:items-start">
+        <form onSubmit={handleCreate} className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-slate-800/40 dark:ring-slate-700 md:grid-cols-[1.2fr_0.7fr_1.4fr_auto_auto] md:items-start">
           <div>
             <input
               required
               placeholder="Name"
               value={createForm.name}
               onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-              className="w-full rounded-md border border-slate-300 px-3 py-2"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
             {renderFieldError(createErrors.name)}
           </div>
@@ -291,7 +291,7 @@ export default function Home() {
               placeholder="Age"
               value={createForm.age}
               onChange={(event) => setCreateForm((prev) => ({ ...prev, age: event.target.value }))}
-              className="w-full rounded-md border border-slate-300 px-3 py-2"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
             {renderFieldError(createErrors.age)}
           </div>
@@ -302,11 +302,11 @@ export default function Home() {
               placeholder="Email"
               value={createForm.email}
               onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))}
-              className="w-full rounded-md border border-slate-300 px-3 py-2"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
             {renderFieldError(createErrors.email)}
           </div>
-          <label className="flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">
+          <label className="flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
             <input
               type="checkbox"
               checked={createForm.vip}
@@ -332,7 +332,7 @@ export default function Home() {
         <div className="mt-6 overflow-x-auto">
           <table className="min-w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-100">
+              <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
                 <th className="px-3 py-2">ID</th>
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Age</th>
@@ -344,13 +344,13 @@ export default function Home() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500" colSpan={6}>
+                  <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={6}>
                     Loading...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500" colSpan={6}>
+                  <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={6}>
                     No users yet.
                   </td>
                 </tr>
@@ -359,7 +359,7 @@ export default function Home() {
                   const isEditing = editingId === user.id;
 
                   return (
-                    <tr key={user.id} className="border-b border-slate-100">
+                    <tr key={user.id} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">{user.id}</td>
                       <td className="px-3 py-2">
                         {isEditing ? (
@@ -367,7 +367,7 @@ export default function Home() {
                             <input
                               value={editForm.name}
                               onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))}
-                              className="w-full rounded-md border border-slate-300 px-2 py-1"
+                              className="w-full rounded-md border border-slate-300 px-2 py-1 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                             />
                             {renderFieldError(editErrors.name)}
                           </div>
@@ -383,7 +383,7 @@ export default function Home() {
                               min={0}
                               value={editForm.age}
                               onChange={(event) => setEditForm((prev) => ({ ...prev, age: event.target.value }))}
-                              className="w-full rounded-md border border-slate-300 px-2 py-1"
+                              className="w-full rounded-md border border-slate-300 px-2 py-1 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                             />
                             {renderFieldError(editErrors.age)}
                           </div>
@@ -398,7 +398,7 @@ export default function Home() {
                               type="email"
                               value={editForm.email}
                               onChange={(event) => setEditForm((prev) => ({ ...prev, email: event.target.value }))}
-                              className="w-full rounded-md border border-slate-300 px-2 py-1"
+                              className="w-full rounded-md border border-slate-300 px-2 py-1 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                             />
                             {renderFieldError(editErrors.email)}
                           </div>
@@ -407,14 +407,14 @@ export default function Home() {
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${user.vip ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
+                        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${user.vip ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200"}`}>
                           {user.vip ? "VIP" : "Standard"}
                         </span>
                       </td>
                       <td className="px-3 py-2">
                         {isEditing ? (
                           <div className="flex flex-wrap gap-2">
-                            <label className="flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700">
+                            <label className="flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 dark:border-slate-600 dark:text-slate-200">
                               <input
                                 type="checkbox"
                                 checked={editForm.vip}
@@ -437,7 +437,7 @@ export default function Home() {
                                 setEditForm(initialForm);
                                 setEditErrors({});
                               }}
-                              className="rounded-md border border-slate-300 px-3 py-1"
+                              className="rounded-md border border-slate-300 px-3 py-1 dark:border-slate-600 dark:text-slate-200"
                             >
                               Cancel
                             </button>
@@ -482,9 +482,9 @@ export default function Home() {
 
       {deleteCandidate ? (
         <div className="fixed inset-0 flex items-center justify-center bg-slate-950/35 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl ring-1 ring-slate-200">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
             <h2 className="text-lg font-semibold">Delete user?</h2>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
               This will remove {deleteCandidate.name} from the table. This action cannot be undone.
             </p>
             <div className="mt-5 flex justify-end gap-3">
@@ -492,7 +492,7 @@ export default function Home() {
                 type="button"
                 disabled={saving}
                 onClick={() => setDeleteCandidate(null)}
-                className="rounded-md border border-slate-300 px-4 py-2 text-slate-700 disabled:opacity-60"
+                className="rounded-md border border-slate-300 px-4 py-2 text-slate-700 disabled:opacity-60 dark:border-slate-600 dark:text-slate-200"
               >
                 Cancel
               </button>
