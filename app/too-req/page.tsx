@@ -336,12 +336,20 @@ export default function TooReqPage() {
               View, edit, delete, and toggle GP flag on each observation request.
             </p>
           </div>
-          <Link
-            href="/"
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            ← Users
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/gp-cycle2"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              GP Cycle 2
+            </Link>
+            <Link
+              href="/"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              ← Users
+            </Link>
+          </div>
         </div>
 
         {message ? (

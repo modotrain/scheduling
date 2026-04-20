@@ -264,12 +264,20 @@ export default function Home() {
             <h1 className="text-2xl font-semibold">Users</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Create, edit, delete, and toggle VIP status directly from the page.</p>
           </div>
-          <Link
-            href="/too-req"
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            ToO Requests →
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/too-req"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              ToO Requests
+            </Link>
+            <Link
+              href="/gp-cycle2"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              GP Cycle 2
+            </Link>
+          </div>
         </div>
 
         <form onSubmit={handleCreate} className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-slate-800/40 dark:ring-slate-700 md:grid-cols-[1.2fr_0.7fr_1.4fr_auto_auto] md:items-start">
