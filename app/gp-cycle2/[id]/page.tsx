@@ -145,7 +145,7 @@ export default function GpCycle2DetailPage() {
   const [lastValidNomRatio, setLastValidNomRatio] = useState(0);
   const [validTimeRatio, setValidTimeRatio] = useState(0);
   const [obsLoading, setObsLoading] = useState(true);
-  const [onlyNonZero, setOnlyNonZero] = useState(false);
+  const [onlyNonZero, setOnlyNonZero] = useState<"all" | "nonzero" | "zerosonly">("all");
   const [obsSort, setObsSort] = useState<ObsSortConfig>({ col: null, dir: "asc" });
 
   const [row, setRow] = useState<GpCycle2Row | null>(null);
@@ -306,28 +306,26 @@ export default function GpCycle2DetailPage() {
           <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50/60 px-4 py-2 dark:border-slate-700 dark:bg-slate-800/30">
             <span className="text-xs text-slate-500 dark:text-slate-400">Show:</span>
             <div className="flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-600 text-xs">
-              <button
-                type="button"
-                onClick={() => setOnlyNonZero(false)}
-                className={`px-3 py-1.5 transition-colors ${
-                  !onlyNonZero
-                    ? "bg-indigo-600 text-white"
-                    : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                }`}
-              >
-                All rows
-              </button>
-              <button
-                type="button"
-                onClick={() => setOnlyNonZero(true)}
-                className={`border-l border-slate-300 px-3 py-1.5 transition-colors dark:border-slate-600 ${
-                  onlyNonZero
-                    ? "bg-indigo-600 text-white"
-                    : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                }`}
-              >
-                Non-zero valid secs only
-              </button>
+              {([
+                { value: "all", label: "All" },
+                { value: "nonzero", label: "Non-zero only" },
+                { value: "zerosonly", label: "Zero only" },
+              ] as const).map(({ value, label }, idx) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setOnlyNonZero(value)}
+                  className={`px-3 py-1.5 transition-colors ${
+                    idx > 0 ? "border-l border-slate-300 dark:border-slate-600" : ""
+                  } ${
+                    onlyNonZero === value
+                      ? "bg-indigo-600 text-white"
+                      : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -370,7 +368,11 @@ export default function GpCycle2DetailPage() {
                     </td>
                   </tr>
                 ) : (() => {
-                  const filtered = obsList.filter((r) => !onlyNonZero || r.validSecs > 0);
+                  const filtered = obsList.filter((r) => {
+                    if (onlyNonZero === "nonzero") return r.validSecs > 0;
+                    if (onlyNonZero === "zerosonly") return r.validSecs === 0;
+                    return true;
+                  });
                   const sorted = obsSort.col
                     ? [...filtered].sort((a, b) => {
                         const aVal = a[obsSort.col!] ?? "";
