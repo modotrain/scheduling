@@ -48,6 +48,21 @@ type GpCycle2Row = {
   cmrY: string | null;
 };
 
+type ObsListRow = {
+  id: number;
+  wpType: string | null;
+  epDbObjectId: string | null;
+  observationModeA: string | null;
+  filterA: string | null;
+  observationModeB: string | null;
+  filterB: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  pointingDurationInOrbits: string | null;
+  pointingDurationInSeconds: string | null;
+  validSecs: number;
+};
+
 type FieldInput = Omit<GpCycle2Row, "id">;
 
 type FieldDef = { key: keyof FieldInput; label: string };
@@ -108,6 +123,12 @@ export default function GpCycle2DetailPage() {
   const pathname = usePathname();
   const id = pathname?.split("/").at(-1) ?? "";
 
+  // obs list state
+  const [obsList, setObsList] = useState<ObsListRow[]>([]);
+  const [obsTotal, setObsTotal] = useState(0);
+  const [obsLoading, setObsLoading] = useState(true);
+  const [onlyNonZero, setOnlyNonZero] = useState(false);
+
   const [row, setRow] = useState<GpCycle2Row | null>(null);
   const [input, setInput] = useState<FieldInput>({} as FieldInput);
   const [editing, setEditing] = useState(false);
@@ -120,6 +141,31 @@ export default function GpCycle2DetailPage() {
     setMessage(msg);
     setMessageTone(tone);
   }
+
+  const loadObsList = useCallback(async () => {
+    setObsLoading(true);
+    try {
+      const res = await fetch(`/api/gp-cycle2/${id}/obs-list`, { cache: "no-store" });
+      const data = (await res.json()) as {
+        rows?: Record<string, unknown>[];
+        totalValidSecs?: number;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "Failed to load obs list");
+      // normalise snake_case keys from raw SQL to camelCase
+      const camel = (key: string) =>
+        key.replace(/_([a-z])/g, (_m, l: string) => l.toUpperCase());
+      const mapped = (data.rows ?? []).map((r) =>
+        Object.fromEntries(Object.entries(r).map(([k, v]) => [camel(k), v])),
+      ) as ObsListRow[];
+      setObsList(mapped);
+      setObsTotal(data.totalValidSecs ?? 0);
+    } catch {
+      // silently ignore obs list errors — main record still loads
+    } finally {
+      setObsLoading(false);
+    }
+  }, [id]);
 
   const loadRow = useCallback(async () => {
     setLoading(true);
@@ -140,7 +186,8 @@ export default function GpCycle2DetailPage() {
 
   useEffect(() => {
     void loadRow();
-  }, [loadRow]);
+    void loadObsList();
+  }, [loadRow, loadObsList]);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -213,6 +260,107 @@ export default function GpCycle2DetailPage() {
             {message}
           </p>
         ) : null}
+
+        {/* ── Scheduled Observation List ─────────────────────────────── */}
+        <div className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
+            <h2 className="text-base font-semibold">Scheduled Observation List</h2>
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="text-sm text-slate-600 dark:text-slate-300">
+                Total valid secs:{" "}
+                <span className="font-mono font-medium">{obsTotal.toLocaleString()}</span>
+              </span>
+              <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={onlyNonZero}
+                  onChange={(e) => setOnlyNonZero(e.target.checked)}
+                  className="rounded border-slate-300 dark:border-slate-600"
+                />
+                Only show non-zero valid_secs lines
+              </label>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                  {[
+                    "WP Type",
+                    "EP DB Object ID",
+                    "Mode A",
+                    "Filter A",
+                    "Mode B",
+                    "Filter B",
+                    "Start Date",
+                    "End Date",
+                    "Dur (orbits)",
+                    "Dur (secs)",
+                    "Valid Secs",
+                  ].map((h) => (
+                    <th key={h} className="whitespace-nowrap px-3 py-2 font-medium">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {obsLoading ? (
+                  <tr>
+                    <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={11}>
+                      Loading…
+                    </td>
+                  </tr>
+                ) : obsList.filter((r) => !onlyNonZero || r.validSecs > 0).length === 0 ? (
+                  <tr>
+                    <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={11}>
+                      No observations found.
+                    </td>
+                  </tr>
+                ) : (
+                  obsList
+                    .filter((r) => !onlyNonZero || r.validSecs > 0)
+                    .map((r, i) => (
+                      <tr
+                        key={i}
+                        className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
+                      >
+                        {([
+                          r.wpType,
+                          r.epDbObjectId,
+                          r.observationModeA,
+                          r.filterA,
+                          r.observationModeB,
+                          r.filterB,
+                          r.startDate,
+                          r.endDate,
+                          r.pointingDurationInOrbits,
+                          r.pointingDurationInSeconds,
+                        ] as (string | null)[]).map((val, ci) => (
+                          <td key={ci} className="whitespace-nowrap px-3 py-2">
+                            {val !== null && val !== undefined && val !== "" ? (
+                              val
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                        ))}
+                        <td className="whitespace-nowrap px-3 py-2 font-mono">
+                          {r.validSecs > 0 ? (
+                            <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                              {r.validSecs.toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">0</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         {loading ? (
           <p className="mt-8 text-slate-500 dark:text-slate-400">Loading…</p>
