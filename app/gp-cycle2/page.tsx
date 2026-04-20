@@ -45,6 +45,8 @@ type GpCycle2Row = {
   fxtCmr: string | null;
   cmrX: string | null;
   cmrY: string | null;
+  lastValidNomRatio: number | string | null;
+  validTimeRatio: number | string | null;
 };
 
 type SortConfig = { col: keyof GpCycle2Row | null; dir: "asc" | "desc" };
@@ -58,6 +60,8 @@ const TABLE_COLS: (keyof GpCycle2Row)[] = [
 //   "ra",
 //   "dec",
   "totalExposureTime",
+  "lastValidNomRatio",
+  "validTimeRatio",
 //   "exposureTimeUnit",
 //   "sourcePriority",
 //   "anticipatedToo",
@@ -72,6 +76,8 @@ const COL_LABELS: Partial<Record<keyof GpCycle2Row, string>> = {
   ra: "RA",
   dec: "Dec",
   totalExposureTime: "Total Exp.",
+  lastValidNomRatio: "Last Ratio",
+  validTimeRatio: "Valid Ratio",
   exposureTimeUnit: "Exp. Unit",
   sourcePriority: "Priority",
   anticipatedToo: "Anti-TOO",
@@ -141,6 +147,17 @@ export default function GpCycle2Page() {
         {sortConfig.dir === "asc" ? "↑" : "↓"}
       </span>
     );
+  }
+
+  function formatCellValue(col: keyof GpCycle2Row, val: GpCycle2Row[keyof GpCycle2Row]): string {
+    if (col === "lastValidNomRatio" || col === "validTimeRatio") {
+      const num = typeof val === "number" ? val : Number(val);
+      if (Number.isFinite(num)) {
+        return num.toFixed(2);
+      }
+    }
+
+    return String(val);
   }
 
   const displayRows = getSortedAndFiltered();
@@ -241,7 +258,7 @@ export default function GpCycle2Page() {
                           {val === null || val === undefined || val === "" ? (
                             <span className="text-slate-400">—</span>
                           ) : (
-                            String(val)
+                            formatCellValue(col, val)
                           )}
                         </td>
                       );
