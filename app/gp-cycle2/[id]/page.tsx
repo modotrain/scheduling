@@ -439,18 +439,18 @@ export default function GpCycle2DetailPage() {
           <p className="mt-8 text-rose-600">Record not found.</p>
         ) : (
           <form onSubmit={handleSave} className="mt-6">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-x-4 gap-y-1.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {/* ID — always read-only */}
-              <div className="sm:col-span-2">
-                <span className="block text-xs font-medium text-slate-500 dark:text-slate-400">
+              <div className="col-span-full">
+                <span className="block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   ID
                 </span>
-                <span className="mt-0.5 block text-sm font-mono">{row.id}</span>
+                <span className="block text-xs font-mono">{row.id}</span>
               </div>
 
               {FIELDS.map(({ key, label }) => (
                 <div key={key}>
-                  <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     {label}
                   </label>
                   {editing ? (
@@ -460,10 +460,10 @@ export default function GpCycle2DetailPage() {
                       onChange={(e) =>
                         setInput((prev) => ({ ...prev, [key]: e.target.value }))
                       }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                     />
                   ) : (
-                    <p className="text-sm text-slate-800 dark:text-slate-200">
+                    <p className="text-xs text-slate-800 dark:text-slate-200 truncate">
                       {row[key] !== null && row[key] !== undefined && row[key] !== "" ? (
                         String(row[key])
                       ) : (
