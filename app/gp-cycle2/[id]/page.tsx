@@ -328,6 +328,57 @@ export default function GpCycle2DetailPage() {
               ))}
             </div>
           </div>
+
+          {/* ── Timeline ─────────────────────────────────────────────── */}
+          {(() => {
+            const withStart = obsList.filter((r) => r.startDate);
+            const withEnd = obsList.filter((r) => r.endDate);
+            if (withStart.length === 0) return null;
+            const minTime = Math.min(...withStart.map((r) => new Date(r.startDate!).getTime()));
+            const maxTime = Math.max(
+              ...(withEnd.length > 0 ? withEnd : withStart).map((r) =>
+                new Date((r.endDate ?? r.startDate)!).getTime(),
+              ),
+            );
+            const range = maxTime - minTime;
+            if (range <= 0) return null;
+            const nodes = obsList.filter((r) => r.validSecs > 0 && r.startDate);
+            const fmt = (ts: number) =>
+              new Date(ts).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+            return (
+              <div className="border-b border-slate-200 dark:border-slate-700 px-4 py-4">
+                <div className="relative">
+                  {/* Track */}
+                  <div className="relative mx-2 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
+                    {nodes.map((r, i) => {
+                      const pct = ((new Date(r.startDate!).getTime() - minTime) / range) * 100;
+                      return (
+                        <div
+                          key={i}
+                          className="group absolute top-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
+                          style={{ left: `${pct}%` }}
+                        >
+                          <div className="h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 cursor-default transition-transform group-hover:scale-125" />
+                          {/* Tooltip */}
+                          <div className="pointer-events-none absolute bottom-full left-1/2 mb-2.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1.5 text-[11px] leading-tight text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg dark:bg-slate-700">
+                            <div className="font-medium">{r.validSecs.toLocaleString()} secs</div>
+                            <div className="text-slate-400 dark:text-slate-300 mt-0.5">{r.startDate}</div>
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-700" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Date labels */}
+                  <div className="mt-2 flex justify-between text-[10px] text-slate-400 dark:text-slate-500 select-none">
+                    <span>{fmt(minTime)}</span>
+                    <span>{fmt(maxTime)}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-left text-xs">
               <thead>
