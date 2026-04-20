@@ -26,10 +26,16 @@ export async function GET(_req: Request, { params }: Params) {
 
     const sourceId = gpRow.sourceId;
     if (!sourceId) {
-      return NextResponse.json({ rows: [], totalValidSecs: 0 });
+      return NextResponse.json({
+        rows: [],
+        totalValidSecs: 0,
+        lastValidNomRatio: 0,
+        validTimeRatio: 0,
+      });
     }
 
-    const result = await db.execute(sql`
+    // Obs list rows
+    const obsResult = await db.execute(sql`
       SELECT
         obs_wp.id,
         obs_wp.wp_type,
@@ -50,14 +56,83 @@ export async function GET(_req: Request, { params }: Params) {
       ORDER BY obs_wp.start_date ASC NULLS LAST
     `);
 
-    const rows = Array.isArray(result) ? result : result.rows;
+    const rows = Array.isArray(obsResult) ? obsResult : obsResult.rows;
 
     const totalValidSecs = rows.reduce((sum, row) => {
       const r = row as Record<string, unknown>;
       return sum + (Number(r.valid_secs) || 0);
     }, 0);
 
-    return NextResponse.json({ rows, totalValidSecs });
+    // Compute ratios for this specific gp_cycle2 row
+    const ratioResult = await db.execute(sql`
+      WITH last_obs AS (
+        SELECT
+          g.source_id,
+          g.visit_number,
+          COALESCE(SUM(
+            CASE
+              WHEN 1 + SUM(
+                CASE
+                  WHEN LAG(o.qc) OVER (
+                    PARTITION BY g.source_id, g.visit_number
+                    ORDER BY o.start_date
+                  ) IS NOT DISTINCT FROM o.qc
+                  THEN 0 ELSE 1
+                END
+              ) OVER (
+                PARTITION BY g.source_id, g.visit_number
+                ORDER BY o.start_date DESC NULLS LAST
+                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+              ) - (
+                CASE
+                  WHEN LAG(o.qc) OVER (
+                    PARTITION BY g.source_id, g.visit_number
+                    ORDER BY o.start_date
+                  ) IS NOT DISTINCT FROM o.qc
+                  THEN 0 ELSE 1
+                END
+              ) = 1
+              THEN t.valid_secs
+            END
+          ), 0) AS last_valid_secs
+        FROM gp_cycle2 g
+        LEFT JOIN obs_wp o ON g.source_id = o.source_id
+        LEFT JOIN obslogtest t ON t.obs_id_hex = SUBSTRING(o.obs_id_number FROM 3)
+        WHERE g.id = ${numId}
+        GROUP BY g.source_id, g.visit_number
+      )
+      SELECT
+        CASE
+          WHEN NULLIF(BTRIM(g.visit_number), '')::numeric > 0
+           AND NULLIF(BTRIM(g.total_exposure_time), '')::numeric > 0
+          THEN COALESCE(lo.last_valid_secs, 0)::numeric
+               / (
+                   NULLIF(NULLIF(BTRIM(g.total_exposure_time), '')::numeric, 0)
+                   / NULLIF(NULLIF(BTRIM(g.visit_number), '')::numeric, 0)
+                 )
+          ELSE 0
+        END AS last_valid_nom_ratio,
+        CASE
+          WHEN NULLIF(BTRIM(g.total_exposure_time), '')::numeric > 0
+          THEN ${totalValidSecs}::numeric
+               / NULLIF(NULLIF(BTRIM(g.total_exposure_time), '')::numeric, 0)
+          ELSE 0
+        END AS valid_time_ratio
+      FROM gp_cycle2 g
+      LEFT JOIN last_obs lo
+        ON lo.source_id = g.source_id AND lo.visit_number = g.visit_number
+      WHERE g.id = ${numId}
+    `);
+
+    const ratioRows = Array.isArray(ratioResult) ? ratioResult : ratioResult.rows;
+    const ratioRow = (ratioRows[0] ?? {}) as Record<string, unknown>;
+
+    return NextResponse.json({
+      rows,
+      totalValidSecs,
+      lastValidNomRatio: Number(ratioRow.last_valid_nom_ratio ?? 0),
+      validTimeRatio: Number(ratioRow.valid_time_ratio ?? 0),
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to fetch" },

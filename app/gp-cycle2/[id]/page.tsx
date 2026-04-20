@@ -63,6 +63,22 @@ type ObsListRow = {
   validSecs: number;
 };
 
+type ObsSortConfig = { col: keyof ObsListRow | null; dir: "asc" | "desc" };
+
+const OBS_COLS: { key: keyof ObsListRow; label: string }[] = [
+  { key: "startDate", label: "Start Date" },
+  { key: "endDate", label: "End Date" },
+  { key: "validSecs", label: "Valid Secs" },
+  { key: "wpType", label: "WP Type" },
+  { key: "epDbObjectId", label: "EP DB Object ID" },
+  { key: "observationModeA", label: "Mode A" },
+  { key: "filterA", label: "Filter A" },
+  { key: "observationModeB", label: "Mode B" },
+  { key: "filterB", label: "Filter B" },
+  { key: "pointingDurationInOrbits", label: "Dur (orbits)" },
+  { key: "pointingDurationInSeconds", label: "Dur (secs)" },
+];
+
 type FieldInput = Omit<GpCycle2Row, "id">;
 
 type FieldDef = { key: keyof FieldInput; label: string };
@@ -126,8 +142,11 @@ export default function GpCycle2DetailPage() {
   // obs list state
   const [obsList, setObsList] = useState<ObsListRow[]>([]);
   const [obsTotal, setObsTotal] = useState(0);
+  const [lastValidNomRatio, setLastValidNomRatio] = useState(0);
+  const [validTimeRatio, setValidTimeRatio] = useState(0);
   const [obsLoading, setObsLoading] = useState(true);
   const [onlyNonZero, setOnlyNonZero] = useState(false);
+  const [obsSort, setObsSort] = useState<ObsSortConfig>({ col: null, dir: "asc" });
 
   const [row, setRow] = useState<GpCycle2Row | null>(null);
   const [input, setInput] = useState<FieldInput>({} as FieldInput);
@@ -149,6 +168,8 @@ export default function GpCycle2DetailPage() {
       const data = (await res.json()) as {
         rows?: Record<string, unknown>[];
         totalValidSecs?: number;
+        lastValidNomRatio?: number;
+        validTimeRatio?: number;
         error?: string;
       };
       if (!res.ok) throw new Error(data.error ?? "Failed to load obs list");
@@ -160,6 +181,8 @@ export default function GpCycle2DetailPage() {
       ) as ObsListRow[];
       setObsList(mapped);
       setObsTotal(data.totalValidSecs ?? 0);
+      setLastValidNomRatio(Number(data.lastValidNomRatio ?? 0));
+      setValidTimeRatio(Number(data.validTimeRatio ?? 0));
     } catch {
       // silently ignore obs list errors — main record still loads
     } finally {
@@ -225,7 +248,7 @@ export default function GpCycle2DetailPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100 md:p-8">
-      <div className="mx-auto max-w-4xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
+      <div className="mx-auto max-w-screen-xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -263,100 +286,146 @@ export default function GpCycle2DetailPage() {
 
         {/* ── Scheduled Observation List ─────────────────────────────── */}
         <div className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
-            <h2 className="text-base font-semibold">Scheduled Observation List</h2>
-            <div className="flex flex-wrap items-center gap-4">
-              <span className="text-sm text-slate-600 dark:text-slate-300">
-                Total valid secs:{" "}
-                <span className="font-mono font-medium">{obsTotal.toLocaleString()}</span>
-              </span>
-              <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                <input
-                  type="checkbox"
-                  checked={onlyNonZero}
-                  onChange={(e) => setOnlyNonZero(e.target.checked)}
-                  className="rounded border-slate-300 dark:border-slate-600"
-                />
-                Only show non-zero valid_secs lines
-              </label>
+          {/* Header row 1: stats */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
+            <h2 className="text-base font-semibold mr-auto">Scheduled Observation List</h2>
+            <span className="text-sm text-slate-600 dark:text-slate-300">
+              Total valid secs:{" "}
+              <span className="font-mono font-medium">{obsTotal.toLocaleString()}</span>
+            </span>
+            <span className="text-sm text-slate-600 dark:text-slate-300">
+              Last valid nom ratio:{" "}
+              <span className="font-mono font-medium">{lastValidNomRatio.toFixed(2)}</span>
+            </span>
+            <span className="text-sm text-slate-600 dark:text-slate-300">
+              Valid time ratio:{" "}
+              <span className="font-mono font-medium">{validTimeRatio.toFixed(2)}</span>
+            </span>
+          </div>
+          {/* Header row 2: filter toggle */}
+          <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50/60 px-4 py-2 dark:border-slate-700 dark:bg-slate-800/30">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Show:</span>
+            <div className="flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-600 text-xs">
+              <button
+                type="button"
+                onClick={() => setOnlyNonZero(false)}
+                className={`px-3 py-1.5 transition-colors ${
+                  !onlyNonZero
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                }`}
+              >
+                All rows
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnlyNonZero(true)}
+                className={`border-l border-slate-300 px-3 py-1.5 transition-colors dark:border-slate-600 ${
+                  onlyNonZero
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                }`}
+              >
+                Non-zero valid secs only
+              </button>
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
-                  {[
-                    "WP Type",
-                    "EP DB Object ID",
-                    "Mode A",
-                    "Filter A",
-                    "Mode B",
-                    "Filter B",
-                    "Start Date",
-                    "End Date",
-                    "Dur (orbits)",
-                    "Dur (secs)",
-                    "Valid Secs",
-                  ].map((h) => (
-                    <th key={h} className="whitespace-nowrap px-3 py-2 font-medium">
-                      {h}
-                    </th>
-                  ))}
+                  {OBS_COLS.map(({ key, label }) => {
+                    const active = obsSort.col === key;
+                    return (
+                      <th
+                        key={key}
+                        onClick={() =>
+                          setObsSort((prev) => ({
+                            col: key,
+                            dir: prev.col === key && prev.dir === "asc" ? "desc" : "asc",
+                          }))
+                        }
+                        className="cursor-pointer whitespace-nowrap px-3 py-2 font-medium select-none hover:bg-slate-200 dark:hover:bg-slate-700"
+                      >
+                        <span className="flex items-center gap-1">
+                          {label}
+                          {active ? (
+                            <span className="text-indigo-600 dark:text-indigo-400">
+                              {obsSort.dir === "asc" ? "↑" : "↓"}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600">⇅</span>
+                          )}
+                        </span>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
                 {obsLoading ? (
                   <tr>
-                    <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={11}>
+                    <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={OBS_COLS.length}>
                       Loading…
                     </td>
                   </tr>
-                ) : obsList.filter((r) => !onlyNonZero || r.validSecs > 0).length === 0 ? (
-                  <tr>
-                    <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={11}>
-                      No observations found.
-                    </td>
-                  </tr>
-                ) : (
-                  obsList
-                    .filter((r) => !onlyNonZero || r.validSecs > 0)
-                    .map((r, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
-                      >
-                        {([
-                          r.wpType,
-                          r.epDbObjectId,
-                          r.observationModeA,
-                          r.filterA,
-                          r.observationModeB,
-                          r.filterB,
-                          r.startDate,
-                          r.endDate,
-                          r.pointingDurationInOrbits,
-                          r.pointingDurationInSeconds,
-                        ] as (string | null)[]).map((val, ci) => (
-                          <td key={ci} className="whitespace-nowrap px-3 py-2">
+                ) : (() => {
+                  const filtered = obsList.filter((r) => !onlyNonZero || r.validSecs > 0);
+                  const sorted = obsSort.col
+                    ? [...filtered].sort((a, b) => {
+                        const aVal = a[obsSort.col!] ?? "";
+                        const bVal = b[obsSort.col!] ?? "";
+                        const cmp =
+                          typeof aVal === "number" && typeof bVal === "number"
+                            ? aVal - bVal
+                            : String(aVal).localeCompare(String(bVal));
+                        return obsSort.dir === "asc" ? cmp : -cmp;
+                      })
+                    : filtered;
+
+                  if (sorted.length === 0) {
+                    return (
+                      <tr>
+                        <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={OBS_COLS.length}>
+                          No observations found.
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return sorted.map((r, i) => (
+                    <tr
+                      key={i}
+                      className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
+                    >
+                      {OBS_COLS.map(({ key }) => {
+                        if (key === "validSecs") {
+                          return (
+                            <td key={key} className="whitespace-nowrap px-3 py-2 font-mono">
+                              {r.validSecs > 0 ? (
+                                <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                                  {r.validSecs.toLocaleString()}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">0</span>
+                              )}
+                            </td>
+                          );
+                        }
+                        const val = r[key] as string | null;
+                        return (
+                          <td key={key} className="whitespace-nowrap px-3 py-2">
                             {val !== null && val !== undefined && val !== "" ? (
                               val
                             ) : (
                               <span className="text-slate-400">—</span>
                             )}
                           </td>
-                        ))}
-                        <td className="whitespace-nowrap px-3 py-2 font-mono">
-                          {r.validSecs > 0 ? (
-                            <span className="font-medium text-emerald-700 dark:text-emerald-400">
-                              {r.validSecs.toLocaleString()}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">0</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                )}
+                        );
+                      })}
+                    </tr>
+                  ));
+                })()}
               </tbody>
             </table>
           </div>
