@@ -253,8 +253,22 @@ export default function GpCycle2Page() {
                   >
                     {TABLE_COLS.map((col) => {
                       const val = row[col];
+                      const ratio =
+                        col === "validTimeRatio"
+                          ? typeof val === "number"
+                            ? val
+                            : Number(val)
+                          : NaN;
+                      const ratioCellClass =
+                        col === "validTimeRatio" && Number.isFinite(ratio)
+                          ? ratio >= 0.995
+                            ? "bg-emerald-500/60 dark:bg-emerald-500/30"
+                            : ratio >= 0.8
+                              ? "bg-emerald-200/60 dark:bg-emerald-700/30"
+                              : ""
+                          : "";
                       return (
-                        <td key={col} className="whitespace-nowrap px-3 py-2">
+                        <td key={col} className={`whitespace-nowrap px-3 py-2 ${ratioCellClass}`}>
                           {val === null || val === undefined || val === "" ? (
                             <span className="text-slate-400">—</span>
                           ) : (
