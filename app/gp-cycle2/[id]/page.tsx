@@ -277,15 +277,6 @@ export default function GpCycle2DetailPage() {
             >
               ← Back to list
             </Link>
-            {!editing && !loading && row ? (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="rounded-md bg-amber-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-amber-600"
-              >
-                Edit
-              </button>
-            ) : null}
           </div>
         </div>
 
@@ -540,8 +531,17 @@ export default function GpCycle2DetailPage() {
           <p className="mt-8 text-rose-600">Record not found.</p>
         ) : (
           <section className="mt-6 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
               <h2 className="text-base font-semibold">Request Information</h2>
+              {!editing ? (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="rounded-md bg-amber-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-amber-600"
+                >
+                  Edit
+                </button>
+              ) : null}
             </div>
             <form onSubmit={handleSave} className="p-4">
               <div className="grid gap-x-4 gap-y-1.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
