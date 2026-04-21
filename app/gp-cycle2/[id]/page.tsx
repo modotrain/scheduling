@@ -252,9 +252,9 @@ export default function GpCycle2DetailPage() {
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">GP Cycle 2 — Record #{id}</h1>
-            {row?.sourceName ? (
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.sourceName}</p>
+            <h1 className="text-2xl font-semibold">GP Cycle 2 — {row?.sourceName ?? `Record #${id}`}</h1>
+            {row?.pi ? (
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.pi}</p>
             ) : null}
           </div>
           <div className="flex items-center gap-2">
@@ -290,15 +290,15 @@ export default function GpCycle2DetailPage() {
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
             <h2 className="text-base font-semibold mr-auto">Scheduled Observation List</h2>
             <span className="text-sm text-slate-600 dark:text-slate-300">
-              Total valid secs:{" "}
+              Total observed (sec):{" "}
               <span className="font-mono font-medium">{obsTotal.toLocaleString()}</span>
             </span>
             <span className="text-sm text-slate-600 dark:text-slate-300">
-              Last valid nom ratio:{" "}
+              Latest obs. compl.:{" "}
               <span className="font-mono font-medium">{lastValidNomRatio.toFixed(2)}</span>
             </span>
             <span className="text-sm text-slate-600 dark:text-slate-300">
-              Valid time ratio:{" "}
+              Total completeness:{" "}
               <span className="font-mono font-medium">{validTimeRatio.toFixed(2)}</span>
             </span>
           </div>
