@@ -358,9 +358,9 @@ export default function GpCycle2DetailPage() {
             });
             return (
               <div className="border-b border-slate-200 dark:border-slate-700 px-4 py-4">
-                <div className="relative">
+                <div className="relative mx-3 sm:mx-4">
                   {/* Track */}
-                  <div className="relative mx-2 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
+                  <div className="relative h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
                     {nodes.map((r, i) => {
                       const pct = ((new Date(r.startDate!).getTime() - minTime) / range) * 100;
                       return (
@@ -388,11 +388,17 @@ export default function GpCycle2DetailPage() {
                     ))}
                   </div>
                   {/* Date labels */}
-                  <div className="relative mt-2 h-4 text-[10px] text-slate-400 dark:text-slate-500 select-none">
+                  <div className="relative mt-2 h-5 text-[11px] md:text-xs text-slate-500 dark:text-slate-400 select-none">
                     {ticks.map((t, idx) => (
                       <span
                         key={t.ts}
-                        className={`absolute -translate-x-1/2 whitespace-nowrap ${
+                        className={`absolute whitespace-nowrap ${
+                          idx === 0
+                            ? "translate-x-0"
+                            : idx === ticks.length - 1
+                              ? "-translate-x-full"
+                              : "-translate-x-1/2"
+                        } ${
                           idx % 2 === 1 ? "hidden sm:inline" : "inline"
                         }`}
                         style={{ left: `${t.pct}%` }}
