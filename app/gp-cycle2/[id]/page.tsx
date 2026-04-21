@@ -50,7 +50,7 @@ type GpCycle2Row = {
 
 type ObsListRow = {
   id: number;
-  wpType: string | null;
+  obsId: string | null;
   epDbObjectId: string | null;
   observationModeA: string | null;
   filterA: string | null;
@@ -69,13 +69,13 @@ const OBS_COLS: { key: keyof ObsListRow; label: string }[] = [
   { key: "startDate", label: "Start Date" },
   { key: "endDate", label: "End Date" },
   { key: "validSecs", label: "Valid Secs" },
-  { key: "wpType", label: "WP Type" },
+  { key: "obsId", label: "Obs ID" },
   { key: "epDbObjectId", label: "EP DB Object ID" },
   { key: "observationModeA", label: "Mode A" },
   { key: "filterA", label: "Filter A" },
   { key: "observationModeB", label: "Mode B" },
   { key: "filterB", label: "Filter B" },
-  { key: "pointingDurationInOrbits", label: "Dur (o)" },
+  { key: "pointingDurationInOrbits", label: "Obt" },
   { key: "pointingDurationInSeconds", label: "Dur (sec)" },
 ];
 
@@ -176,9 +176,22 @@ export default function GpCycle2DetailPage() {
       // normalise snake_case keys from raw SQL to camelCase
       const camel = (key: string) =>
         key.replace(/_([a-z])/g, (_m, l: string) => l.toUpperCase());
-      const mapped = (data.rows ?? []).map((r) =>
-        Object.fromEntries(Object.entries(r).map(([k, v]) => [camel(k), v])),
-      ) as ObsListRow[];
+      const mapped = (data.rows ?? []).map((r) => {
+        const merged: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(r)) {
+          const ck = camel(k);
+          // Keep an existing non-empty value if a duplicate key arrives as null/empty.
+          const existing = merged[ck];
+          const incomingEmpty = v === null || v === undefined || v === "";
+          const existingPresent = existing !== null && existing !== undefined && existing !== "";
+          if (existingPresent && incomingEmpty) continue;
+          merged[ck] = v;
+        }
+        if (merged.obsId === null || merged.obsId === undefined || merged.obsId === "") {
+          merged.obsId = r.obs_id ?? null;
+        }
+        return merged;
+      }) as ObsListRow[];
       setObsList(mapped);
       setObsTotal(data.totalValidSecs ?? 0);
       setLastValidNomRatio(Number(data.lastValidNomRatio ?? 0));
@@ -526,63 +539,68 @@ export default function GpCycle2DetailPage() {
         ) : !row ? (
           <p className="mt-8 text-rose-600">Record not found.</p>
         ) : (
-          <form onSubmit={handleSave} className="mt-6">
-            <div className="grid gap-x-4 gap-y-1.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {/* ID — always read-only */}
-              <div className="col-span-full">
-                <span className="block text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                  ID
-                </span>
-                <span className="block text-xs font-mono">{row.id}</span>
-              </div>
-
-              {FIELDS.map(({ key, label }) => (
-                <div key={key}>
-                  <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                    {label}
-                  </label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      value={(input[key] as string) ?? ""}
-                      onChange={(e) =>
-                        setInput((prev) => ({ ...prev, [key]: e.target.value }))
-                      }
-                      className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                    />
-                  ) : (
-                    <p className="text-xs text-slate-800 dark:text-slate-200 truncate">
-                      {row[key] !== null && row[key] !== undefined && row[key] !== "" ? (
-                        String(row[key])
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </p>
-                  )}
-                </div>
-              ))}
+          <section className="mt-6 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
+              <h2 className="text-base font-semibold">Request Information</h2>
             </div>
+            <form onSubmit={handleSave} className="p-4">
+              <div className="grid gap-x-4 gap-y-1.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {/* ID — always read-only */}
+                <div className="col-span-full">
+                  <span className="block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    ID
+                  </span>
+                  <span className="block text-xs font-mono">{row.id}</span>
+                </div>
 
-            {editing ? (
-              <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 disabled:opacity-60 dark:border-slate-600 dark:text-slate-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 hover:bg-emerald-700"
-                >
-                  {saving ? "Saving…" : "Save"}
-                </button>
+                {FIELDS.map(({ key, label }) => (
+                  <div key={key}>
+                    <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                      {label}
+                    </label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        value={(input[key] as string) ?? ""}
+                        onChange={(e) =>
+                          setInput((prev) => ({ ...prev, [key]: e.target.value }))
+                        }
+                        className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    ) : (
+                      <p className="text-xs text-slate-800 dark:text-slate-200 truncate">
+                        {row[key] !== null && row[key] !== undefined && row[key] !== "" ? (
+                          String(row[key])
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
-            ) : null}
-          </form>
+
+              {editing ? (
+                <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    disabled={saving}
+                    className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 disabled:opacity-60 dark:border-slate-600 dark:text-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 hover:bg-emerald-700"
+                  >
+                    {saving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              ) : null}
+            </form>
+          </section>
         )}
       </div>
     </main>

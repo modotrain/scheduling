@@ -16,7 +16,7 @@ export async function GET(_req: Request, { params }: Params) {
     const obsResult = await db.execute(sql`
       SELECT
         obs_wp.id,
-        obs_wp.wp_type,
+        obs_wp.obs_id,
         obs_wp.ep_db_object_id,
         obs_wp.observation_mode_a,
         obs_wp.filter_a,
