@@ -75,8 +75,8 @@ const OBS_COLS: { key: keyof ObsListRow; label: string }[] = [
   { key: "filterA", label: "Filter A" },
   { key: "observationModeB", label: "Mode B" },
   { key: "filterB", label: "Filter B" },
-  { key: "pointingDurationInOrbits", label: "Dur (orbits)" },
-  { key: "pointingDurationInSeconds", label: "Dur (secs)" },
+  { key: "pointingDurationInOrbits", label: "Dur (o)" },
+  { key: "pointingDurationInSeconds", label: "Dur (sec)" },
 ];
 
 type FieldInput = Omit<GpCycle2Row, "id">;
@@ -416,6 +416,7 @@ export default function GpCycle2DetailPage() {
             <table className="min-w-full border-collapse text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                  <th className="whitespace-nowrap px-3 py-2 font-medium">#</th>
                   {OBS_COLS.map(({ key, label }) => {
                     const active = obsSort.col === key;
                     return (
@@ -447,7 +448,7 @@ export default function GpCycle2DetailPage() {
               <tbody>
                 {obsLoading ? (
                   <tr>
-                    <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={OBS_COLS.length}>
+                    <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={OBS_COLS.length + 1}>
                       Loading…
                     </td>
                   </tr>
@@ -472,7 +473,7 @@ export default function GpCycle2DetailPage() {
                   if (sorted.length === 0) {
                     return (
                       <tr>
-                        <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={OBS_COLS.length}>
+                        <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={OBS_COLS.length + 1}>
                           No observations found.
                         </td>
                       </tr>
@@ -484,6 +485,9 @@ export default function GpCycle2DetailPage() {
                       key={i}
                       className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
                     >
+                      <td className="whitespace-nowrap px-3 py-2 font-mono text-slate-500 dark:text-slate-400">
+                        {i + 1}
+                      </td>
                       {OBS_COLS.map(({ key }) => {
                         if (key === "validSecs") {
                           return (
