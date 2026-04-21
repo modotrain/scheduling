@@ -343,8 +343,19 @@ export default function GpCycle2DetailPage() {
             const range = maxTime - minTime;
             if (range <= 0) return null;
             const nodes = obsList.filter((r) => r.validSecs > 0 && r.startDate);
-            const fmt = (ts: number) =>
-              new Date(ts).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+            const fmt = (ts: number) => {
+              const d = new Date(ts);
+              const y = d.getFullYear();
+              const m = String(d.getMonth() + 1).padStart(2, "0");
+              const day = String(d.getDate()).padStart(2, "0");
+              return `${y}-${m}-${day}`;
+            };
+            const tickCount = 7;
+            const ticks = Array.from({ length: tickCount }, (_v, i) => {
+              const pct = (i / (tickCount - 1)) * 100;
+              const ts = minTime + (range * i) / (tickCount - 1);
+              return { pct, ts };
+            });
             return (
               <div className="border-b border-slate-200 dark:border-slate-700 px-4 py-4">
                 <div className="relative">
@@ -368,11 +379,27 @@ export default function GpCycle2DetailPage() {
                         </div>
                       );
                     })}
+                    {ticks.map((t) => (
+                      <div
+                        key={t.pct}
+                        className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-slate-400/60 dark:bg-slate-500/70"
+                        style={{ left: `${t.pct}%` }}
+                      />
+                    ))}
                   </div>
                   {/* Date labels */}
-                  <div className="mt-2 flex justify-between text-[10px] text-slate-400 dark:text-slate-500 select-none">
-                    <span>{fmt(minTime)}</span>
-                    <span>{fmt(maxTime)}</span>
+                  <div className="relative mt-2 h-4 text-[10px] text-slate-400 dark:text-slate-500 select-none">
+                    {ticks.map((t, idx) => (
+                      <span
+                        key={t.ts}
+                        className={`absolute -translate-x-1/2 whitespace-nowrap ${
+                          idx % 2 === 1 ? "hidden sm:inline" : "inline"
+                        }`}
+                        style={{ left: `${t.pct}%` }}
+                      >
+                        {fmt(t.ts)}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
