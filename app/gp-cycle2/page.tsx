@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
+const GP_CYCLE2_CACHE_KEY = "gp-cycle2:list:v1";
+const GP_CYCLE2_CACHE_TTL_MS = 5 * 60 * 1000;
+
 type GpCycle2Row = {
   id: number;
   tdicId: string | null;
@@ -51,6 +54,11 @@ type GpCycle2Row = {
 
 type SortConfig = { col: keyof GpCycle2Row | null; dir: "asc" | "desc" };
 
+type GpCycle2Cache = {
+  rows: GpCycle2Row[];
+  cachedAt: number;
+};
+
 const TABLE_COLS: (keyof GpCycle2Row)[] = [
   "id",
   "sourceName",
@@ -97,7 +105,14 @@ export default function GpCycle2Page() {
       const res = await fetch("/api/gp-cycle2", { cache: "no-store" });
       const data = (await res.json()) as { rows?: GpCycle2Row[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed to load");
-      setRows(data.rows ?? []);
+      const nextRows = data.rows ?? [];
+      setRows(nextRows);
+      try {
+        const payload: GpCycle2Cache = { rows: nextRows, cachedAt: Date.now() };
+        localStorage.setItem(GP_CYCLE2_CACHE_KEY, JSON.stringify(payload));
+      } catch {
+        // Ignore localStorage errors (quota/private mode) and keep runtime state.
+      }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to load");
       setMessageTone("error");
@@ -107,6 +122,20 @@ export default function GpCycle2Page() {
   }, []);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(GP_CYCLE2_CACHE_KEY);
+      if (raw) {
+        const cache = JSON.parse(raw) as GpCycle2Cache;
+        const fresh = Date.now() - cache.cachedAt < GP_CYCLE2_CACHE_TTL_MS;
+        if (fresh && Array.isArray(cache.rows)) {
+          setRows(cache.rows);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch {
+      // Ignore malformed cache and fall back to network fetch.
+    }
     void loadRows();
   }, [loadRows]);
 
