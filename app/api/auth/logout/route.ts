@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { shouldUseSecureAuthCookie } from "@/src/auth/cookies";
 import { AUTH_COOKIE_NAME } from "@/src/auth/session";
 
 export async function POST(request: Request) {
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
     value: "",
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureAuthCookie(request),
     path: "/",
     maxAge: 0,
   });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 
+import { shouldUseSecureAuthCookie } from "@/src/auth/cookies";
 import { db } from "@/src/db/client";
 import { AUTH_COOKIE_NAME, createSessionToken } from "@/src/auth/session";
 
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
       value: token,
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: shouldUseSecureAuthCookie(request),
       path: "/",
       maxAge: 7 * 24 * 60 * 60,
     });
