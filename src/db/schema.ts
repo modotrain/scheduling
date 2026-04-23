@@ -3,8 +3,10 @@ import { boolean, integer, pgTable, varchar, serial, text, timestamp, unique, do
 export const usersTable = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   name: varchar({ length: 255 }).notNull(),
+	username: varchar({ length: 255 }).notNull().unique(),
   age: integer().notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
+	passwordHash: text("password_hash").notNull().default(""),
   vip: boolean().notNull().default(false),
 });
 

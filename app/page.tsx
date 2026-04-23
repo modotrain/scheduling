@@ -6,6 +6,7 @@ import Link from "next/link";
 type User = {
   id: number;
   name: string;
+  username: string;
   age: number;
   email: string;
   vip: boolean;
@@ -13,8 +14,10 @@ type User = {
 
 type UserInput = {
   name: string;
+  username: string;
   age: string;
   email: string;
+  password: string;
   vip: boolean;
 };
 
@@ -22,8 +25,10 @@ type FormErrors = Partial<Record<keyof UserInput, string>>;
 
 const initialForm: UserInput = {
   name: "",
+  username: "",
   age: "",
   email: "",
+  password: "",
   vip: false,
 };
 
@@ -49,6 +54,16 @@ export default function Home() {
 
     if (!values.email.trim()) {
       errors.email = "Email is required";
+    }
+
+    if (!values.username.trim()) {
+      errors.username = "Username is required";
+    }
+
+    if (!values.password.trim()) {
+      errors.password = "Password is required";
+    } else if (values.password.trim().length < 8) {
+      errors.password = "Password must be at least 8 characters";
     }
 
     if (!values.age.trim()) {
@@ -113,8 +128,10 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: createForm.name.trim(),
+          username: createForm.username.trim(),
           age: Number(createForm.age),
           email: createForm.email.trim(),
+          password: createForm.password,
           vip: createForm.vip,
         }),
       });
@@ -140,8 +157,10 @@ export default function Home() {
     setEditingId(user.id);
     setEditForm({
       name: user.name,
+      username: user.username,
       age: String(user.age),
       email: user.email,
+      password: "",
       vip: user.vip,
     });
     setEditErrors({});
@@ -149,7 +168,13 @@ export default function Home() {
   }
 
   async function handleUpdate(id: number) {
-    const errors = validateForm(editForm);
+    const errors = validateForm({
+      ...editForm,
+      password: editForm.password ? editForm.password : "temporary-pass",
+    });
+    if (!editForm.password) {
+      delete errors.password;
+    }
     setEditErrors(errors);
 
     if (hasErrors(errors)) {
@@ -163,8 +188,10 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: editForm.name.trim(),
+          username: editForm.username.trim(),
           age: Number(editForm.age),
           email: editForm.email.trim(),
+          password: editForm.password.trim() || undefined,
           vip: editForm.vip,
         }),
       });
@@ -280,7 +307,7 @@ export default function Home() {
           </div>
         </div>
 
-        <form onSubmit={handleCreate} className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-slate-800/40 dark:ring-slate-700 md:grid-cols-[1.2fr_0.7fr_1.4fr_auto_auto] md:items-start">
+        <form onSubmit={handleCreate} className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-slate-800/40 dark:ring-slate-700 md:grid-cols-[1.1fr_1fr_0.7fr_1.3fr_1.1fr_auto_auto] md:items-start">
           <div>
             <input
               required
@@ -290,6 +317,16 @@ export default function Home() {
               className="w-full rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
             {renderFieldError(createErrors.name)}
+          </div>
+          <div>
+            <input
+              required
+              placeholder="Username"
+              value={createForm.username}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, username: event.target.value }))}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+            {renderFieldError(createErrors.username)}
           </div>
           <div>
             <input
@@ -313,6 +350,17 @@ export default function Home() {
               className="w-full rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
             {renderFieldError(createErrors.email)}
+          </div>
+          <div>
+            <input
+              required
+              type="password"
+              placeholder="Password"
+              value={createForm.password}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+            {renderFieldError(createErrors.password)}
           </div>
           <label className="flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
             <input
@@ -343,8 +391,10 @@ export default function Home() {
               <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
                 <th className="px-3 py-2">ID</th>
                 <th className="px-3 py-2">Name</th>
+                <th className="px-3 py-2">Username</th>
                 <th className="px-3 py-2">Age</th>
                 <th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">Password</th>
                 <th className="px-3 py-2">VIP</th>
                 <th className="px-3 py-2">Actions</th>
               </tr>
@@ -352,13 +402,13 @@ export default function Home() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={6}>
+                  <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={8}>
                     Loading...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={6}>
+                  <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={8}>
                     No users yet.
                   </td>
                 </tr>
@@ -381,6 +431,20 @@ export default function Home() {
                           </div>
                         ) : (
                           user.name
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <div>
+                            <input
+                              value={editForm.username}
+                              onChange={(event) => setEditForm((prev) => ({ ...prev, username: event.target.value }))}
+                              className="w-full rounded-md border border-slate-300 px-2 py-1 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                            />
+                            {renderFieldError(editErrors.username)}
+                          </div>
+                        ) : (
+                          user.username
                         )}
                       </td>
                       <td className="px-3 py-2">
@@ -412,6 +476,22 @@ export default function Home() {
                           </div>
                         ) : (
                           user.email
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <div>
+                            <input
+                              type="password"
+                              placeholder="Leave blank to keep"
+                              value={editForm.password}
+                              onChange={(event) => setEditForm((prev) => ({ ...prev, password: event.target.value }))}
+                              className="w-full rounded-md border border-slate-300 px-2 py-1 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                            />
+                            {renderFieldError(editErrors.password)}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">••••••••</span>
                         )}
                       </td>
                       <td className="px-3 py-2">
