@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import ThemeToggle from "./theme-toggle";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,6 +53,7 @@ export default async function RootLayout({
           <ThemeToggle />
         </div>
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
