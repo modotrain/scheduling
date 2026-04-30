@@ -293,16 +293,10 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/too-req"
+              href="/"
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              ToO Requests
-            </Link>
-            <Link
-              href="/gp-cycle2"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              GP Cycle 2
+              ← Home
             </Link>
           </div>
         </div>
