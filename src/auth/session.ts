@@ -6,6 +6,7 @@ export const AUTH_COOKIE_NAME = "sch_session";
 export type SessionPayload = {
   sub: number;
   username: string;
+  vip: boolean;
   exp: number;
 };
 
@@ -66,12 +67,14 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
   }
 
   try {
-    const payload = JSON.parse(decoder.decode(fromBase64Url(body))) as SessionPayload;
-    if (
-      typeof payload.sub !== "number" ||
-      typeof payload.username !== "string" ||
-      typeof payload.exp !== "number"
-    ) {
+    const rawPayload = JSON.parse(decoder.decode(fromBase64Url(body))) as Partial<SessionPayload>;
+    const payload: SessionPayload = {
+      sub: Number(rawPayload.sub),
+      username: String(rawPayload.username ?? ""),
+      vip: Boolean(rawPayload.vip),
+      exp: Number(rawPayload.exp),
+    };
+    if (!Number.isFinite(payload.sub) || !payload.username || !Number.isFinite(payload.exp)) {
       return null;
     }
 

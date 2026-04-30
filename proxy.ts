@@ -40,6 +40,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(buildLoginUrl(request));
   }
 
+  if (pathname === "/users" && !session.vip) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   return NextResponse.next();
 }
 

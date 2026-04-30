@@ -172,7 +172,7 @@ export default function GpCycle2Page() {
   function SortIcon({ col }: { col: keyof GpCycle2Row }) {
     if (sortConfig.col !== col) return <span className="ml-1 text-slate-300 dark:text-slate-600">⇅</span>;
     return (
-      <span className="ml-1 text-indigo-600 dark:text-indigo-400">
+      <span className="ml-1 text-primary">
         {sortConfig.dir === "asc" ? "↑" : "↓"}
       </span>
     );
@@ -213,7 +213,7 @@ export default function GpCycle2Page() {
               href="/"
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              ← Users
+              ← Home
             </Link>
           </div>
         </div>
@@ -311,7 +311,7 @@ export default function GpCycle2Page() {
                         href={`/gp-cycle2/${row.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-md bg-indigo-600 px-3 py-1 text-sm text-white hover:bg-indigo-700"
+                        className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >
                         Details
                       </Link>

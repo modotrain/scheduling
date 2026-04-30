@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     const token = await createSessionToken({
       sub: Number(user.id),
       username: user.username,
+      vip: Boolean(user.vip),
       exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
     });
 

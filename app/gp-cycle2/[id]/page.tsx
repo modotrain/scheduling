@@ -323,7 +323,7 @@ export default function GpCycle2DetailPage() {
                     idx > 0 ? "border-l border-slate-300 dark:border-slate-600" : ""
                   } ${
                     onlyNonZero === value
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-primary text-white"
                       : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   }`}
                 >
@@ -437,7 +437,7 @@ export default function GpCycle2DetailPage() {
                         <span className="flex items-center gap-1">
                           {label}
                           {active ? (
-                            <span className="text-indigo-600 dark:text-indigo-400">
+                            <span className="text-primary">
                               {obsSort.dir === "asc" ? "↑" : "↓"}
                             </span>
                           ) : (

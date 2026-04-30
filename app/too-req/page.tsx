@@ -323,7 +323,7 @@ export default function TooReqPage() {
 
   function SortIcon({ col }: { col: keyof TooReq }) {
     if (sortConfig.col !== col) return <span className="ml-1 text-slate-300">⇅</span>;
-    return <span className="ml-1 text-indigo-600">{sortConfig.dir === "asc" ? "↑" : "↓"}</span>;
+    return <span className="ml-1 text-primary">{sortConfig.dir === "asc" ? "↑" : "↓"}</span>;
   }
 
   return (
@@ -347,7 +347,7 @@ export default function TooReqPage() {
               href="/"
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              ← Users
+              ← Home
             </Link>
           </div>
         </div>
@@ -427,7 +427,7 @@ export default function TooReqPage() {
                     <td className="px-3 py-2">
                       <span
                         className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                          row.to_gp ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200"
+                          row.to_gp ? "bg-brand-light/20 text-brand-dark dark:bg-brand-dark/30 dark:text-brand-light" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200"
                         }`}
                       >
                         {row.to_gp ? "GP" : "—"}
@@ -448,7 +448,7 @@ export default function TooReqPage() {
                           disabled={saving}
                           onClick={() => handleToggleto_gp(row)}
                           className={`rounded-md px-3 py-1 text-white disabled:opacity-60 ${
-                            row.to_gp ? "bg-slate-700" : "bg-indigo-600"
+                            row.to_gp ? "bg-slate-700" : "bg-primary"
                           }`}
                         >
                           {row.to_gp ? "to Too" : "to GP"}

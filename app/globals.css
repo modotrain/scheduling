@@ -4,11 +4,15 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --color-primary-val: #005d97;
+  --color-secondary-val: #65aadd;
 }
 
 .dark {
   --background: #020617;
   --foreground: #e2e8f0;
+  --color-primary-val: #65aadd;
+  --color-secondary-val: #005d97;
 }
 
 @theme inline {
@@ -16,6 +20,12 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Brand colors */
+  --color-brand-dark: #005d97;
+  --color-brand-light: #65aadd;
+  /* Semantic colors — flip in dark mode */
+  --color-primary: var(--color-primary-val);
+  --color-secondary: var(--color-secondary-val);
 }
 
 body {
