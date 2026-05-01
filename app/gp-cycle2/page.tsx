@@ -88,7 +88,7 @@ const COL_LABELS: Partial<Record<keyof GpCycle2Row, string>> = {
   validTimeRatio: "Completeness",
   exposureTimeUnit: "Exp. Unit",
   sourcePriority: "Priority",
-  anticipatedToo: "Anti-TOO",
+  anticipatedToo: "Anticipated ToO",
 };
 
 export default function GpCycle2Page() {
