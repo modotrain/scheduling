@@ -14,13 +14,16 @@ function resolveInitialTheme(): Theme {
     return saved;
   }
 
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return "light";
 }
 
 export default function ThemeToggle() {
   useEffect(() => {
     const initial = resolveInitialTheme();
     document.documentElement.classList.toggle("dark", initial === "dark");
+    if (!window.localStorage.getItem("theme")) {
+      window.localStorage.setItem("theme", initial);
+    }
   }, []);
 
   function toggleTheme() {
