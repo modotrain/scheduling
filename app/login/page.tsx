@@ -2,6 +2,7 @@
 
 import { FormEvent, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 
 // ── Soft tech canvas background ────────────────────────────────────────────
 function TechBackground() {
@@ -176,7 +177,7 @@ export default function LoginPage() {
 
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.72),transparent_35%),radial-gradient(circle_at_80%_12%,rgba(101,170,221,0.22),transparent_30%)] dark:bg-[radial-gradient(circle_at_18%_20%,rgba(255,255,255,0.05),transparent_30%),radial-gradient(circle_at_80%_12%,rgba(101,170,221,0.14),transparent_28%)]" />
 
-      <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-8">
+      <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-6">
         {/* Title */}
         <div className="text-center">
           <h1
@@ -193,10 +194,29 @@ export default function LoginPage() {
           </p>
         </div>
 
+        <div className="relative w-full px-6">
+          <Image
+            src="/ep-vi-logo-3-03.svg"
+            alt="Einstein Probe VI Logo"
+            width={720}
+            height={172}
+            priority
+            className="mx-auto h-auto w-full max-w-[26rem] dark:hidden"
+          />
+          <Image
+            src="/ep-vi-logo-3-04.svg"
+            alt="Einstein Probe VI Logo"
+            width={720}
+            height={172}
+            priority
+            className="mx-auto hidden h-auto w-full max-w-[26rem] dark:block"
+          />
+        </div>
+
         {/* Card */}
         <div className="w-full rounded-2xl border border-white/75 bg-white/72 p-6 shadow-[0_22px_60px_rgba(0,93,151,0.16)] backdrop-blur-xl dark:border-[#21415a] dark:bg-[#0d1f2f]/76 dark:shadow-[0_22px_60px_rgba(0,0,0,0.34)]">
           <p className="mb-5 text-sm text-slate-600 dark:text-slate-300">
-            Sign in to access Users, ToO Requests, and GP Cycle 2.
+            Sign in to access GP Cycle / ToO planning.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

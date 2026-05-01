@@ -27,6 +27,22 @@ export const metadata: Metadata = {
   description: "Control center for Einstein Probe scheduling operations, including ToO requests and GP cycle planning.",
 };
 
+const themeInitScript = `(() => {
+  try {
+    const saved = window.localStorage.getItem("theme");
+    const theme = saved === "dark" ? "dark" : "light";
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    root.style.colorScheme = theme;
+    if (!saved) {
+      window.localStorage.setItem("theme", theme);
+    }
+  } catch {
+    document.documentElement.classList.remove("dark");
+    document.documentElement.style.colorScheme = "light";
+  }
+})();`;
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -39,9 +55,11 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${kronaOne.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <div className="fixed right-4 top-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2">
           {session ? (
             <div className="flex max-w-[min(60vw,20rem)] items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
