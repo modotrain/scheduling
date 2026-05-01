@@ -3,10 +3,10 @@
 import { FormEvent, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-// ── Hex-grid canvas background ─────────────────────────────────────────────
-function HexBackground() {
+// ── Soft tech canvas background ────────────────────────────────────────────
+function TechBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const mouseRef = useRef({ x: -9999, y: -9999 });
+  const mouseRef = useRef({ x: -9999, y: -9999, active: false });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -17,10 +17,6 @@ function HexBackground() {
     let animFrame: number;
     let t = 0;
 
-    const R = 30;
-    const HH = R * Math.sqrt(3);
-    const COL_W = R * 1.5;
-
     function resize() {
       canvas!.width = window.innerWidth;
       canvas!.height = window.innerHeight;
@@ -28,82 +24,93 @@ function HexBackground() {
     window.addEventListener("resize", resize);
     resize();
 
-    function drawHex(cx: number, cy: number, r: number) {
-      ctx!.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const a = (Math.PI / 3) * i - Math.PI / 6;
-        const x = cx + r * Math.cos(a);
-        const y = cy + r * Math.sin(a);
-        if (i === 0) ctx!.moveTo(x, y); else ctx!.lineTo(x, y);
-      }
-      ctx!.closePath();
-    }
-
     function draw() {
       const w = canvas!.width;
       const h = canvas!.height;
+      const mx = mouseRef.current.x;
+      const my = mouseRef.current.y;
+      const isActive = mouseRef.current.active;
 
+      // Main base wash
       const bg = ctx!.createLinearGradient(0, 0, w, h);
-      bg.addColorStop(0, "#010d1a");
-      bg.addColorStop(1, "#041628");
+      bg.addColorStop(0, "#edf6ff");
+      bg.addColorStop(0.5, "#e7f2ff");
+      bg.addColorStop(1, "#dfeeff");
       ctx!.fillStyle = bg;
       ctx!.fillRect(0, 0, w, h);
 
-      const cols = Math.ceil(w / COL_W) + 3;
-      const rows = Math.ceil(h / HH) + 3;
-      const mx = mouseRef.current.x;
-      const my = mouseRef.current.y;
+      // Gentle diagonals for a technical texture
+      const spacing = 28;
+      for (let x = -h; x < w + h; x += spacing) {
+        const drift = Math.sin(t * 0.6 + x * 0.008) * 8;
+        ctx!.beginPath();
+        ctx!.moveTo(x + drift, 0);
+        ctx!.lineTo(x + h + drift, h);
+        ctx!.strokeStyle = "rgba(101, 170, 221, 0.08)";
+        ctx!.lineWidth = 1;
+        ctx!.stroke();
+      }
 
-      for (let col = -1; col < cols; col++) {
-        for (let row = -1; row < rows; row++) {
-          const cx = col * COL_W;
-          const cy = row * HH + (col % 2 !== 0 ? HH / 2 : 0);
-
-          const dx = cx - mx;
-          const dy = cy - my;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const proximity = Math.max(0, 1 - dist / 220);
-
-          const wave = 0.5 + 0.5 * Math.sin(t * 0.6 + col * 0.9 + row * 1.3);
-          const fillAlpha = 0.06 + wave * 0.05 + proximity * 0.55;
-
-          const rC = Math.round(0 + proximity * 101);
-          const gC = Math.round(93 + proximity * 77);
-          const bC = Math.round(151 + proximity * 70);
-
-          drawHex(cx, cy, R - 1.5);
-          ctx!.fillStyle = `rgba(${rC}, ${gC}, ${bC}, ${fillAlpha})`;
+      // Dot matrix that reacts to cursor proximity
+      const dotStep = 48;
+      for (let y = dotStep / 2; y < h; y += dotStep) {
+        for (let x = dotStep / 2; x < w; x += dotStep) {
+          const dx = x - mx;
+          const dy = y - my;
+          const dist = Math.hypot(dx, dy);
+          const near = isActive ? Math.max(0, 1 - dist / 220) : 0;
+          const pulse = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t + x * 0.01 + y * 0.01));
+          const r = 1 + near * 2.8;
+          ctx!.beginPath();
+          ctx!.arc(x, y, r, 0, Math.PI * 2);
+          ctx!.fillStyle = `rgba(0, 93, 151, ${0.1 + pulse * 0.12 + near * 0.35})`;
           ctx!.fill();
-
-          drawHex(cx, cy, R - 1.5);
-          ctx!.strokeStyle = `rgba(101, 170, 221, ${0.07 + proximity * 0.45 + wave * 0.04})`;
-          ctx!.lineWidth = 0.6;
-          ctx!.stroke();
         }
       }
 
-      t += 0.018;
+      // Cursor halo (subtle, not flashy)
+      if (isActive) {
+        const halo = ctx!.createRadialGradient(mx, my, 0, mx, my, 240);
+        halo.addColorStop(0, "rgba(101, 170, 221, 0.36)");
+        halo.addColorStop(0.35, "rgba(101, 170, 221, 0.16)");
+        halo.addColorStop(1, "rgba(101, 170, 221, 0)");
+        ctx!.fillStyle = halo;
+        ctx!.beginPath();
+        ctx!.arc(mx, my, 240, 0, Math.PI * 2);
+        ctx!.fill();
+      }
+
+      t += 0.016;
       animFrame = requestAnimationFrame(draw);
     }
 
     draw();
 
     const onMove = (e: MouseEvent) => {
-      mouseRef.current = { x: e.clientX, y: e.clientY };
+      mouseRef.current = { x: e.clientX, y: e.clientY, active: true };
+    };
+    const onLeave = () => {
+      mouseRef.current = { x: -9999, y: -9999, active: false };
     };
     const onTouch = (e: TouchEvent) => {
       if (e.touches[0]) {
-        mouseRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        mouseRef.current = {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+          active: true,
+        };
       }
     };
 
     window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseleave", onLeave);
     window.addEventListener("touchmove", onTouch, { passive: true });
 
     return () => {
       cancelAnimationFrame(animFrame);
       window.removeEventListener("resize", resize);
       window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseleave", onLeave);
       window.removeEventListener("touchmove", onTouch);
     };
   }, []);
@@ -155,20 +162,22 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-      <HexBackground />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#e9f4ff] p-4">
+      <TechBackground />
+
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.72),transparent_35%),radial-gradient(circle_at_80%_12%,rgba(101,170,221,0.3),transparent_30%)]" />
 
       <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-8">
         {/* Title */}
         <div className="text-center">
           <h1
-            className="text-4xl font-normal leading-tight tracking-wide text-white drop-shadow-lg"
+            className="text-4xl font-normal leading-tight tracking-wide text-[#0f3f65]"
             style={{ fontFamily: "var(--font-krona-one)" }}
           >
             Einstein Probe
           </h1>
           <p
-            className="mt-2 text-lg font-normal tracking-widest text-[#65aadd] drop-shadow"
+            className="mt-2 text-lg font-normal tracking-widest text-[#2f77ab]"
             style={{ fontFamily: "var(--font-krona-one)" }}
           >
             Scheduling System
@@ -176,46 +185,46 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <div className="w-full rounded-2xl border border-white/10 bg-black/30 p-6 shadow-2xl backdrop-blur-lg">
-          <p className="mb-5 text-sm text-slate-300/80">
+        <div className="w-full rounded-2xl border border-white/75 bg-white/72 p-6 shadow-[0_22px_60px_rgba(0,93,151,0.2)] backdrop-blur-xl">
+          <p className="mb-5 text-sm text-slate-600">
             Sign in to access Users, ToO Requests, and GP Cycle 2.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-200">
+              <label className="mb-1 block text-sm font-medium text-slate-700">
                 Username
               </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#65aadd] focus:ring-1 focus:ring-[#65aadd]"
+                className="w-full rounded-lg border border-[#c5def2] bg-white/90 px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-[#65aadd] focus:ring-2 focus:ring-[#65aadd]/30"
                 autoComplete="username"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-200">
+              <label className="mb-1 block text-sm font-medium text-slate-700">
                 Password
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-white/15 bg-white/8 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-[#65aadd] focus:ring-1 focus:ring-[#65aadd]"
+                className="w-full rounded-lg border border-[#c5def2] bg-white/90 px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-[#65aadd] focus:ring-2 focus:ring-[#65aadd]/30"
                 autoComplete="current-password"
               />
             </div>
 
             {error ? (
-              <p className="text-sm text-rose-400">{error}</p>
+              <p className="text-sm text-rose-600">{error}</p>
             ) : null}
 
             <button
               type="submit"
               disabled={submitting}
-              className="mt-1 w-full rounded-lg bg-[#005d97] px-4 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-[#65aadd] disabled:opacity-60"
+              className="mt-1 w-full rounded-lg bg-[#0e67a5] px-4 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-[#2f7fb5] disabled:opacity-60"
             >
               {submitting ? "Signing in…" : "Sign in"}
             </button>
