@@ -32,8 +32,8 @@ const COL_LABELS: Partial<Record<keyof ApprovedTooRow, string>> = {
   sourceName: "Source",
   proposalNo: "Proposal No",
   pi: "PI",
-  requestUrgencyOfObservation: "Request Urgency",
-  reviewedUrgencyOfObservation: "Reviewed Urgency",
+  requestUrgencyOfObservation: "Req. Urgency",
+  reviewedUrgencyOfObservation: "Rev. Urgency",
   receivedTime: "Received Time",
   type: "Type",
 };

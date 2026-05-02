@@ -43,70 +43,98 @@ export default async function HomePage() {
             Users administration is restricted to VIP accounts.
           </p>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Link
-              href="/too-req"
-              className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-            >
-              <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                ToO Workspace
-              </div>
-              <h2 className="text-lg font-semibold">ToO Requests</h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                Review, edit and triage incoming target-of-opportunity requests.
-              </p>
-            </Link>
+          <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start">
 
-            <Link
-              href="/gp-cycle2"
-              className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-            >
-              <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                Planning Workspace
-              </div>
-              <h2 className="text-lg font-semibold">GP Cycle 2</h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                Track cycle proposals, completion ratios, and detailed observation timelines.
+            {/* Column 1 — GP Planning */}
+            <div className="flex flex-col gap-3 lg:w-72 lg:shrink-0">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                Planning
               </p>
-            </Link>
-
-            <Link
-              href="/too-management"
-              className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-            >
-              <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                Review Workspace
-              </div>
-              <h2 className="text-lg font-semibold">ToO Management</h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                Manage approved ToO records with detail view and editable request/review fields.
-              </p>
-            </Link>
-
-            {isVip ? (
               <Link
-                href="/users"
+                href="/gp-cycle2"
                 className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
               >
-                <div className="mb-3 inline-flex rounded-lg bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-                  VIP Only
+                <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                  Planning Workspace
                 </div>
-                <h2 className="text-lg font-semibold">Users</h2>
+                <h2 className="text-lg font-semibold">GP Cycle 2</h2>
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                  Manage accounts, credentials and VIP permissions.
+                  Track cycle proposals, completion ratios, and detailed observation timelines.
                 </p>
               </Link>
-            ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-white/65 p-5 dark:border-slate-700 dark:bg-slate-900/50">
-                <div className="mb-3 inline-flex rounded-lg bg-slate-200/80 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                  VIP Only
-                </div>
-                <h2 className="text-lg font-semibold text-slate-600 dark:text-slate-300">Users</h2>
-                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                  Your account does not have access to users administration.
-                </p>
+            </div>
+
+            {/* Divider */}
+            <div className="hidden w-px self-stretch bg-slate-200 dark:bg-slate-700/60 lg:block" />
+
+            {/* Column 2 — ToO */}
+            <div className="flex flex-1 flex-col gap-3">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                Target of Opportunity
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Link
+                  href="/too-req"
+                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                    ToO Workspace
+                  </div>
+                  <h2 className="text-lg font-semibold">ToO Requests</h2>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    Review, edit and triage incoming target-of-opportunity requests.
+                  </p>
+                </Link>
+
+                <Link
+                  href="/too-management"
+                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                    Review Workspace
+                  </div>
+                  <h2 className="text-lg font-semibold">ToO Management</h2>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    Manage approved ToO records with detail view and editable request/review fields.
+                  </p>
+                </Link>
               </div>
-            )}
+            </div>
+
+            {/* Divider */}
+            <div className="hidden w-px self-stretch bg-slate-200 dark:bg-slate-700/60 lg:block" />
+
+            {/* Column 3 — Administration */}
+            <div className="flex flex-col gap-3 lg:w-60 lg:shrink-0">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                Administration
+              </p>
+              {isVip ? (
+                <Link
+                  href="/users"
+                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <div className="mb-3 inline-flex rounded-lg bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                    VIP Only
+                  </div>
+                  <h2 className="text-lg font-semibold">Users</h2>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    Manage accounts, credentials and VIP permissions.
+                  </p>
+                </Link>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white/65 p-5 dark:border-slate-700 dark:bg-slate-900/50">
+                  <div className="mb-3 inline-flex rounded-lg bg-slate-200/80 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                    VIP Only
+                  </div>
+                  <h2 className="text-lg font-semibold text-slate-600 dark:text-slate-300">Users</h2>
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                    Your account does not have access to users administration.
+                  </p>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       </section>
