@@ -1,0 +1,375 @@
+"use client";
+
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+type ApprovedTooRow = {
+  id: number;
+  flux03To10KeV: string | null;
+  completeness: string | null;
+  continuousExposure: string | null;
+  epscProposal: boolean | null;
+  epDbObjectId: string | null;
+  fxtCmr: string | null;
+  fxtX: string | null;
+  fxtY: string | null;
+  payload: string | null;
+  receivedTime: string | null;
+  requestNumberOfVisits: number | null;
+  requestRestrainedBeginTime: string | null;
+  requestRestrainedEndTime: string | null;
+  requestSingleExposureTime: number | null;
+  requestTotalExposureTime: number | null;
+  requestUrgencyOfObservation: string | null;
+  requestCadence: number | null;
+  requestCadenceUnit: string | null;
+  reviewedNumberOfVisits: string | null;
+  reviewedScientificImportance: string | null;
+  reviewedSingleExposureTime: string | null;
+  reviewedTotalExposureTime: string | null;
+  reviewedUrgencyOfObservation: string | null;
+  reviewedCadence: string | null;
+  reviewedCadenceUnit: string | null;
+  reviewedTime: string | null;
+  stp: string | null;
+  sourceType: string | null;
+  vBandMagnitude: string | null;
+  wxtCmos: string | null;
+  wxtCmosX: string | null;
+  wxtCmosY: string | null;
+  dec: string | null;
+  exposureTimeUnit: string | null;
+  fxt1Filter: string | null;
+  fxt1WindowMode: string | null;
+  fxt2Filter: string | null;
+  fxt2WindowMode: string | null;
+  groupName: string | null;
+  pi: string | null;
+  proposalId: string | null;
+  proposalNo: string | null;
+  ra: string | null;
+  sourceId: string | null;
+  sourceName: string | null;
+  type: string | null;
+};
+
+type InputStringKeys = Exclude<
+  keyof ApprovedTooRow,
+  "id" | "epscProposal" | "requestNumberOfVisits" | "requestSingleExposureTime" | "requestTotalExposureTime" | "requestCadence"
+>;
+
+type InputRow = { [K in InputStringKeys]: string } & {
+  epscProposal: "" | "true" | "false";
+  requestNumberOfVisits: string;
+  requestSingleExposureTime: string;
+  requestTotalExposureTime: string;
+  requestCadence: string;
+};
+
+const FIELDS: Array<{ key: keyof InputRow; label: string; type?: "text" | "number" | "select" }> = [
+  { key: "sourceName", label: "Source Name" },
+  { key: "sourceId", label: "Source ID" },
+  { key: "proposalNo", label: "Proposal No" },
+  { key: "proposalId", label: "Proposal ID" },
+  { key: "pi", label: "PI" },
+  { key: "groupName", label: "Group" },
+  { key: "type", label: "Type" },
+  { key: "sourceType", label: "Source Type" },
+  { key: "stp", label: "STP" },
+  { key: "epscProposal", label: "EPSC Proposal", type: "select" },
+  { key: "epDbObjectId", label: "EP DB Object ID" },
+  { key: "payload", label: "Payload" },
+  { key: "flux03To10KeV", label: "0.3-10 keV Flux" },
+  { key: "vBandMagnitude", label: "V-band Magnitude" },
+  { key: "ra", label: "RA" },
+  { key: "dec", label: "Dec" },
+  { key: "continuousExposure", label: "Continuous Exposure" },
+  { key: "exposureTimeUnit", label: "Exposure Time Unit" },
+  { key: "requestUrgencyOfObservation", label: "Request Urgency" },
+  { key: "requestSingleExposureTime", label: "Request Single Exp. Time", type: "number" },
+  { key: "requestTotalExposureTime", label: "Request Total Exp. Time", type: "number" },
+  { key: "requestNumberOfVisits", label: "Request Number of Visits", type: "number" },
+  { key: "requestCadence", label: "Request Cadence", type: "number" },
+  { key: "requestCadenceUnit", label: "Request Cadence Unit" },
+  { key: "requestRestrainedBeginTime", label: "Request Restrained Begin Time" },
+  { key: "requestRestrainedEndTime", label: "Request Restrained End Time" },
+  { key: "receivedTime", label: "Received Time" },
+  { key: "reviewedScientificImportance", label: "Reviewed Scientific Importance" },
+  { key: "reviewedUrgencyOfObservation", label: "Reviewed Urgency" },
+  { key: "reviewedSingleExposureTime", label: "Reviewed Single Exp. Time" },
+  { key: "reviewedTotalExposureTime", label: "Reviewed Total Exp. Time" },
+  { key: "reviewedNumberOfVisits", label: "Reviewed Number of Visits" },
+  { key: "reviewedCadence", label: "Reviewed Cadence" },
+  { key: "reviewedCadenceUnit", label: "Reviewed Cadence Unit" },
+  { key: "reviewedTime", label: "Reviewed Time" },
+  { key: "completeness", label: "Completeness" },
+  { key: "fxtCmr", label: "FXT CMR" },
+  { key: "fxtX", label: "FXT X" },
+  { key: "fxtY", label: "FXT Y" },
+  { key: "fxt1WindowMode", label: "FXT1 Window Mode" },
+  { key: "fxt1Filter", label: "FXT1 Filter" },
+  { key: "fxt2WindowMode", label: "FXT2 Window Mode" },
+  { key: "fxt2Filter", label: "FXT2 Filter" },
+  { key: "wxtCmos", label: "WXT CMOS" },
+  { key: "wxtCmosX", label: "WXT CMOS X" },
+  { key: "wxtCmosY", label: "WXT CMOS Y" },
+];
+
+const numberFields = new Set<keyof InputRow>([
+  "requestNumberOfVisits",
+  "requestSingleExposureTime",
+  "requestTotalExposureTime",
+  "requestCadence",
+]);
+
+function rowToInput(row: ApprovedTooRow): InputRow {
+  return {
+    flux03To10KeV: row.flux03To10KeV ?? "",
+    completeness: row.completeness ?? "",
+    continuousExposure: row.continuousExposure ?? "",
+    epscProposal: row.epscProposal === null ? "" : row.epscProposal ? "true" : "false",
+    epDbObjectId: row.epDbObjectId ?? "",
+    fxtCmr: row.fxtCmr ?? "",
+    fxtX: row.fxtX ?? "",
+    fxtY: row.fxtY ?? "",
+    payload: row.payload ?? "",
+    receivedTime: row.receivedTime ?? "",
+    requestNumberOfVisits: row.requestNumberOfVisits === null ? "" : String(row.requestNumberOfVisits),
+    requestRestrainedBeginTime: row.requestRestrainedBeginTime ?? "",
+    requestRestrainedEndTime: row.requestRestrainedEndTime ?? "",
+    requestSingleExposureTime: row.requestSingleExposureTime === null ? "" : String(row.requestSingleExposureTime),
+    requestTotalExposureTime: row.requestTotalExposureTime === null ? "" : String(row.requestTotalExposureTime),
+    requestUrgencyOfObservation: row.requestUrgencyOfObservation ?? "",
+    requestCadence: row.requestCadence === null ? "" : String(row.requestCadence),
+    requestCadenceUnit: row.requestCadenceUnit ?? "",
+    reviewedNumberOfVisits: row.reviewedNumberOfVisits ?? "",
+    reviewedScientificImportance: row.reviewedScientificImportance ?? "",
+    reviewedSingleExposureTime: row.reviewedSingleExposureTime ?? "",
+    reviewedTotalExposureTime: row.reviewedTotalExposureTime ?? "",
+    reviewedUrgencyOfObservation: row.reviewedUrgencyOfObservation ?? "",
+    reviewedCadence: row.reviewedCadence ?? "",
+    reviewedCadenceUnit: row.reviewedCadenceUnit ?? "",
+    reviewedTime: row.reviewedTime ?? "",
+    stp: row.stp ?? "",
+    sourceType: row.sourceType ?? "",
+    vBandMagnitude: row.vBandMagnitude ?? "",
+    wxtCmos: row.wxtCmos ?? "",
+    wxtCmosX: row.wxtCmosX ?? "",
+    wxtCmosY: row.wxtCmosY ?? "",
+    dec: row.dec ?? "",
+    exposureTimeUnit: row.exposureTimeUnit ?? "",
+    fxt1Filter: row.fxt1Filter ?? "",
+    fxt1WindowMode: row.fxt1WindowMode ?? "",
+    fxt2Filter: row.fxt2Filter ?? "",
+    fxt2WindowMode: row.fxt2WindowMode ?? "",
+    groupName: row.groupName ?? "",
+    pi: row.pi ?? "",
+    proposalId: row.proposalId ?? "",
+    proposalNo: row.proposalNo ?? "",
+    ra: row.ra ?? "",
+    sourceId: row.sourceId ?? "",
+    sourceName: row.sourceName ?? "",
+    type: row.type ?? "",
+  };
+}
+
+export default function TooManagementDetailPage() {
+  const pathname = usePathname();
+  const id = pathname?.split("/").at(-1) ?? "";
+
+  const [row, setRow] = useState<ApprovedTooRow | null>(null);
+  const [input, setInput] = useState<InputRow>({} as InputRow);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
+
+  function setStatus(nextMessage: string, tone: "success" | "error") {
+    setMessage(nextMessage);
+    setMessageTone(tone);
+  }
+
+  const loadRow = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/approved-too/${id}`, { cache: "no-store" });
+      const data = (await response.json()) as { row?: ApprovedTooRow; error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to load");
+      }
+      if (data.row) {
+        setRow(data.row);
+        setInput(rowToInput(data.row));
+      }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to load", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void loadRow();
+  }, [loadRow]);
+
+  async function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+
+    try {
+      const payload = Object.fromEntries(
+        Object.entries(input).map(([key, value]) => {
+          if (key === "epscProposal") {
+            if (value === "") return [key, null];
+            return [key, value === "true"];
+          }
+
+          if (numberFields.has(key as keyof InputRow)) {
+            if (value === "") return [key, null];
+            return [key, Number(value)];
+          }
+
+          return [key, value === "" ? null : value];
+        }),
+      );
+
+      const response = await fetch(`/api/approved-too/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = (await response.json()) as { row?: ApprovedTooRow; error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to save");
+      }
+
+      if (data.row) {
+        setRow(data.row);
+        setInput(rowToInput(data.row));
+      }
+
+      setEditing(false);
+      setStatus("Saved successfully", "success");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to save", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleCancel() {
+    if (row) {
+      setInput(rowToInput(row));
+    }
+    setEditing(false);
+    setMessage("");
+  }
+
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] p-4 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:p-8">
+      <div className="mx-auto max-w-screen-xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold">ToO Management — {row?.sourceName ?? `Record #${id}`}</h1>
+            {row?.pi ? <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.pi}</p> : null}
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/too-management"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              ← Back to list
+            </Link>
+          </div>
+        </div>
+
+        {message ? (
+          <p className={`mt-3 text-sm ${messageTone === "error" ? "text-rose-700" : "text-emerald-700"}`}>
+            {message}
+          </p>
+        ) : null}
+
+        <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
+          <div className="flex items-center justify-between rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
+            <h2 className="text-base font-semibold">Request Information</h2>
+            {editing ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  form="too-detail-form"
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={loading || !row}
+                onClick={() => setEditing(true)}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
+              >
+                Edit
+              </button>
+            )}
+          </div>
+
+          {loading ? (
+            <p className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+          ) : !row ? (
+            <p className="px-4 py-4 text-sm text-rose-600">Record not found.</p>
+          ) : (
+            <form id="too-detail-form" onSubmit={handleSave} className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+              {FIELDS.map(({ key, label, type }) => (
+                <div key={key}>
+                  <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">{label}</label>
+                  {type === "select" ? (
+                    <select
+                      disabled={!editing || saving}
+                      value={input[key] ?? ""}
+                      onChange={(event) =>
+                        setInput((prev) => ({
+                          ...prev,
+                          [key]: event.target.value as InputRow[typeof key],
+                        }))
+                      }
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-70 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    >
+                      <option value="">—</option>
+                      <option value="true">true</option>
+                      <option value="false">false</option>
+                    </select>
+                  ) : (
+                    <input
+                      type={type === "number" ? "number" : "text"}
+                      disabled={!editing || saving}
+                      value={String(input[key] ?? "")}
+                      onChange={(event) =>
+                        setInput((prev) => ({
+                          ...prev,
+                          [key]: event.target.value as InputRow[typeof key],
+                        }))
+                      }
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-70 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  )}
+                </div>
+              ))}
+            </form>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}

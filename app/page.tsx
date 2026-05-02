@@ -43,7 +43,7 @@ export default async function HomePage() {
             Users administration is restricted to VIP accounts.
           </p>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Link
               href="/too-req"
               className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
@@ -67,6 +67,19 @@ export default async function HomePage() {
               <h2 className="text-lg font-semibold">GP Cycle 2</h2>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                 Track cycle proposals, completion ratios, and detailed observation timelines.
+              </p>
+            </Link>
+
+            <Link
+              href="/too-management"
+              className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+            >
+              <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                Review Workspace
+              </div>
+              <h2 className="text-lg font-semibold">ToO Management</h2>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                Manage approved ToO records with detail view and editable request/review fields.
               </p>
             </Link>
 
