@@ -531,9 +531,13 @@ export default function GpCycle2DetailPage() {
                 {obsLoading ? (
                   <tr>
                     <td colSpan={OBS_COLS.length + 1} className="p-0">
-                      <div className="h-1 w-full overflow-hidden bg-slate-200 dark:bg-slate-700">
-                        <div className="h-full w-1/3 animate-[shimmer_1.2s_ease-in-out_infinite] rounded-full bg-primary/60" />
-                      </div>
+                      {loading ? (
+                        <div className="h-2" />
+                      ) : (
+                        <div className="flex justify-center py-2.5">
+                          <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ) : (() => {
@@ -606,8 +610,8 @@ export default function GpCycle2DetailPage() {
         </div>
 
         {loading ? (
-          <div className="mt-6 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-            <div className="h-1 w-1/3 animate-[shimmer_1.2s_ease-in-out_infinite] rounded-full bg-primary/60" />
+          <div className="mt-6 flex justify-center">
+            <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
           </div>
         ) : !row ? (
           <p className="mt-8 text-rose-600">Record not found.</p>
