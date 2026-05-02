@@ -113,7 +113,7 @@ const FIELDS: FieldDef[] = [
   { key: "fxt2WindowMode", label: "FXT2 Window Mode" },
   { key: "fxt2Filter", label: "FXT2 Filter" },
   { key: "isUpdated", label: "Is Updated" },
-  { key: "anticipatedToo", label: "Anticipated TOO" },
+  { key: "anticipatedToo", label: "Anticipated ToO" },
   { key: "stp", label: "STP" },
   { key: "category", label: "Category" },
   { key: "type", label: "Type" },
@@ -133,6 +133,48 @@ function rowToInput(row: GpCycle2Row): FieldInput {
   return Object.fromEntries(
     Object.entries(rest).map(([k, v]) => [k, v ?? ""]),
   ) as FieldInput;
+}
+
+const SECTIONS: Array<{ title: string; fields: Array<keyof FieldInput> }> = [
+  {
+    title: "Identification",
+    fields: ["tdicId", "sourceId", "proposalId", "proposalNo", "pi", "userGroup", "sourceName", "obsType", "category", "type", "stp"],
+  },
+  {
+    title: "Position & Timing",
+    fields: ["ra", "dec", "startTime", "endTime"],
+  },
+  {
+    title: "Exposure",
+    fields: ["totalExposureTime", "exposureTimeUnit", "continousExposure", "visitNumber", "exposurePerVistMin", "exposurePerVistMax", "cadence", "cadenceUnit", "precision", "precisionUnit", "completeness", "sourcePriority"],
+  },
+  {
+    title: "Instrument",
+    fields: ["fxt1WindowMode", "fxt1Filter", "fxt2WindowMode", "fxt2Filter", "payload", "wxtCmos", "cmosX", "cmosY", "fxtCmr", "cmrX", "cmrY"],
+  },
+  {
+    title: "Flags",
+    fields: ["isUpdated", "anticipatedToo"],
+  },
+];
+
+const FIELD_LABEL: Record<keyof FieldInput, string> = Object.fromEntries(
+  FIELDS.map(({ key, label }) => [key, label]),
+) as Record<keyof FieldInput, string>;
+
+type FieldChange = { key: keyof FieldInput; label: string; before: string; after: string };
+
+function fmtVal(v: string): string {
+  return v || "—";
+}
+
+function getChanges(original: FieldInput, next: FieldInput): FieldChange[] {
+  return FIELDS.flatMap(({ key, label }) => {
+    const before = original[key] ?? "";
+    const after = next[key] ?? "";
+    if (before === after) return [];
+    return [{ key, label, before: fmtVal(before), after: fmtVal(after) }];
+  });
 }
 
 export default function GpCycle2DetailPage() {
@@ -155,6 +197,15 @@ export default function GpCycle2DetailPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 2800);
+    return () => window.clearTimeout(t);
+  }, [toast]);
 
   function setStatus(msg: string, tone: "success" | "error") {
     setMessage(msg);
@@ -225,11 +276,9 @@ export default function GpCycle2DetailPage() {
     void loadObsList();
   }, [loadRow, loadObsList]);
 
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function commitSave() {
     setSaving(true);
     try {
-      // convert "" back to null for nullable fields
       const payload = Object.fromEntries(
         Object.entries(input).map(([k, v]) => [k, v === "" ? null : v]),
       );
@@ -245,7 +294,8 @@ export default function GpCycle2DetailPage() {
         setInput(rowToInput(data.row));
       }
       setEditing(false);
-      setStatus("Saved successfully", "success");
+      setToast({ message: "Saved successfully", tone: "success" });
+      setMessage("");
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Failed to save", "error");
     } finally {
@@ -253,14 +303,42 @@ export default function GpCycle2DetailPage() {
     }
   }
 
+  function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!row || saving) return;
+    const changes = getChanges(rowToInput(row), input);
+    if (changes.length === 0) {
+      setStatus("No changes to save", "success");
+      return;
+    }
+    setPendingChanges(changes);
+    setConfirmOpen(true);
+  }
+
+  async function handleConfirmSave() {
+    setConfirmOpen(false);
+    await commitSave();
+  }
+
   function handleCancel() {
     if (row) setInput(rowToInput(row));
     setEditing(false);
+    setConfirmOpen(false);
+    setPendingChanges([]);
     setMessage("");
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] p-4 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:p-8">
+    <>
+      {toast ? (
+        <div className="fixed right-4 top-20 z-[80] max-w-sm rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900">
+          <p className={toast.tone === "success" ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"}>
+            {toast.message}
+          </p>
+        </div>
+      ) : null}
+
+      <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] p-4 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:p-8">
       <div className="mx-auto max-w-screen-xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -452,8 +530,10 @@ export default function GpCycle2DetailPage() {
               <tbody>
                 {obsLoading ? (
                   <tr>
-                    <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={OBS_COLS.length + 1}>
-                      Loading…
+                    <td colSpan={OBS_COLS.length + 1} className="p-0">
+                      <div className="h-1 w-full overflow-hidden bg-slate-200 dark:bg-slate-700">
+                        <div className="h-full w-1/3 animate-[shimmer_1.2s_ease-in-out_infinite] rounded-full bg-primary/60" />
+                      </div>
                     </td>
                   </tr>
                 ) : (() => {
@@ -526,83 +606,146 @@ export default function GpCycle2DetailPage() {
         </div>
 
         {loading ? (
-          <p className="mt-8 text-slate-500 dark:text-slate-400">Loading…</p>
+          <div className="mt-6 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+            <div className="h-1 w-1/3 animate-[shimmer_1.2s_ease-in-out_infinite] rounded-full bg-primary/60" />
+          </div>
         ) : !row ? (
           <p className="mt-8 text-rose-600">Record not found.</p>
         ) : (
-          <section className="mt-6 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
-              <h2 className="text-base font-semibold">Request Information</h2>
-              {!editing ? (
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="rounded-md bg-amber-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-amber-600"
-                >
-                  Edit
-                </button>
-              ) : null}
-            </div>
-            <form onSubmit={handleSave} className="p-4">
-              <div className="grid gap-x-4 gap-y-1.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {/* ID — always read-only */}
-                <div className="col-span-full">
-                  <span className="block text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                    ID
-                  </span>
-                  <span className="block text-xs font-mono">{row.id}</span>
-                </div>
-
-                {FIELDS.map(({ key, label }) => (
-                  <div key={key}>
-                    <label className="block text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                      {label}
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        value={(input[key] as string) ?? ""}
-                        onChange={(e) =>
-                          setInput((prev) => ({ ...prev, [key]: e.target.value }))
-                        }
-                        className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                      />
-                    ) : (
-                      <p className="text-xs text-slate-800 dark:text-slate-200 truncate">
-                        {row[key] !== null && row[key] !== undefined && row[key] !== "" ? (
-                          String(row[key])
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-
+          <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
+            <div className="flex items-center justify-between rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
+              <h2 className="text-base font-semibold">Record Information</h2>
               {editing ? (
-                <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleCancel}
-                    disabled={saving}
-                    className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 disabled:opacity-60 dark:border-slate-600 dark:text-slate-200"
+                    className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
                     Cancel
                   </button>
                   <button
+                    form="gp-detail-form"
                     type="submit"
                     disabled={saving}
-                    className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 hover:bg-emerald-700"
+                    className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
                   >
                     {saving ? "Saving…" : "Save"}
                   </button>
                 </div>
-              ) : null}
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+
+            <form id="gp-detail-form" onSubmit={handleSave}>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {SECTIONS.map((section) => (
+                  <div key={section.title} className="px-4 py-3">
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                      {section.title}
+                    </p>
+                    <dl className="grid grid-cols-3 gap-x-4 gap-y-2.5 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                      {section.fields.map((key) => {
+                        const rawVal = (input[key] as string) ?? "";
+                        if (editing) {
+                          return (
+                            <div key={key}>
+                              <dt className="mb-0.5 text-[11px] text-slate-500 dark:text-slate-400">{FIELD_LABEL[key]}</dt>
+                              <dd>
+                                <input
+                                  type="text"
+                                  disabled={saving}
+                                  value={rawVal}
+                                  onChange={(e) =>
+                                    setInput((prev) => ({ ...prev, [key]: e.target.value }))
+                                  }
+                                  className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                                />
+                              </dd>
+                            </div>
+                          );
+                        }
+                        const displayVal = fmtVal(rawVal);
+                        return (
+                          <div key={key}>
+                            <dt className="text-[11px] text-slate-500 dark:text-slate-400">{FIELD_LABEL[key]}</dt>
+                            <dd className={`break-words text-xs font-medium ${
+                              displayVal === "—"
+                                ? "text-slate-300 dark:text-slate-600"
+                                : "text-slate-900 dark:text-slate-100"
+                            }`}>
+                              {displayVal}
+                            </dd>
+                          </div>
+                        );
+                      })}
+                    </dl>
+                  </div>
+                ))}
+              </div>
             </form>
           </section>
         )}
       </div>
+
+      {confirmOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <div className="border-b border-slate-200 px-6 py-4 dark:border-slate-700">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Confirm Save Changes</h3>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                {pendingChanges.length} field{pendingChanges.length !== 1 ? "s" : ""} modified. Please review before saving.
+              </p>
+            </div>
+            <div className="max-h-[60vh] overflow-auto px-6 py-4">
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="grid grid-cols-12 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800/70 dark:text-slate-300">
+                  <div className="col-span-4">Field</div>
+                  <div className="col-span-4">Before</div>
+                  <div className="col-span-4">After</div>
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {pendingChanges.map((change) => (
+                    <div key={change.key} className="grid grid-cols-12 gap-3 px-4 py-3 text-sm">
+                      <div className="col-span-4 font-medium text-slate-700 dark:text-slate-200">{change.label}</div>
+                      <div className={`col-span-4 break-words ${
+                        change.before === "—" ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-300"
+                      }`}>{change.before}</div>
+                      <div className={`col-span-4 break-words ${
+                        change.after === "—" ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-slate-100"
+                      }`}>{change.after}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmSave()}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark"
+              >
+                Confirm Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
+    </>
   );
 }
