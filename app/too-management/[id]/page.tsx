@@ -116,6 +116,33 @@ const FIELDS: Array<{ key: keyof InputRow; label: string; type?: "text" | "numbe
   { key: "wxtCmosY", label: "WXT CMOS Y" },
 ];
 
+const SECTIONS: Array<{ title: string; fields: Array<keyof InputRow> }> = [
+  {
+    title: "Identification",
+    fields: ["sourceName", "sourceId", "proposalNo", "proposalId", "pi", "groupName", "type", "sourceType", "stp", "epscProposal", "epDbObjectId", "payload"],
+  },
+  {
+    title: "Position & Flux",
+    fields: ["ra", "dec", "flux03To10KeV", "vBandMagnitude"],
+  },
+  {
+    title: "Request",
+    fields: ["requestUrgencyOfObservation", "requestSingleExposureTime", "requestTotalExposureTime", "requestNumberOfVisits", "requestCadence", "requestCadenceUnit", "continuousExposure", "exposureTimeUnit", "requestRestrainedBeginTime", "requestRestrainedEndTime", "receivedTime"],
+  },
+  {
+    title: "Review",
+    fields: ["reviewedScientificImportance", "reviewedUrgencyOfObservation", "reviewedSingleExposureTime", "reviewedTotalExposureTime", "reviewedNumberOfVisits", "reviewedCadence", "reviewedCadenceUnit", "reviewedTime", "completeness"],
+  },
+  {
+    title: "Instrument",
+    fields: ["fxtCmr", "fxtX", "fxtY", "fxt1WindowMode", "fxt1Filter", "fxt2WindowMode", "fxt2Filter", "wxtCmos", "wxtCmosX", "wxtCmosY"],
+  },
+];
+
+const FIELD_LABEL: Partial<Record<keyof InputRow, string>> = Object.fromEntries(
+  FIELDS.map(({ key, label }) => [key, label]),
+) as Partial<Record<keyof InputRow, string>>;
+
 const numberFields = new Set<keyof InputRow>([
   "requestNumberOfVisits",
   "requestSingleExposureTime",
@@ -330,42 +357,78 @@ export default function TooManagementDetailPage() {
           ) : !row ? (
             <p className="px-4 py-4 text-sm text-rose-600">Record not found.</p>
           ) : (
-            <form id="too-detail-form" onSubmit={handleSave} className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
-              {FIELDS.map(({ key, label, type }) => (
-                <div key={key}>
-                  <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">{label}</label>
-                  {type === "select" ? (
-                    <select
-                      disabled={!editing || saving}
-                      value={input[key] ?? ""}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          [key]: event.target.value as InputRow[typeof key],
-                        }))
-                      }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-70 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                    >
-                      <option value="">—</option>
-                      <option value="true">true</option>
-                      <option value="false">false</option>
-                    </select>
-                  ) : (
-                    <input
-                      type={type === "number" ? "number" : "text"}
-                      disabled={!editing || saving}
-                      value={String(input[key] ?? "")}
-                      onChange={(event) =>
-                        setInput((prev) => ({
-                          ...prev,
-                          [key]: event.target.value as InputRow[typeof key],
-                        }))
-                      }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm disabled:opacity-70 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                    />
-                  )}
-                </div>
-              ))}
+            <form id="too-detail-form" onSubmit={handleSave}>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {SECTIONS.map((section) => (
+                  <div key={section.title} className="px-5 py-4">
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                      {section.title}
+                    </p>
+                    <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                      {section.fields.map((key) => {
+                        const fieldMeta = FIELDS.find((f) => f.key === key);
+                        const fieldType = fieldMeta?.type;
+                        const rawVal = input[key] ?? "";
+
+                        if (editing) {
+                          return (
+                            <div key={key}>
+                              <dt className="mb-1 text-xs text-slate-500 dark:text-slate-400">{FIELD_LABEL[key]}</dt>
+                              <dd>
+                                {fieldType === "select" ? (
+                                  <select
+                                    disabled={saving}
+                                    value={rawVal}
+                                    onChange={(event) =>
+                                      setInput((prev) => ({
+                                        ...prev,
+                                        [key]: event.target.value as InputRow[typeof key],
+                                      }))
+                                    }
+                                    className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                                  >
+                                    <option value="">—</option>
+                                    <option value="true">true</option>
+                                    <option value="false">false</option>
+                                  </select>
+                                ) : (
+                                  <input
+                                    type={fieldType === "number" ? "number" : "text"}
+                                    disabled={saving}
+                                    value={String(rawVal)}
+                                    onChange={(event) =>
+                                      setInput((prev) => ({
+                                        ...prev,
+                                        [key]: event.target.value as InputRow[typeof key],
+                                      }))
+                                    }
+                                    className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                                  />
+                                )}
+                              </dd>
+                            </div>
+                          );
+                        }
+
+                        let displayVal: string;
+                        if (key === "epscProposal") {
+                          displayVal = rawVal === "true" ? "Yes" : rawVal === "false" ? "No" : "—";
+                        } else {
+                          displayVal = rawVal || "—";
+                        }
+                        return (
+                          <div key={key}>
+                            <dt className="text-xs text-slate-500 dark:text-slate-400">{FIELD_LABEL[key]}</dt>
+                            <dd className={`mt-0.5 break-words text-sm font-medium ${displayVal === "—" ? "text-slate-300 dark:text-slate-600" : "text-slate-900 dark:text-slate-100"}`}>
+                              {displayVal}
+                            </dd>
+                          </div>
+                        );
+                      })}
+                    </dl>
+                  </div>
+                ))}
+              </div>
             </form>
           )}
         </section>
