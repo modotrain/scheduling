@@ -35,12 +35,14 @@ const themeInitScript = `(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
     root.style.colorScheme = theme;
+    root.style.background = theme === "dark" ? "#020617" : "#ffffff";
     if (!saved) {
       window.localStorage.setItem("theme", theme);
     }
   } catch {
     document.documentElement.classList.remove("dark");
     document.documentElement.style.colorScheme = "light";
+    document.documentElement.style.background = "#ffffff";
   }
 })();`;
 
@@ -59,8 +61,10 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${kronaOne.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="min-h-full flex flex-col">
         <div className="fixed right-4 top-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2">
           {session ? <UserMenu username={session.username} /> : null}
           <ThemeToggle />
