@@ -309,8 +309,6 @@ export default function GpCycle2Page() {
                     <td className="px-3 py-2">
                       <Link
                         href={`/gp-cycle2/${row.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >
                         Details
