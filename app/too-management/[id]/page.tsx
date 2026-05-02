@@ -67,6 +67,13 @@ type InputRow = { [K in InputStringKeys]: string } & {
   requestCadence: string;
 };
 
+type FieldChange = {
+  key: keyof InputRow;
+  label: string;
+  before: string;
+  after: string;
+};
+
 const FIELDS: Array<{ key: keyof InputRow; label: string; type?: "text" | "number" | "select" }> = [
   { key: "sourceName", label: "Source Name" },
   { key: "sourceId", label: "Source ID" },
@@ -201,6 +208,31 @@ function rowToInput(row: ApprovedTooRow): InputRow {
   };
 }
 
+function formatFieldValue(key: keyof InputRow, value: string): string {
+  if (key === "epscProposal") {
+    return value === "true" ? "Yes" : value === "false" ? "No" : "—";
+  }
+  return value || "—";
+}
+
+function getChangedFields(original: InputRow, next: InputRow): FieldChange[] {
+  return FIELDS.flatMap(({ key, label }) => {
+    const before = original[key] ?? "";
+    const after = next[key] ?? "";
+    if (before === after) {
+      return [];
+    }
+    return [
+      {
+        key,
+        label,
+        before: formatFieldValue(key, before),
+        after: formatFieldValue(key, after),
+      },
+    ];
+  });
+}
+
 export default function TooManagementDetailPage() {
   const pathname = usePathname();
   const id = pathname?.split("/").at(-1) ?? "";
@@ -212,6 +244,8 @@ export default function TooManagementDetailPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
 
   function setStatus(nextMessage: string, tone: "success" | "error") {
     setMessage(nextMessage);
@@ -241,8 +275,7 @@ export default function TooManagementDetailPage() {
     void loadRow();
   }, [loadRow]);
 
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function commitSave() {
     setSaving(true);
 
     try {
@@ -287,11 +320,35 @@ export default function TooManagementDetailPage() {
     }
   }
 
+  function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!row || saving) {
+      return;
+    }
+
+    const original = rowToInput(row);
+    const changes = getChangedFields(original, input);
+    if (changes.length === 0) {
+      setStatus("No changes to save", "success");
+      return;
+    }
+
+    setPendingChanges(changes);
+    setConfirmOpen(true);
+  }
+
+  async function handleConfirmSave() {
+    setConfirmOpen(false);
+    await commitSave();
+  }
+
   function handleCancel() {
     if (row) {
       setInput(rowToInput(row));
     }
     setEditing(false);
+    setConfirmOpen(false);
+    setPendingChanges([]);
     setMessage("");
   }
 
@@ -410,12 +467,7 @@ export default function TooManagementDetailPage() {
                           );
                         }
 
-                        let displayVal: string;
-                        if (key === "epscProposal") {
-                          displayVal = rawVal === "true" ? "Yes" : rawVal === "false" ? "No" : "—";
-                        } else {
-                          displayVal = rawVal || "—";
-                        }
+                        const displayVal = formatFieldValue(key, rawVal);
                         return (
                           <div key={key}>
                             <dt className="text-xs text-slate-500 dark:text-slate-400">{FIELD_LABEL[key]}</dt>
@@ -433,6 +485,59 @@ export default function TooManagementDetailPage() {
           )}
         </section>
       </div>
+
+      {confirmOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <div className="border-b border-slate-200 px-6 py-4 dark:border-slate-700">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Confirm Save Changes</h3>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                Please review the modified fields before saving.
+              </p>
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto px-6 py-4">
+              <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="grid grid-cols-12 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800/70 dark:text-slate-300">
+                  <div className="col-span-4">Field</div>
+                  <div className="col-span-4">Before</div>
+                  <div className="col-span-4">After</div>
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {pendingChanges.map((change) => (
+                    <div key={change.key} className="grid grid-cols-12 gap-3 px-4 py-3 text-sm">
+                      <div className="col-span-4 font-medium text-slate-700 dark:text-slate-200">{change.label}</div>
+                      <div className={`col-span-4 break-words ${change.before === "—" ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-300"}`}>
+                        {change.before}
+                      </div>
+                      <div className={`col-span-4 break-words ${change.after === "—" ? "text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-slate-100"}`}>
+                        {change.after}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmSave()}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark"
+              >
+                Confirm Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

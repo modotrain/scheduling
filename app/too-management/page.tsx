@@ -38,6 +38,14 @@ const COL_LABELS: Partial<Record<keyof ApprovedTooRow, string>> = {
   type: "Type",
 };
 
+const TOO_MANAGEMENT_CACHE_KEY = "too-management-list-cache-v1";
+const TOO_MANAGEMENT_CACHE_TTL_MS = 10 * 60 * 1000;
+
+type TooManagementCachePayload = {
+  ts: number;
+  rows: ApprovedTooRow[];
+};
+
 export default function TooManagementPage() {
   const [rows, setRows] = useState<ApprovedTooRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,12 +57,25 @@ export default function TooManagementPage() {
   const loadRows = useCallback(async () => {
     setLoading(true);
     try {
+      const rawCache = sessionStorage.getItem(TOO_MANAGEMENT_CACHE_KEY);
+      if (rawCache) {
+        const parsed = JSON.parse(rawCache) as TooManagementCachePayload;
+        if (Date.now() - parsed.ts < TOO_MANAGEMENT_CACHE_TTL_MS) {
+          setRows(parsed.rows ?? []);
+          setLoading(false);
+          return;
+        }
+      }
+
       const res = await fetch("/api/approved-too", { cache: "no-store" });
       const data = (await res.json()) as { rows?: ApprovedTooRow[]; error?: string };
       if (!res.ok) {
         throw new Error(data.error ?? "Failed to load");
       }
-      setRows(data.rows ?? []);
+      const nextRows = data.rows ?? [];
+      setRows(nextRows);
+      const cachePayload: TooManagementCachePayload = { ts: Date.now(), rows: nextRows };
+      sessionStorage.setItem(TOO_MANAGEMENT_CACHE_KEY, JSON.stringify(cachePayload));
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to load");
       setMessageTone("error");
