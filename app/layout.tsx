@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Krona_One } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import ThemeToggle from "./theme-toggle";
+import UserMenu from "./user-menu";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -61,19 +62,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <div className="fixed right-4 top-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2">
-          {session ? (
-            <div className="flex max-w-[min(60vw,20rem)] items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
-              <span className="truncate">{session.username}</span>
-              <form action="/api/auth/logout" method="post">
-                <button
-                  type="submit"
-                  className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
-                >
-                  Logout
-                </button>
-              </form>
-            </div>
-          ) : null}
+          {session ? <UserMenu username={session.username} /> : null}
           <ThemeToggle />
         </div>
         {children}
