@@ -277,7 +277,7 @@ export default function GpCycle2Page() {
                 displayRows.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
+                    className="border-b border-slate-100 odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/70 dark:border-slate-800 dark:odd:bg-slate-900 dark:even:bg-slate-800/35 dark:hover:bg-slate-800/70"
                   >
                     {TABLE_COLS.map((col) => {
                       const val = row[col];
@@ -290,9 +290,9 @@ export default function GpCycle2Page() {
                       const ratioCellClass =
                         col === "validTimeRatio" && Number.isFinite(ratio)
                           ? ratio >= 0.995
-                            ? "bg-emerald-500/60 dark:bg-emerald-500/30"
+                            ? "px-2.5 py-1 rounded-md font-semibold text-primary bg-blue-50 dark:text-blue-200 dark:bg-blue-950/80"
                             : ratio >= 0.8
-                              ? "bg-emerald-200/60 dark:bg-emerald-700/30"
+                              ? "px-2.5 py-1 rounded-md font-medium text-primary bg-blue-50/60 dark:text-blue-300 dark:bg-blue-950/40"
                               : ""
                           : "";
                       return (
