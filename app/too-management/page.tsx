@@ -12,6 +12,7 @@ type ApprovedTooRow = {
   reviewedUrgencyOfObservation: string | null;
   receivedTime: string | null;
   type: string | null;
+  scheduledStatus: "scheduled" | "unscheduled";
 };
 
 type SortConfig = { col: keyof ApprovedTooRow | null; dir: "asc" | "desc" };
@@ -37,6 +38,23 @@ const COL_LABELS: Partial<Record<keyof ApprovedTooRow, string>> = {
   receivedTime: "Received Time",
   type: "Type",
 };
+
+function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"] }) {
+  const scheduled = status === "scheduled";
+
+  return (
+    <div className="flex min-w-[140px] items-center gap-2">
+      <div className="flex h-5 w-14 items-end gap-1 rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
+        <span className={`block w-1.5 rounded-sm ${scheduled ? "h-2 bg-emerald-400" : "h-1 bg-slate-300 dark:bg-slate-600"}`} />
+        <span className={`block w-1.5 rounded-sm ${scheduled ? "h-3.5 bg-emerald-500" : "h-1.5 bg-slate-300 dark:bg-slate-600"}`} />
+        <span className={`block w-1.5 rounded-sm ${scheduled ? "h-5 bg-emerald-600" : "h-2 bg-slate-300 dark:bg-slate-600"}`} />
+      </div>
+      <span className={`text-xs font-medium uppercase tracking-wide ${scheduled ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 dark:text-slate-400"}`}>
+        {status}
+      </span>
+    </div>
+  );
+}
 
 const TOO_MANAGEMENT_CACHE_KEY = "too-management-list-cache-v1";
 const TOO_MANAGEMENT_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -136,7 +154,7 @@ export default function TooManagementPage() {
           <div>
             <h1 className="text-2xl font-semibold">ToO Management</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Approved ToO records. Click <strong>Details</strong> to view and edit a record.
+              Approved ToO records with live schedule matching status. Click <strong>Details</strong> to view and edit a record.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -188,12 +206,13 @@ export default function TooManagementPage() {
                   </th>
                 ))}
                 <th className="whitespace-nowrap px-3 py-2">Actions</th>
+                <th className="whitespace-nowrap px-3 py-2">Status</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-3 py-4" colSpan={TABLE_COLS.length + 1}>
+                  <td className="px-3 py-4" colSpan={TABLE_COLS.length + 2}>
                     <div className="flex justify-center">
                       <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
                     </div>
@@ -201,7 +220,7 @@ export default function TooManagementPage() {
                 </tr>
               ) : displayRows.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={TABLE_COLS.length + 1}>
+                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={TABLE_COLS.length + 2}>
                     {searchText ? "No matching rows." : "No rows found."}
                   </td>
                 </tr>
@@ -229,6 +248,9 @@ export default function TooManagementPage() {
                       >
                         Details
                       </Link>
+                    </td>
+                    <td className="px-3 py-2">
+                      <StatusIndicator status={row.scheduledStatus} />
                     </td>
                   </tr>
                 ))

@@ -74,6 +74,21 @@ type FieldChange = {
   after: string;
 };
 
+type ScheduleRow = {
+  id: number;
+  obs_id: string | null;
+  ep_db_object_id: string | null;
+  main_type: string | null;
+  wp_type: string | null;
+  wp_urgency: string | null;
+  obs_type: string | null;
+  source_name: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  pointing_duration_in_seconds: string | null;
+  user_name: string | null;
+};
+
 const FIELDS: Array<{ key: keyof InputRow; label: string; type?: "text" | "number" | "select" }> = [
   { key: "sourceName", label: "Source Name" },
   { key: "sourceId", label: "Source ID" },
@@ -246,6 +261,8 @@ export default function TooManagementDetailPage() {
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
+  const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
 
   function setStatus(nextMessage: string, tone: "success" | "error") {
     setMessage(nextMessage);
@@ -274,6 +291,26 @@ export default function TooManagementDetailPage() {
   useEffect(() => {
     void loadRow();
   }, [loadRow]);
+
+  const loadSchedule = useCallback(async () => {
+    setScheduleLoading(true);
+    try {
+      const response = await fetch(`/api/approved-too/${id}/schedule`, { cache: "no-store" });
+      const data = (await response.json()) as { rows?: ScheduleRow[]; error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to load schedule information");
+      }
+      setScheduleRows(data.rows ?? []);
+    } catch {
+      setScheduleRows([]);
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void loadSchedule();
+  }, [loadSchedule]);
 
   async function commitSave() {
     setSaving(true);
@@ -311,6 +348,7 @@ export default function TooManagementDetailPage() {
         setInput(rowToInput(data.row));
       }
 
+      await loadSchedule();
       setEditing(false);
       setStatus("Saved successfully", "success");
     } catch (error) {
@@ -377,7 +415,75 @@ export default function TooManagementDetailPage() {
         ) : null}
 
         <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
-          <div className="flex items-center justify-between rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
+            <h2 className="mr-auto text-base font-semibold">Schedule Information</h2>
+            <span className="text-sm text-slate-600 dark:text-slate-300">
+              Matched observations: <span className="font-mono font-medium">{scheduleRows.length}</span>
+            </span>
+          </div>
+
+          {scheduleLoading ? (
+            <p className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">Loading schedule information…</p>
+          ) : scheduleRows.length === 0 ? (
+            <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
+              No matching obs_wp records found for this EP DB Object ID.
+            </div>
+          ) : (
+            <div className="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-3">
+              {scheduleRows.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/70"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="mb-2 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                        {item.main_type || "—"}
+                      </div>
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {item.obs_id || item.source_name || `Obs WP #${item.id}`}
+                      </h3>
+                    </div>
+                    <Link
+                      href={`/obs-wp/${item.id}`}
+                      className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      Details
+                    </Link>
+                  </div>
+
+                  <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div>
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">Obs Type</dt>
+                      <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.obs_type || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">WP Urgency</dt>
+                      <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.wp_urgency || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">Start</dt>
+                      <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.start_date || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">End</dt>
+                      <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.end_date || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">Duration (sec)</dt>
+                      <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.pointing_duration_in_seconds || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500 dark:text-slate-400">WP Type</dt>
+                      <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.wp_type || "—"}</dd>
+                    </div>
+                  </dl>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
             <h2 className="text-base font-semibold">Request Information</h2>
             {editing ? (
               <div className="flex items-center gap-2">
