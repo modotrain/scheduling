@@ -136,7 +136,7 @@ export default function TooManagementPage() {
           <div>
             <h1 className="text-2xl font-semibold">ToO Management</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Approved ToO records. Click <strong>Details</strong> to view and edit a record in a new tab.
+              Approved ToO records. Click <strong>Details</strong> to view and edit a record.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -225,8 +225,6 @@ export default function TooManagementPage() {
                     <td className="px-3 py-2">
                       <Link
                         href={`/too-management/${row.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >
                         Details
