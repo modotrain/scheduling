@@ -193,8 +193,10 @@ export default function TooManagementPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={TABLE_COLS.length + 1}>
-                    Loading…
+                  <td className="px-3 py-4" colSpan={TABLE_COLS.length + 1}>
+                    <div className="flex justify-center">
+                      <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
+                    </div>
                   </td>
                 </tr>
               ) : displayRows.length === 0 ? (
