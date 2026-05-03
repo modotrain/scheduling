@@ -206,10 +206,12 @@ export default function TooManagementPage() {
                   </td>
                 </tr>
               ) : (
-                displayRows.map((row) => (
+                displayRows.map((row, i) => (
                   <tr
                     key={row.id}
-                    className="border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
+                    className={`border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60 ${
+                      i % 2 === 0 ? "bg-slate-50 dark:bg-slate-800/50" : ""
+                    }`}
                   >
                     {TABLE_COLS.map((col) => (
                       <td key={col} className="whitespace-nowrap px-3 py-2">
