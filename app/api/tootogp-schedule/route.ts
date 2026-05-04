@@ -10,6 +10,7 @@ export async function GET() {
       .select({
         id: tooToGpSchedule.id,
         approvedTooId: tooToGpSchedule.approvedTooId,
+        operatorName: tooToGpSchedule.operatorName,
         sourceName: approvedToO.sourceName,
         parentEpDbObjectId: tooToGpSchedule.parentEpDbObjectId,
         generatedEpDbObjectId: tooToGpSchedule.generatedEpDbObjectId,
@@ -18,6 +19,8 @@ export async function GET() {
         plannedEndTime: tooToGpSchedule.plannedEndTime,
         cadenceValue: tooToGpSchedule.cadenceValue,
         cadenceUnit: tooToGpSchedule.cadenceUnit,
+        reviewedSingleExposureTimeSnapshot: tooToGpSchedule.reviewedSingleExposureTimeSnapshot,
+        reviewedTotalExposureTimeSnapshot: tooToGpSchedule.reviewedTotalExposureTimeSnapshot,
         status: tooToGpSchedule.status,
         scheduledStatus: sql<"scheduled" | "unscheduled">`
           case

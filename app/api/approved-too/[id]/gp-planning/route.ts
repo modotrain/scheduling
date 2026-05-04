@@ -1,8 +1,10 @@
 import { asc, desc, eq, sql } from "drizzle-orm";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
-import { approvedToO, tooToGpSchedule } from "@/src/db/schema";
+import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
+import { approvedToO, tooToGpSchedule, usersTable } from "@/src/db/schema";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -10,6 +12,10 @@ type PlanningPayload = {
   plannedStartTime?: string | null;
   plannedEndTime?: string | null;
   notes?: string | null;
+  cadenceValue?: number | null;
+  cadenceUnit?: string | null;
+  reviewedSingleExposureTimeSnapshot?: number | null;
+  reviewedTotalExposureTimeSnapshot?: number | null;
 };
 
 function parseInteger(value: string | null | undefined): number | null {
@@ -81,6 +87,7 @@ export async function GET(_request: Request, { params }: Params) {
       .select({
         id: tooToGpSchedule.id,
         approvedTooId: tooToGpSchedule.approvedTooId,
+        operatorName: tooToGpSchedule.operatorName,
         sourceName: approvedToO.sourceName,
         parentEpDbObjectId: tooToGpSchedule.parentEpDbObjectId,
         generatedEpDbObjectId: tooToGpSchedule.generatedEpDbObjectId,
@@ -139,11 +146,18 @@ export async function POST(request: Request, { params }: Params) {
 
   try {
     const body = (await request.json()) as PlanningPayload;
+    const cookieStore = await cookies();
+    const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+    const session = token ? await verifySessionToken(token) : null;
 
     const [parent] = await db.select().from(approvedToO).where(eq(approvedToO.id, numId));
     if (!parent) {
       return NextResponse.json({ error: "Approved ToO not found" }, { status: 404 });
     }
+
+    const [operator] = session
+      ? await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.username, session.username)).limit(1)
+      : [];
 
     if (!parent.epDbObjectId?.trim()) {
       return NextResponse.json(
@@ -164,11 +178,13 @@ export async function POST(request: Request, { params }: Params) {
       .limit(1);
 
     const sequenceNo = (latestPlan?.sequenceNo ?? 0) + 1;
-    const cadenceValue = parseInteger(parent.reviewedCadence);
-    const cadenceUnit = normalizeCadenceUnit(parent.reviewedCadenceUnit);
+    const cadenceValue = body.cadenceValue ?? parseInteger(parent.reviewedCadence);
+    const cadenceUnit = normalizeCadenceUnit(body.cadenceUnit ?? parent.reviewedCadenceUnit);
     const reviewedNumberOfVisitsSnapshot = parseInteger(parent.reviewedNumberOfVisits);
-    const reviewedSingleExposureTimeSnapshot = parseInteger(parent.reviewedSingleExposureTime);
-    const reviewedTotalExposureTimeSnapshot = parseInteger(parent.reviewedTotalExposureTime);
+    const reviewedSingleExposureTimeSnapshot =
+      body.reviewedSingleExposureTimeSnapshot ?? parseInteger(parent.reviewedSingleExposureTime);
+    const reviewedTotalExposureTimeSnapshot =
+      body.reviewedTotalExposureTimeSnapshot ?? parseInteger(parent.reviewedTotalExposureTime);
 
     const explicitStart = toDateOnly(body.plannedStartTime);
     const explicitEnd = toDateOnly(body.plannedEndTime);
@@ -188,6 +204,7 @@ export async function POST(request: Request, { params }: Params) {
       .insert(tooToGpSchedule)
       .values({
         approvedTooId: numId,
+        operatorName: operator?.name ?? session?.username ?? null,
         parentEpDbObjectId: parent.epDbObjectId.trim(),
         generatedEpDbObjectId: `${parent.epDbObjectId.trim()}_${sequenceNo}`,
         sequenceNo,

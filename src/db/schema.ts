@@ -492,6 +492,7 @@ export const approvedToO = pgTable("approved_too", {
 export const tooToGpSchedule = pgTable("tootogp_schedule", {
 	id: serial().primaryKey().notNull(),
 	approvedTooId: integer("approved_too_id").notNull().references(() => approvedToO.id),
+	operatorName: varchar("operator_name", { length: 255 }),
 	parentEpDbObjectId: varchar("parent_ep_db_object_id", { length: 255 }).notNull(),
 	generatedEpDbObjectId: varchar("generated_ep_db_object_id", { length: 255 }).notNull(),
 	sequenceNo: integer("sequence_no").notNull(),

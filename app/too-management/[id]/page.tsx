@@ -92,6 +92,7 @@ type ScheduleRow = {
 type PlanningRow = {
   id: number;
   approvedTooId: number;
+  operatorName: string | null;
   sourceName: string | null;
   parentEpDbObjectId: string;
   generatedEpDbObjectId: string;
@@ -341,6 +342,10 @@ export default function TooManagementDetailPage() {
   const [planningWindowPreset, setPlanningWindowPreset] = useState(planningWindowOptions[0]?.value ?? "custom");
   const [plannedStartInput, setPlannedStartInput] = useState(planningWindowOptions[0]?.start ?? "");
   const [plannedEndInput, setPlannedEndInput] = useState(planningWindowOptions[0]?.end ?? "");
+  const [planningCadenceValue, setPlanningCadenceValue] = useState("");
+  const [planningCadenceUnit, setPlanningCadenceUnit] = useState("");
+  const [planningSingleExposureTime, setPlanningSingleExposureTime] = useState("");
+  const [planningTotalExposureTime, setPlanningTotalExposureTime] = useState("");
   const [planningNotes, setPlanningNotes] = useState("");
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
@@ -351,8 +356,12 @@ export default function TooManagementDetailPage() {
     setPlanningWindowPreset(fallback?.value ?? "custom");
     setPlannedStartInput(fallback?.start ?? "");
     setPlannedEndInput(fallback?.end ?? "");
+    setPlanningCadenceValue(row?.reviewedCadence ?? "");
+    setPlanningCadenceUnit(row?.reviewedCadenceUnit ?? "");
+    setPlanningSingleExposureTime(row?.reviewedSingleExposureTime ?? "");
+    setPlanningTotalExposureTime(row?.reviewedTotalExposureTime ?? "");
     setPlanningNotes("");
-  }, [planningWindowOptions]);
+  }, [planningWindowOptions, row?.reviewedCadence, row?.reviewedCadenceUnit, row?.reviewedSingleExposureTime, row?.reviewedTotalExposureTime]);
 
   function setStatus(nextMessage: string, tone: "success" | "error") {
     setMessage(nextMessage);
@@ -507,6 +516,10 @@ export default function TooManagementDetailPage() {
         body: JSON.stringify({
           plannedStartTime: plannedStartInput || null,
           plannedEndTime: plannedEndInput || addDaysToDateString(plannedStartInput, 7),
+          cadenceValue: planningCadenceValue ? Number(planningCadenceValue) : null,
+          cadenceUnit: planningCadenceUnit || null,
+          reviewedSingleExposureTimeSnapshot: planningSingleExposureTime ? Number(planningSingleExposureTime) : null,
+          reviewedTotalExposureTimeSnapshot: planningTotalExposureTime ? Number(planningTotalExposureTime) : null,
           notes: planningNotes || null,
         }),
         },
@@ -546,6 +559,14 @@ export default function TooManagementDetailPage() {
     setPlanningWindowPreset("custom");
     setPlannedStartInput(item.plannedStartTime ?? "");
     setPlannedEndInput(item.plannedEndTime ?? "");
+    setPlanningCadenceValue(item.cadenceValue === null ? "" : String(item.cadenceValue));
+    setPlanningCadenceUnit(item.cadenceUnit ?? "");
+    setPlanningSingleExposureTime(
+      item.reviewedSingleExposureTimeSnapshot === null ? "" : String(item.reviewedSingleExposureTimeSnapshot),
+    );
+    setPlanningTotalExposureTime(
+      item.reviewedTotalExposureTimeSnapshot === null ? "" : String(item.reviewedTotalExposureTimeSnapshot),
+    );
     setPlanningNotes(item.notes ?? "");
   }
 
@@ -693,6 +714,59 @@ export default function TooManagementDetailPage() {
                 ) : null}
               </div>
             </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Cadence
+                </label>
+                <input
+                  type="number"
+                  value={planningCadenceValue}
+                  onChange={(event) => setPlanningCadenceValue(event.target.value)}
+                  disabled={planningSubmitting || loading || !row}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Cadence Unit
+                </label>
+                <select
+                  value={planningCadenceUnit}
+                  onChange={(event) => setPlanningCadenceUnit(event.target.value)}
+                  disabled={planningSubmitting || loading || !row}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                >
+                  <option value="">—</option>
+                  <option value="day">day</option>
+                  <option value="orbit">orbit</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Single Exposure Time
+                </label>
+                <input
+                  type="number"
+                  value={planningSingleExposureTime}
+                  onChange={(event) => setPlanningSingleExposureTime(event.target.value)}
+                  disabled={planningSubmitting || loading || !row}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Total Exposure Time
+                </label>
+                <input
+                  type="number"
+                  value={planningTotalExposureTime}
+                  onChange={(event) => setPlanningTotalExposureTime(event.target.value)}
+                  disabled={planningSubmitting || loading || !row}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+            </div>
             <div className="mt-3">
               <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Planning Notes
@@ -741,6 +815,10 @@ export default function TooManagementDetailPage() {
                     </div>
 
                     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <div>
+                        <dt className="text-xs text-slate-500 dark:text-slate-400">Operator</dt>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.operatorName || "—"}</dd>
+                      </div>
                       <div>
                         <dt className="text-xs text-slate-500 dark:text-slate-400">Window Start</dt>
                         <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{formatDateDisplay(item.plannedStartTime)}</dd>

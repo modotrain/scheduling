@@ -6,6 +6,7 @@ import Link from "next/link";
 type GpPlanningListRow = {
   id: number;
   approvedTooId: number;
+  operatorName: string | null;
   sourceName: string | null;
   parentEpDbObjectId: string;
   generatedEpDbObjectId: string;
@@ -14,6 +15,8 @@ type GpPlanningListRow = {
   plannedEndTime: string | null;
   cadenceValue: number | null;
   cadenceUnit: string | null;
+  reviewedSingleExposureTimeSnapshot: number | null;
+  reviewedTotalExposureTimeSnapshot: number | null;
   status: string;
   scheduledStatus: "scheduled" | "unscheduled";
   matchedObsWpId: number | null;
@@ -24,6 +27,7 @@ type SortConfig = { col: keyof GpPlanningListRow | null; dir: "asc" | "desc" };
 const TABLE_COLS: (keyof GpPlanningListRow)[] = [
   "id",
   "sourceName",
+  "operatorName",
   "parentEpDbObjectId",
   "generatedEpDbObjectId",
   "sequenceNo",
@@ -35,6 +39,7 @@ const TABLE_COLS: (keyof GpPlanningListRow)[] = [
 const COL_LABELS: Partial<Record<keyof GpPlanningListRow, string>> = {
   id: "ID",
   sourceName: "Source",
+  operatorName: "Operator",
   parentEpDbObjectId: "Parent EP DB Object ID",
   generatedEpDbObjectId: "Planned EP DB Object ID",
   sequenceNo: "Visit",

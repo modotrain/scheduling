@@ -38,6 +38,10 @@ export async function PUT(request: Request, { params }: Params) {
       plannedEndTime?: string | null;
       notes?: string | null;
       status?: string | null;
+      cadenceValue?: number | null;
+      cadenceUnit?: string | null;
+      reviewedSingleExposureTimeSnapshot?: number | null;
+      reviewedTotalExposureTimeSnapshot?: number | null;
     };
 
     const plannedStartTime = body.plannedStartTime === undefined ? undefined : toDateOnly(body.plannedStartTime);
@@ -63,6 +67,18 @@ export async function PUT(request: Request, { params }: Params) {
     }
     if (body.notes !== undefined) {
       updatePayload.notes = body.notes?.trim() ? body.notes.trim() : null;
+    }
+    if (body.cadenceValue !== undefined) {
+      updatePayload.cadenceValue = body.cadenceValue;
+    }
+    if (body.cadenceUnit !== undefined) {
+      updatePayload.cadenceUnit = body.cadenceUnit?.trim() ? body.cadenceUnit : null;
+    }
+    if (body.reviewedSingleExposureTimeSnapshot !== undefined) {
+      updatePayload.reviewedSingleExposureTimeSnapshot = body.reviewedSingleExposureTimeSnapshot;
+    }
+    if (body.reviewedTotalExposureTimeSnapshot !== undefined) {
+      updatePayload.reviewedTotalExposureTimeSnapshot = body.reviewedTotalExposureTimeSnapshot;
     }
     if (body.status !== undefined && body.status !== null) {
       updatePayload.status = body.status;

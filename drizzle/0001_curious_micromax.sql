@@ -1,6 +1,7 @@
 CREATE TABLE "tootogp_schedule" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"approved_too_id" integer NOT NULL,
+	"operator_name" varchar(255),
 	"parent_ep_db_object_id" varchar(255) NOT NULL,
 	"generated_ep_db_object_id" varchar(255) NOT NULL,
 	"sequence_no" integer NOT NULL,
