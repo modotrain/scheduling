@@ -50,18 +50,33 @@ export default async function HomePage() {
               <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                 Planning
               </p>
-              <Link
-                href="/gp-cycle2"
-                className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-              >
-                <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                  Planning Workspace
-                </div>
-                <h2 className="text-lg font-semibold">GP Cycle 2</h2>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                  Track cycle proposals, completion ratios, and detailed observation timelines.
-                </p>
-              </Link>
+              <div className="grid gap-4">
+                <Link
+                  href="/gp-cycle2"
+                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                    Planning Workspace
+                  </div>
+                  <h2 className="text-lg font-semibold">GP Cycle 2</h2>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    Track cycle proposals, completion ratios, and detailed observation timelines.
+                  </p>
+                </Link>
+
+                <Link
+                  href="/tootogp-schedule"
+                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                    Planning Queue
+                  </div>
+                  <h2 className="text-lg font-semibold">GP Planning</h2>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    Review all manually added ToO-to-GP planning windows before they become scheduled observations.
+                  </p>
+                </Link>
+              </div>
             </div>
 
             {/* Divider */}

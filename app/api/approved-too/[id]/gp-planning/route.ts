@@ -6,6 +6,12 @@ import { approvedToO, tooToGpSchedule } from "@/src/db/schema";
 
 type Params = { params: Promise<{ id: string }> };
 
+type PlanningPayload = {
+  plannedStartTime?: string | null;
+  plannedEndTime?: string | null;
+  notes?: string | null;
+};
+
 function parseInteger(value: string | null | undefined): number | null {
   if (!value) {
     return null;
@@ -26,33 +32,40 @@ function normalizeCadenceUnit(value: string | null | undefined): "day" | "orbit"
   return null;
 }
 
-function toIsoString(value: string | null | undefined): string | null {
+function toDateOnly(value: string | null | undefined): string | null {
   if (!value) {
     return null;
   }
 
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-function addMinutes(startIso: string, minutes: number): string {
-  return new Date(new Date(startIso).getTime() + minutes * 60_000).toISOString();
-}
-
-function addSeconds(startIso: string, seconds: number): string {
-  return new Date(new Date(startIso).getTime() + seconds * 1_000).toISOString();
-}
-
-function cadenceToMinutes(cadenceValue: number | null, cadenceUnit: "day" | "orbit" | null): number {
-  if (!cadenceValue || cadenceValue <= 0 || !cadenceUnit) {
-    return 0;
+  const normalized = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return normalized;
   }
 
-  if (cadenceUnit === "orbit") {
-    return cadenceValue * 97;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) {
+    return null;
   }
 
-  return cadenceValue * 24 * 60;
+  return [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, "0"), String(date.getUTCDate()).padStart(2, "0")].join("-");
+}
+
+function addDays(dateString: string, days: number): string {
+  const date = new Date(`${dateString}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, "0"), String(date.getUTCDate()).padStart(2, "0")].join("-");
+}
+
+function getDefaultTuesdayWindow(): { start: string; end: string } {
+  const reference = new Date();
+  reference.setUTCDate(reference.getUTCDate() + 3);
+
+  const day = reference.getUTCDay();
+  const daysUntilTuesday = (2 - day + 7) % 7;
+  reference.setUTCDate(reference.getUTCDate() + daysUntilTuesday);
+
+  const start = [reference.getUTCFullYear(), String(reference.getUTCMonth() + 1).padStart(2, "0"), String(reference.getUTCDate()).padStart(2, "0")].join("-");
+  return { start, end: addDays(start, 7) };
 }
 
 export async function GET(_request: Request, { params }: Params) {
@@ -125,10 +138,7 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   try {
-    const body = (await request.json()) as {
-      earliestStartTime?: string | null;
-      notes?: string | null;
-    };
+    const body = (await request.json()) as PlanningPayload;
 
     const [parent] = await db.select().from(approvedToO).where(eq(approvedToO.id, numId));
     if (!parent) {
@@ -160,22 +170,19 @@ export async function POST(request: Request, { params }: Params) {
     const reviewedSingleExposureTimeSnapshot = parseInteger(parent.reviewedSingleExposureTime);
     const reviewedTotalExposureTimeSnapshot = parseInteger(parent.reviewedTotalExposureTime);
 
-    const explicitEarliestStart = toIsoString(body.earliestStartTime);
-    if (body.earliestStartTime && !explicitEarliestStart) {
-      return NextResponse.json({ error: "Invalid earliest start time" }, { status: 400 });
+    const explicitStart = toDateOnly(body.plannedStartTime);
+    const explicitEnd = toDateOnly(body.plannedEndTime);
+    if (body.plannedStartTime && !explicitStart) {
+      return NextResponse.json({ error: "Invalid planned start date" }, { status: 400 });
+    }
+    if (body.plannedEndTime && !explicitEnd) {
+      return NextResponse.json({ error: "Invalid planned end date" }, { status: 400 });
     }
 
-    const cadenceMinutes = cadenceToMinutes(cadenceValue, cadenceUnit);
-    const fallbackStart = latestPlan?.plannedStartTime
-      ? cadenceMinutes > 0
-        ? addMinutes(latestPlan.plannedStartTime, cadenceMinutes)
-        : latestPlan.plannedEndTime ?? latestPlan.plannedStartTime
-      : new Date().toISOString();
-    const plannedStartTime = explicitEarliestStart ?? fallbackStart;
-    const plannedEndTime =
-      reviewedSingleExposureTimeSnapshot && reviewedSingleExposureTimeSnapshot > 0
-        ? addSeconds(plannedStartTime, reviewedSingleExposureTimeSnapshot)
-        : null;
+    const defaultWindow = getDefaultTuesdayWindow();
+    const plannedStartTime = explicitStart ?? defaultWindow.start;
+    const plannedEndTime = explicitEnd ?? addDays(plannedStartTime, 7);
+    const earliestStartTime = plannedStartTime;
 
     const [inserted] = await db
       .insert(tooToGpSchedule)
@@ -184,7 +191,7 @@ export async function POST(request: Request, { params }: Params) {
         parentEpDbObjectId: parent.epDbObjectId.trim(),
         generatedEpDbObjectId: `${parent.epDbObjectId.trim()}_${sequenceNo}`,
         sequenceNo,
-        earliestStartTime: explicitEarliestStart ?? plannedStartTime,
+        earliestStartTime,
         plannedStartTime,
         plannedEndTime,
         cadenceValue,

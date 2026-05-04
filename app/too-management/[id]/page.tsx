@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -269,6 +269,57 @@ function getChangedFields(original: InputRow, next: InputRow): FieldChange[] {
   });
 }
 
+type PlanningWindowOption = {
+  value: string;
+  label: string;
+  start: string;
+  end: string;
+};
+
+function addDaysToDateString(dateString: string, days: number): string {
+  const date = new Date(`${dateString}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, "0"), String(date.getUTCDate()).padStart(2, "0")].join("-");
+}
+
+function formatDateDisplay(dateString: string | null): string {
+  if (!dateString) {
+    return "—";
+  }
+
+  const date = new Date(`${dateString}T00:00:00Z`);
+  return date.toLocaleDateString("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "UTC",
+  });
+}
+
+function getUpcomingTuesdayWindows(count: number): PlanningWindowOption[] {
+  const reference = new Date();
+  reference.setUTCDate(reference.getUTCDate() + 3);
+
+  const day = reference.getUTCDay();
+  const daysUntilTuesday = (2 - day + 7) % 7;
+  reference.setUTCDate(reference.getUTCDate() + daysUntilTuesday);
+
+  return Array.from({ length: count }, (_value, index) => {
+    const startDate = new Date(reference);
+    startDate.setUTCDate(startDate.getUTCDate() + index * 7);
+
+    const start = [startDate.getUTCFullYear(), String(startDate.getUTCMonth() + 1).padStart(2, "0"), String(startDate.getUTCDate()).padStart(2, "0")].join("-");
+    const end = addDaysToDateString(start, 7);
+
+    return {
+      value: `${start}:${end}`,
+      label: `${formatDateDisplay(start)} to ${formatDateDisplay(end)}`,
+      start,
+      end,
+    };
+  });
+}
+
 export default function TooManagementDetailPage() {
   const pathname = usePathname();
   const id = pathname?.split("/").at(-1) ?? "";
@@ -284,10 +335,24 @@ export default function TooManagementDetailPage() {
   const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
   const [planningRows, setPlanningRows] = useState<PlanningRow[]>([]);
   const [planningLoading, setPlanningLoading] = useState(true);
-  const [creatingPlan, setCreatingPlan] = useState(false);
-  const [earliestStartInput, setEarliestStartInput] = useState("");
+  const [planningSubmitting, setPlanningSubmitting] = useState(false);
+  const [editingPlanningId, setEditingPlanningId] = useState<number | null>(null);
+  const planningWindowOptions = useMemo(() => getUpcomingTuesdayWindows(6), []);
+  const [planningWindowPreset, setPlanningWindowPreset] = useState(planningWindowOptions[0]?.value ?? "custom");
+  const [plannedStartInput, setPlannedStartInput] = useState(planningWindowOptions[0]?.start ?? "");
+  const [plannedEndInput, setPlannedEndInput] = useState(planningWindowOptions[0]?.end ?? "");
+  const [planningNotes, setPlanningNotes] = useState("");
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
+
+  const resetPlanningForm = useCallback(() => {
+    const fallback = planningWindowOptions[0];
+    setEditingPlanningId(null);
+    setPlanningWindowPreset(fallback?.value ?? "custom");
+    setPlannedStartInput(fallback?.start ?? "");
+    setPlannedEndInput(fallback?.end ?? "");
+    setPlanningNotes("");
+  }, [planningWindowOptions]);
 
   function setStatus(nextMessage: string, tone: "success" | "error") {
     setMessage(nextMessage);
@@ -336,6 +401,10 @@ export default function TooManagementDetailPage() {
   useEffect(() => {
     void loadPlanning();
   }, [loadPlanning]);
+
+  useEffect(() => {
+    resetPlanningForm();
+  }, [resetPlanningForm]);
 
   const loadSchedule = useCallback(async () => {
     setScheduleLoading(true);
@@ -426,32 +495,82 @@ export default function TooManagementDetailPage() {
     await commitSave();
   }
 
-  async function handleAddPlanning() {
-    setCreatingPlan(true);
+  async function handleSubmitPlanning() {
+    setPlanningSubmitting(true);
 
     try {
-      const response = await fetch(`/api/approved-too/${id}/gp-planning`, {
-        method: "POST",
+      const response = await fetch(
+        editingPlanningId ? `/api/tootogp-schedule/${editingPlanningId}` : `/api/approved-too/${id}/gp-planning`,
+        {
+          method: editingPlanningId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          earliestStartTime: earliestStartInput
-            ? new Date(earliestStartInput).toISOString()
-            : null,
+          plannedStartTime: plannedStartInput || null,
+          plannedEndTime: plannedEndInput || addDaysToDateString(plannedStartInput, 7),
+          notes: planningNotes || null,
         }),
-      });
+        },
+      );
 
       const data = (await response.json()) as { error?: string };
       if (!response.ok) {
-        throw new Error(data.error ?? "Failed to create GP planning record");
+        throw new Error(data.error ?? `Failed to ${editingPlanningId ? "update" : "create"} GP planning record`);
       }
 
-      setEarliestStartInput("");
       await loadPlanning();
-      setStatus("GP planning record created", "success");
+      resetPlanningForm();
+      setStatus(`GP planning record ${editingPlanningId ? "updated" : "created"}`, "success");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to create GP planning record", "error");
+      setStatus(
+        error instanceof Error
+          ? error.message
+          : `Failed to ${editingPlanningId ? "update" : "create"} GP planning record`,
+        "error",
+      );
     } finally {
-      setCreatingPlan(false);
+      setPlanningSubmitting(false);
+    }
+  }
+
+  function handlePlanningPresetChange(nextValue: string) {
+    setPlanningWindowPreset(nextValue);
+    const selected = planningWindowOptions.find((option) => option.value === nextValue);
+    if (selected) {
+      setPlannedStartInput(selected.start);
+      setPlannedEndInput(selected.end);
+    }
+  }
+
+  function handleEditPlanning(item: PlanningRow) {
+    setEditingPlanningId(item.id);
+    setPlanningWindowPreset("custom");
+    setPlannedStartInput(item.plannedStartTime ?? "");
+    setPlannedEndInput(item.plannedEndTime ?? "");
+    setPlanningNotes(item.notes ?? "");
+  }
+
+  async function handleDeletePlanning(item: PlanningRow) {
+    if (!window.confirm(`Delete planning record ${item.generatedEpDbObjectId}?`)) {
+      return;
+    }
+
+    setPlanningSubmitting(true);
+    try {
+      const response = await fetch(`/api/tootogp-schedule/${item.id}`, { method: "DELETE" });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to delete GP planning record");
+      }
+
+      if (editingPlanningId === item.id) {
+        resetPlanningForm();
+      }
+      await loadPlanning();
+      setStatus("GP planning record deleted", "success");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to delete GP planning record", "error");
+    } finally {
+      setPlanningSubmitting(false);
     }
   }
 
@@ -504,30 +623,91 @@ export default function TooManagementDetailPage() {
           </div>
 
           <div className="border-b border-slate-200 bg-slate-50/60 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/30">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="grid gap-3 lg:grid-cols-[1.1fr_1fr_1fr_auto] lg:items-end">
               <div className="flex-1">
                 <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Earliest Start Time
+                  Tuesday Window Preset
+                </label>
+                <select
+                  value={planningWindowPreset}
+                  onChange={(event) => handlePlanningPresetChange(event.target.value)}
+                  disabled={planningSubmitting || loading || !row}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                >
+                  {planningWindowOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                  <option value="custom">Custom dates</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Window Start
                 </label>
                 <input
-                  type="datetime-local"
-                  value={earliestStartInput}
-                  onChange={(event) => setEarliestStartInput(event.target.value)}
-                  disabled={creatingPlan || loading || !row}
+                  type="date"
+                  value={plannedStartInput}
+                  onChange={(event) => {
+                    setPlanningWindowPreset("custom");
+                    setPlannedStartInput(event.target.value);
+                  }}
+                  disabled={planningSubmitting || loading || !row}
                   className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => void handleAddPlanning()}
-                disabled={creatingPlan || loading || !row || !row.epDbObjectId}
-                className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
-              >
-                {creatingPlan ? "Adding..." : "Add Planned Visit"}
-              </button>
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Window End
+                </label>
+                <input
+                  type="date"
+                  value={plannedEndInput}
+                  onChange={(event) => {
+                    setPlanningWindowPreset("custom");
+                    setPlannedEndInput(event.target.value);
+                  }}
+                  disabled={planningSubmitting || loading || !row}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleSubmitPlanning()}
+                  disabled={planningSubmitting || loading || !row || !row.epDbObjectId || !plannedStartInput}
+                  className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
+                >
+                  {planningSubmitting ? "Saving..." : editingPlanningId ? "Save Visit" : "Add Planned Visit"}
+                </button>
+                {editingPlanningId ? (
+                  <button
+                    type="button"
+                    onClick={() => resetPlanningForm()}
+                    disabled={planningSubmitting}
+                    className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    Cancel
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Planning Notes
+              </label>
+              <input
+                type="text"
+                value={planningNotes}
+                onChange={(event) => setPlanningNotes(event.target.value)}
+                disabled={planningSubmitting || loading || !row}
+                placeholder="Optional operator note"
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              />
             </div>
             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-              If no start time is provided, the next record defaults after the latest GP planning row using cadence when available. 1 orbit = 97 minutes.
+              Planned Start and Planned End are the schedulable date window. The default preset starts from the first Tuesday after three days from today and spans to the following Tuesday.
             </p>
           </div>
 
@@ -562,12 +742,12 @@ export default function TooManagementDetailPage() {
 
                     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                       <div>
-                        <dt className="text-xs text-slate-500 dark:text-slate-400">Planned Start</dt>
-                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.plannedStartTime || "—"}</dd>
+                        <dt className="text-xs text-slate-500 dark:text-slate-400">Window Start</dt>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{formatDateDisplay(item.plannedStartTime)}</dd>
                       </div>
                       <div>
-                        <dt className="text-xs text-slate-500 dark:text-slate-400">Planned End</dt>
-                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.plannedEndTime || "—"}</dd>
+                        <dt className="text-xs text-slate-500 dark:text-slate-400">Window End</dt>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{formatDateDisplay(item.plannedEndTime)}</dd>
                       </div>
                       <div>
                         <dt className="text-xs text-slate-500 dark:text-slate-400">Cadence</dt>
@@ -589,16 +769,38 @@ export default function TooManagementDetailPage() {
                       </div>
                     </dl>
 
-                    {item.matchedObsWpId ? (
-                      <div className="mt-3 flex justify-end">
+                    {item.notes ? (
+                      <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
+                        {item.notes}
+                      </p>
+                    ) : null}
+
+                    <div className="mt-3 flex flex-wrap justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleEditPlanning(item)}
+                        disabled={planningSubmitting}
+                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeletePlanning(item)}
+                        disabled={planningSubmitting}
+                        className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                      >
+                        Delete
+                      </button>
+                      {item.matchedObsWpId ? (
                         <Link
                           href={`/obs-wp/${item.matchedObsWpId}`}
                           className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                           Observation Details
                         </Link>
-                      </div>
-                    ) : null}
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}
