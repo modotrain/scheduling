@@ -337,6 +337,7 @@ export default function TooManagementDetailPage() {
   const [planningRows, setPlanningRows] = useState<PlanningRow[]>([]);
   const [planningLoading, setPlanningLoading] = useState(true);
   const [planningSubmitting, setPlanningSubmitting] = useState(false);
+  const [planningModalOpen, setPlanningModalOpen] = useState(false);
   const [editingPlanningId, setEditingPlanningId] = useState<number | null>(null);
   const planningWindowOptions = useMemo(() => getUpcomingTuesdayWindows(6), []);
   const [planningWindowPreset, setPlanningWindowPreset] = useState(planningWindowOptions[0]?.value ?? "custom");
@@ -352,6 +353,7 @@ export default function TooManagementDetailPage() {
 
   const resetPlanningForm = useCallback(() => {
     const fallback = planningWindowOptions[0];
+    setPlanningModalOpen(false);
     setEditingPlanningId(null);
     setPlanningWindowPreset(fallback?.value ?? "custom");
     setPlannedStartInput(fallback?.start ?? "");
@@ -555,6 +557,7 @@ export default function TooManagementDetailPage() {
   }
 
   function handleEditPlanning(item: PlanningRow) {
+    setPlanningModalOpen(true);
     setEditingPlanningId(item.id);
     setPlanningWindowPreset("custom");
     setPlannedStartInput(item.plannedStartTime ?? "");
@@ -568,6 +571,20 @@ export default function TooManagementDetailPage() {
       item.reviewedTotalExposureTimeSnapshot === null ? "" : String(item.reviewedTotalExposureTimeSnapshot),
     );
     setPlanningNotes(item.notes ?? "");
+  }
+
+  function handleOpenCreatePlanning() {
+    const fallback = planningWindowOptions[0];
+    setPlanningModalOpen(true);
+    setEditingPlanningId(null);
+    setPlanningWindowPreset(fallback?.value ?? "custom");
+    setPlannedStartInput(fallback?.start ?? "");
+    setPlannedEndInput(fallback?.end ?? "");
+    setPlanningCadenceValue(row?.reviewedCadence ?? "");
+    setPlanningCadenceUnit(row?.reviewedCadenceUnit ?? "");
+    setPlanningSingleExposureTime(row?.reviewedSingleExposureTime ?? "");
+    setPlanningTotalExposureTime(row?.reviewedTotalExposureTime ?? "");
+    setPlanningNotes("");
   }
 
   async function handleDeletePlanning(item: PlanningRow) {
@@ -635,154 +652,22 @@ export default function TooManagementDetailPage() {
             <span className="text-sm text-slate-600 dark:text-slate-300">
               Planned visits: <span className="font-mono font-medium">{planningRows.length}</span>
             </span>
-            <Link
-              href="/tootogp-schedule"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              All GP Planning
-            </Link>
-          </div>
-
-          <div className="border-b border-slate-200 bg-slate-50/60 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/30">
-            <div className="grid gap-3 lg:grid-cols-[1.1fr_1fr_1fr_auto] lg:items-end">
-              <div className="flex-1">
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Tuesday Window Preset
-                </label>
-                <select
-                  value={planningWindowPreset}
-                  onChange={(event) => handlePlanningPresetChange(event.target.value)}
-                  disabled={planningSubmitting || loading || !row}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                >
-                  {planningWindowOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                  <option value="custom">Custom dates</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Window Start
-                </label>
-                <input
-                  type="date"
-                  value={plannedStartInput}
-                  onChange={(event) => {
-                    setPlanningWindowPreset("custom");
-                    setPlannedStartInput(event.target.value);
-                  }}
-                  disabled={planningSubmitting || loading || !row}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Window End
-                </label>
-                <input
-                  type="date"
-                  value={plannedEndInput}
-                  onChange={(event) => {
-                    setPlanningWindowPreset("custom");
-                    setPlannedEndInput(event.target.value);
-                  }}
-                  disabled={planningSubmitting || loading || !row}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => void handleSubmitPlanning()}
-                  disabled={planningSubmitting || loading || !row || !row.epDbObjectId || !plannedStartInput}
-                  className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
-                >
-                  {planningSubmitting ? "Saving..." : editingPlanningId ? "Save Visit" : "Add Planned Visit"}
-                </button>
-                {editingPlanningId ? (
-                  <button
-                    type="button"
-                    onClick={() => resetPlanningForm()}
-                    disabled={planningSubmitting}
-                    className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                  >
-                    Cancel
-                  </button>
-                ) : null}
-              </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/tootogp-schedule"
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                All GP Planning
+              </Link>
+              <button
+                type="button"
+                onClick={handleOpenCreatePlanning}
+                disabled={planningSubmitting || loading || !row || !row.epDbObjectId}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
+              >
+                Add Planned Visit
+              </button>
             </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Cadence
-                </label>
-                <input
-                  type="number"
-                  value={planningCadenceValue}
-                  onChange={(event) => setPlanningCadenceValue(event.target.value)}
-                  disabled={planningSubmitting || loading || !row}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Cadence Unit
-                </label>
-                <select
-                  value={planningCadenceUnit}
-                  onChange={(event) => setPlanningCadenceUnit(event.target.value)}
-                  disabled={planningSubmitting || loading || !row}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                >
-                  <option value="">—</option>
-                  <option value="day">day</option>
-                  <option value="orbit">orbit</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Single Exposure Time
-                </label>
-                <input
-                  type="number"
-                  value={planningSingleExposureTime}
-                  onChange={(event) => setPlanningSingleExposureTime(event.target.value)}
-                  disabled={planningSubmitting || loading || !row}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Total Exposure Time
-                </label>
-                <input
-                  type="number"
-                  value={planningTotalExposureTime}
-                  onChange={(event) => setPlanningTotalExposureTime(event.target.value)}
-                  disabled={planningSubmitting || loading || !row}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                />
-              </div>
-            </div>
-            <div className="mt-3">
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Planning Notes
-              </label>
-              <input
-                type="text"
-                value={planningNotes}
-                onChange={(event) => setPlanningNotes(event.target.value)}
-                disabled={planningSubmitting || loading || !row}
-                placeholder="Optional operator note"
-                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-              />
-            </div>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-              Planned Start and Planned End are the schedulable date window. The default preset starts from the first Tuesday after three days from today and spans to the following Tuesday.
-            </p>
           </div>
 
           {planningLoading ? (
@@ -815,10 +700,6 @@ export default function TooManagementDetailPage() {
                     </div>
 
                     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                      <div>
-                        <dt className="text-xs text-slate-500 dark:text-slate-400">Operator</dt>
-                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.operatorName || "—"}</dd>
-                      </div>
                       <div>
                         <dt className="text-xs text-slate-500 dark:text-slate-400">Window Start</dt>
                         <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{formatDateDisplay(item.plannedStartTime)}</dd>
@@ -853,31 +734,38 @@ export default function TooManagementDetailPage() {
                       </p>
                     ) : null}
 
-                    <div className="mt-3 flex flex-wrap justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleEditPlanning(item)}
-                        disabled={planningSubmitting}
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDeletePlanning(item)}
-                        disabled={planningSubmitting}
-                        className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
-                      >
-                        Delete
-                      </button>
-                      {item.matchedObsWpId ? (
-                        <Link
-                          href={`/obs-wp/${item.matchedObsWpId}`}
+                    <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
+                      <p className="min-w-0 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="font-medium">Operator:</span>{" "}
+                        <span className="break-words text-slate-700 dark:text-slate-200">{item.operatorName || "—"}</span>
+                      </p>
+
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEditPlanning(item)}
+                          disabled={planningSubmitting}
                           className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                         >
-                          Observation Details
-                        </Link>
-                      ) : null}
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeletePlanning(item)}
+                          disabled={planningSubmitting}
+                          className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                        >
+                          Delete
+                        </button>
+                        {item.matchedObsWpId ? (
+                          <Link
+                            href={`/obs-wp/${item.matchedObsWpId}`}
+                            className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            Observation Details
+                          </Link>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1109,6 +997,165 @@ export default function TooManagementDetailPage() {
                 className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark"
               >
                 Confirm Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {planningModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <div className="border-b border-slate-200 px-6 py-4 dark:border-slate-700">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {editingPlanningId ? "Edit GP Planning" : "Add GP Planning"}
+              </h3>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                Define the schedulable date window and planning parameters for this GP visit.
+              </p>
+            </div>
+
+            <div className="max-h-[70vh] overflow-auto px-6 py-4">
+              <p className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                Planned Start and Planned End are the schedulable date window. The default preset starts from the first Tuesday after three days from today and spans to the following Tuesday.
+              </p>
+
+              <div className="grid gap-3 lg:grid-cols-[1.1fr_1fr_1fr] lg:items-end">
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Tuesday Window Preset
+                  </label>
+                  <select
+                    value={planningWindowPreset}
+                    onChange={(event) => handlePlanningPresetChange(event.target.value)}
+                    disabled={planningSubmitting || loading || !row}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    {planningWindowOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                    <option value="custom">Custom dates</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Window Start
+                  </label>
+                  <input
+                    type="date"
+                    value={plannedStartInput}
+                    onChange={(event) => {
+                      setPlanningWindowPreset("custom");
+                      setPlannedStartInput(event.target.value);
+                    }}
+                    disabled={planningSubmitting || loading || !row}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Window End
+                  </label>
+                  <input
+                    type="date"
+                    value={plannedEndInput}
+                    onChange={(event) => {
+                      setPlanningWindowPreset("custom");
+                      setPlannedEndInput(event.target.value);
+                    }}
+                    disabled={planningSubmitting || loading || !row}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Cadence
+                  </label>
+                  <input
+                    type="number"
+                    value={planningCadenceValue}
+                    onChange={(event) => setPlanningCadenceValue(event.target.value)}
+                    disabled={planningSubmitting || loading || !row}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Cadence Unit
+                  </label>
+                  <select
+                    value={planningCadenceUnit}
+                    onChange={(event) => setPlanningCadenceUnit(event.target.value)}
+                    disabled={planningSubmitting || loading || !row}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    <option value="">—</option>
+                    <option value="day">day</option>
+                    <option value="orbit">orbit</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Single Exposure Time
+                  </label>
+                  <input
+                    type="number"
+                    value={planningSingleExposureTime}
+                    onChange={(event) => setPlanningSingleExposureTime(event.target.value)}
+                    disabled={planningSubmitting || loading || !row}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Total Exposure Time
+                  </label>
+                  <input
+                    type="number"
+                    value={planningTotalExposureTime}
+                    onChange={(event) => setPlanningTotalExposureTime(event.target.value)}
+                    disabled={planningSubmitting || loading || !row}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Planning Notes
+                </label>
+                <input
+                  type="text"
+                  value={planningNotes}
+                  onChange={(event) => setPlanningNotes(event.target.value)}
+                  disabled={planningSubmitting || loading || !row}
+                  placeholder="Optional operator note"
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => resetPlanningForm()}
+                disabled={planningSubmitting}
+                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSubmitPlanning()}
+                disabled={planningSubmitting || loading || !row || !row.epDbObjectId || !plannedStartInput}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
+              >
+                {planningSubmitting ? "Saving..." : editingPlanningId ? "Save Visit" : "Add Planned Visit"}
               </button>
             </div>
           </div>
