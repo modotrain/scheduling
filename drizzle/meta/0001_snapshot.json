@@ -1,0 +1,3032 @@
+{
+  "id": "9d754ac6-12f6-41fd-b51d-99f2a8414f0b",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.approved_too": {
+      "name": "approved_too",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "0.3-10_keV_Flux": {
+          "name": "0.3-10_keV_Flux",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completeness": {
+          "name": "completeness",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "continuous_exposure": {
+          "name": "continuous_exposure",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "epsc_proposal": {
+          "name": "epsc_proposal",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ep_db_object_id": {
+          "name": "ep_db_object_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt_cmr": {
+          "name": "fxt_cmr",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt_x": {
+          "name": "fxt_x",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt_y": {
+          "name": "fxt_y",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload": {
+          "name": "payload",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "received_time": {
+          "name": "received_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_number_of_visits": {
+          "name": "request_number_of_visits",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_restrained_begin_time": {
+          "name": "request_restrained_begin_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_restrained_end_time": {
+          "name": "request_restrained_end_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_single_exposure_time": {
+          "name": "request_single_exposure_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_total_exposure_time": {
+          "name": "request_total_exposure_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_urgency_of_observation": {
+          "name": "request_urgency_of_observation",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_cadence": {
+          "name": "request_cadence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_cadence_unit": {
+          "name": "request_cadence_unit",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_number_of_visits": {
+          "name": "reviewed_number_of_visits",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_scientific_importance": {
+          "name": "reviewed_scientific_importance",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_single_exposure_time": {
+          "name": "reviewed_single_exposure_time",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_total_exposure_time": {
+          "name": "reviewed_total_exposure_time",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_urgency_of_observation": {
+          "name": "reviewed_urgency_of_observation",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_cadence": {
+          "name": "reviewed_cadence",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_cadence_unit": {
+          "name": "reviewed_cadence_unit",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_time": {
+          "name": "reviewed_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stp": {
+          "name": "stp",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "v_band_magnitude": {
+          "name": "v_band_magnitude",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_cmos": {
+          "name": "wxt_cmos",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_cmos_x": {
+          "name": "wxt_cmos_x",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_cmos_y": {
+          "name": "wxt_cmos_y",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dec": {
+          "name": "dec",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exposure_time_unit": {
+          "name": "exposure_time_unit",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt1_filter": {
+          "name": "fxt1_filter",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt1_window_mode": {
+          "name": "fxt1_window_mode",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt2_filter": {
+          "name": "fxt2_filter",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt2_window_mode": {
+          "name": "fxt2_window_mode",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "group": {
+          "name": "group",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pi": {
+          "name": "pi",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_no": {
+          "name": "proposal_no",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ra": {
+          "name": "ra",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.cycle1_anti_too_proposal": {
+      "name": "cycle1_anti_too_proposal",
+      "schema": "",
+      "columns": {
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "proposal_no": {
+          "name": "proposal_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "no": {
+          "name": "no",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pi_name": {
+          "name": "pi_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_type": {
+          "name": "obs_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anticipated_too": {
+          "name": "anticipated_too",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stp": {
+          "name": "stp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "group_name": {
+          "name": "group_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observations_number": {
+          "name": "observations_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_exposure_time": {
+          "name": "total_exposure_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exposure_unit": {
+          "name": "exposure_unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_priority": {
+          "name": "source_priority",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.cycle2_anti_too_proposal": {
+      "name": "cycle2_anti_too_proposal",
+      "schema": "",
+      "columns": {
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "proposal_no": {
+          "name": "proposal_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "no": {
+          "name": "no",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pi_name": {
+          "name": "pi_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_type": {
+          "name": "obs_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anticipated_too": {
+          "name": "anticipated_too",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stp": {
+          "name": "stp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "group_name": {
+          "name": "group_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observations_number": {
+          "name": "observations_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_exposure_time": {
+          "name": "total_exposure_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exposure_unit": {
+          "name": "exposure_unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_priority": {
+          "name": "source_priority",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.gp_cycle1": {
+      "name": "gp_cycle1",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tdic_id": {
+          "name": "tdic_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_no": {
+          "name": "proposal_no",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pi": {
+          "name": "pi",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_group": {
+          "name": "user_group",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_type": {
+          "name": "obs_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ra": {
+          "name": "ra",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dec": {
+          "name": "dec",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_exposure_time": {
+          "name": "total_exposure_time",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exposure_time_unit": {
+          "name": "exposure_time_unit",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "continous_exposure": {
+          "name": "continous_exposure",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visit_number": {
+          "name": "visit_number",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exposure_per_vist_min": {
+          "name": "exposure_per_vist_min",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exposure_per_vist_max": {
+          "name": "exposure_per_vist_max",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completeness": {
+          "name": "completeness",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cadence": {
+          "name": "cadence",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cadence_unit": {
+          "name": "cadence_unit",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "precision": {
+          "name": "precision",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "precision_unit": {
+          "name": "precision_unit",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_priority": {
+          "name": "source_priority",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt1_window_mode": {
+          "name": "fxt1_window_mode",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt1_filter": {
+          "name": "fxt1_filter",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt2_window_mode": {
+          "name": "fxt2_window_mode",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt2_filter": {
+          "name": "fxt2_filter",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_updated": {
+          "name": "is_updated",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.gp_cycle2": {
+      "name": "gp_cycle2",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tdic_id": {
+          "name": "tdic_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_no": {
+          "name": "proposal_no",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pi": {
+          "name": "pi",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_group": {
+          "name": "user_group",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_type": {
+          "name": "obs_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ra": {
+          "name": "ra",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dec": {
+          "name": "dec",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_exposure_time": {
+          "name": "total_exposure_time",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exposure_time_unit": {
+          "name": "exposure_time_unit",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "continous_exposure": {
+          "name": "continous_exposure",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visit_number": {
+          "name": "visit_number",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exposure_per_vist_min": {
+          "name": "exposure_per_vist_min",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "exposure_per_vist_max": {
+          "name": "exposure_per_vist_max",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completeness": {
+          "name": "completeness",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cadence": {
+          "name": "cadence",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cadence_unit": {
+          "name": "cadence_unit",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "precision": {
+          "name": "precision",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "precision_unit": {
+          "name": "precision_unit",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_priority": {
+          "name": "source_priority",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt1_window_mode": {
+          "name": "fxt1_window_mode",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt1_filter": {
+          "name": "fxt1_filter",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt2_window_mode": {
+          "name": "fxt2_window_mode",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fxt2_filter": {
+          "name": "fxt2_filter",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_updated": {
+          "name": "is_updated",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anticipated_too": {
+          "name": "anticipated_too",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stp": {
+          "name": "stp",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload": {
+          "name": "payload",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "''"
+        },
+        "wxt_cmos": {
+          "name": "wxt_cmos",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "''"
+        },
+        "cmos_x": {
+          "name": "cmos_x",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "''"
+        },
+        "cmos_y": {
+          "name": "cmos_y",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "''"
+        },
+        "fxt_cmr": {
+          "name": "fxt_cmr",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "''"
+        },
+        "cmr_x": {
+          "name": "cmr_x",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "''"
+        },
+        "cmr_y": {
+          "name": "cmr_y",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "''"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.gp_cycle2_proposal": {
+      "name": "gp_cycle2_proposal",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "no": {
+          "name": "no",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_no": {
+          "name": "proposal_no",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pi": {
+          "name": "pi",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stp": {
+          "name": "stp",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seconds_r": {
+          "name": "seconds_r",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_type": {
+          "name": "obs_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anticipated_too": {
+          "name": "anticipated_too",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_group": {
+          "name": "user_group",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "institution": {
+          "name": "institution",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ihep_or_naoc": {
+          "name": "ihep_or_naoc",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.gsplist": {
+      "name": "gsplist",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "gsp_id": {
+          "name": "gsp_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ssp_time": {
+          "name": "ssp_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gsp_time": {
+          "name": "gsp_time",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "production_date": {
+          "name": "production_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "gsplist_gsp_id_unique": {
+          "name": "gsplist_gsp_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "gsp_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.obs_auto_followup": {
+      "name": "obs_auto_followup",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "wp_producer": {
+          "name": "wp_producer",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wp_filename": {
+          "name": "wp_filename",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wp_id": {
+          "name": "wp_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wp_type": {
+          "name": "wp_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wp_urgency": {
+          "name": "wp_urgency",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_type": {
+          "name": "obs_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_id_number": {
+          "name": "obs_id_number",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obt_id": {
+          "name": "obt_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ep_db_object_id": {
+          "name": "ep_db_object_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "right_ascension": {
+          "name": "right_ascension",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "declination": {
+          "name": "declination",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_obs_duration_in_seconds": {
+          "name": "requested_obs_duration_in_seconds",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_name": {
+          "name": "user_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cmr": {
+          "name": "cmr",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "x": {
+          "name": "x",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "y": {
+          "name": "y",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "config_parameter_switch": {
+          "name": "config_parameter_switch",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "config_force_switch": {
+          "name": "config_force_switch",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "operation_code3": {
+          "name": "operation_code3",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "minnsigma_dim": {
+          "name": "minnsigma_dim",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sn_dim": {
+          "name": "sn_dim",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sn_windows": {
+          "name": "sn_windows",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "process_switch_a": {
+          "name": "process_switch_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observation_mode_a": {
+          "name": "observation_mode_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_a": {
+          "name": "filter_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "process_switch_b": {
+          "name": "process_switch_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observation_mode_b": {
+          "name": "observation_mode_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_b": {
+          "name": "filter_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tc_programming_mode": {
+          "name": "tc_programming_mode",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_gsp_id_start": {
+          "name": "obs_gsp_id_start",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_gsp_id_end": {
+          "name": "obs_gsp_id_end",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pointing_duration_in_orbits": {
+          "name": "pointing_duration_in_orbits",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pointing_duration_in_seconds": {
+          "name": "pointing_duration_in_seconds",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload_right_ascension": {
+          "name": "payload_right_ascension",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload_declination": {
+          "name": "payload_declination",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qc": {
+          "name": "qc",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "q1": {
+          "name": "q1",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "q2": {
+          "name": "q2",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "q3": {
+          "name": "q3",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ang_z_j2000_rgrf": {
+          "name": "ang_z_j2000_rgrf",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ang_x_j2000_rgrf": {
+          "name": "ang_x_j2000_rgrf",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ang_y_j2000_rgrf": {
+          "name": "ang_y_j2000_rgrf",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_id": {
+          "name": "obs_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "main_type": {
+          "name": "main_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sub_priority": {
+          "name": "sub_priority",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.obs_wp": {
+      "name": "obs_wp",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "wp_producer": {
+          "name": "wp_producer",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wp_filename": {
+          "name": "wp_filename",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wp_id": {
+          "name": "wp_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wp_type": {
+          "name": "wp_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wp_urgency": {
+          "name": "wp_urgency",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_type": {
+          "name": "obs_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_id_number": {
+          "name": "obs_id_number",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obt_id": {
+          "name": "obt_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ep_db_object_id": {
+          "name": "ep_db_object_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "right_ascension": {
+          "name": "right_ascension",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "declination": {
+          "name": "declination",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_obs_duration_in_seconds": {
+          "name": "requested_obs_duration_in_seconds",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_name": {
+          "name": "user_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cmr": {
+          "name": "cmr",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "x": {
+          "name": "x",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "y": {
+          "name": "y",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "config_parameter_switch": {
+          "name": "config_parameter_switch",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "config_force_switch": {
+          "name": "config_force_switch",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "operation_code3": {
+          "name": "operation_code3",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "minnsigma_dim": {
+          "name": "minnsigma_dim",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sn_dim": {
+          "name": "sn_dim",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sn_windows": {
+          "name": "sn_windows",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "process_switch_a": {
+          "name": "process_switch_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observation_mode_a": {
+          "name": "observation_mode_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_a": {
+          "name": "filter_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "process_switch_b": {
+          "name": "process_switch_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observation_mode_b": {
+          "name": "observation_mode_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_b": {
+          "name": "filter_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tc_programming_mode": {
+          "name": "tc_programming_mode",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_gsp_id_start": {
+          "name": "obs_gsp_id_start",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_gsp_id_end": {
+          "name": "obs_gsp_id_end",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pointing_duration_in_orbits": {
+          "name": "pointing_duration_in_orbits",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pointing_duration_in_seconds": {
+          "name": "pointing_duration_in_seconds",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload_right_ascension": {
+          "name": "payload_right_ascension",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload_declination": {
+          "name": "payload_declination",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qc": {
+          "name": "qc",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "q1": {
+          "name": "q1",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "q2": {
+          "name": "q2",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "q3": {
+          "name": "q3",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ang_z_j2000_rgrf": {
+          "name": "ang_z_j2000_rgrf",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ang_x_j2000_rgrf": {
+          "name": "ang_x_j2000_rgrf",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ang_y_j2000_rgrf": {
+          "name": "ang_y_j2000_rgrf",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_id": {
+          "name": "obs_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "main_type": {
+          "name": "main_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "related_proposal_id1": {
+          "name": "related_proposal_id1",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "related_proposal_id2": {
+          "name": "related_proposal_id2",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "related_proposal_id3": {
+          "name": "related_proposal_id3",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sub_priority": {
+          "name": "sub_priority",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.observations": {
+      "name": "observations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "obs_type": {
+          "name": "obs_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_id_number": {
+          "name": "obs_id_number",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obt_id": {
+          "name": "obt_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ep_db_object_id": {
+          "name": "ep_db_object_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "right_ascension": {
+          "name": "right_ascension",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "declination": {
+          "name": "declination",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_obs_duration_in_seconds": {
+          "name": "requested_obs_duration_in_seconds",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_name": {
+          "name": "user_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cmr": {
+          "name": "cmr",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "x": {
+          "name": "x",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "y": {
+          "name": "y",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "config_parameter_switch": {
+          "name": "config_parameter_switch",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "config_force_switch": {
+          "name": "config_force_switch",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "operation_code3": {
+          "name": "operation_code3",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "minnsigma_dim": {
+          "name": "minnsigma_dim",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sn_dim": {
+          "name": "sn_dim",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sn_windows": {
+          "name": "sn_windows",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "process_switch_a": {
+          "name": "process_switch_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observation_mode_a": {
+          "name": "observation_mode_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_a": {
+          "name": "filter_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "process_switch_b": {
+          "name": "process_switch_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observation_mode_b": {
+          "name": "observation_mode_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_b": {
+          "name": "filter_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tc_programming_mode": {
+          "name": "tc_programming_mode",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_gsp_id_start": {
+          "name": "obs_gsp_id_start",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_gsp_id_end": {
+          "name": "obs_gsp_id_end",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pointing_duration_in_orbits": {
+          "name": "pointing_duration_in_orbits",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pointing_duration_in_seconds": {
+          "name": "pointing_duration_in_seconds",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload_right_ascension": {
+          "name": "payload_right_ascension",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload_declination": {
+          "name": "payload_declination",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qc": {
+          "name": "qc",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "q1": {
+          "name": "q1",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "q2": {
+          "name": "q2",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "q3": {
+          "name": "q3",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ang_z_j2000_rgrf": {
+          "name": "ang_z_j2000_rgrf",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ang_x_j2000_rgrf": {
+          "name": "ang_x_j2000_rgrf",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ang_y_j2000_rgrf": {
+          "name": "ang_y_j2000_rgrf",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.obslog": {
+      "name": "obslog",
+      "schema": "",
+      "columns": {
+        "obs_id_hex": {
+          "name": "obs_id_hex",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "obs_id": {
+          "name": "obs_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(11)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valid_secs": {
+          "name": "valid_secs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "unique_obs_id_hex": {
+          "name": "unique_obs_id_hex",
+          "nullsNotDistinct": false,
+          "columns": [
+            "obs_id_hex"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.obslogtest": {
+      "name": "obslogtest",
+      "schema": "",
+      "columns": {
+        "obs_id_hex": {
+          "name": "obs_id_hex",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "obs_id": {
+          "name": "obs_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valid_secs": {
+          "name": "valid_secs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_002a": {
+          "name": "file_002a",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_0260": {
+          "name": "file_0260",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.req_test": {
+      "name": "req_test",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "request_filename": {
+          "name": "request_filename",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_date": {
+          "name": "request_date",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_urgency": {
+          "name": "request_urgency",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_type": {
+          "name": "obs_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ep_db_object_id": {
+          "name": "ep_db_object_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "right_ascension": {
+          "name": "right_ascension",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "declination": {
+          "name": "declination",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_obs_duration_in_seconds": {
+          "name": "requested_obs_duration_in_seconds",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_obs_duration_in_orbits": {
+          "name": "requested_obs_duration_in_orbits",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_name": {
+          "name": "user_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_group": {
+          "name": "user_group",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cmr": {
+          "name": "cmr",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "x": {
+          "name": "x",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "y": {
+          "name": "y",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "process_switch_a": {
+          "name": "process_switch_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observation_mode_a": {
+          "name": "observation_mode_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_a": {
+          "name": "filter_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "process_switch_b": {
+          "name": "process_switch_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observation_mode_b": {
+          "name": "observation_mode_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_b": {
+          "name": "filter_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_priority": {
+          "name": "obs_priority",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_constraints": {
+          "name": "time_constraints",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "proposal_no": {
+          "name": "proposal_no",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.s_passplan": {
+      "name": "s_passplan",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "taskid": {
+          "name": "taskid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facilityid": {
+          "name": "facilityid",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "orbitcircle": {
+          "name": "orbitcircle",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "starttime": {
+          "name": "starttime",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endtime": {
+          "name": "endtime",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plantype": {
+          "name": "plantype",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "s_passplan_orbitcircle_key": {
+          "name": "s_passplan_orbitcircle_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "orbitcircle"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.saa": {
+      "name": "saa",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "orbitid": {
+          "name": "orbitid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "begintime": {
+          "name": "begintime",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endtime": {
+          "name": "endtime",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "saa_begintime_key": {
+          "name": "saa_begintime_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "begintime"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.too_req": {
+      "name": "too_req",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "too_req_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "request_filename": {
+          "name": "request_filename",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_date": {
+          "name": "request_date",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_urgency": {
+          "name": "request_urgency",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_type": {
+          "name": "obs_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ep_db_object_id": {
+          "name": "ep_db_object_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "right_ascension": {
+          "name": "right_ascension",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "declination": {
+          "name": "declination",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_obs_duration_in_seconds": {
+          "name": "requested_obs_duration_in_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "requested_obs_duration_in_orbits": {
+          "name": "requested_obs_duration_in_orbits",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "user_name": {
+          "name": "user_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_group": {
+          "name": "user_group",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cmr": {
+          "name": "cmr",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "x": {
+          "name": "x",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "y": {
+          "name": "y",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "process_switch_a": {
+          "name": "process_switch_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observation_mode_a": {
+          "name": "observation_mode_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_a": {
+          "name": "filter_a",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "process_switch_b": {
+          "name": "process_switch_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observation_mode_b": {
+          "name": "observation_mode_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "filter_b": {
+          "name": "filter_b",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "obs_priority": {
+          "name": "obs_priority",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_constraints": {
+          "name": "time_constraints",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "proposal_id": {
+          "name": "proposal_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "proposal_no": {
+          "name": "proposal_no",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "to_gp": {
+          "name": "to_gp",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tootogp_schedule": {
+      "name": "tootogp_schedule",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "approved_too_id": {
+          "name": "approved_too_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_ep_db_object_id": {
+          "name": "parent_ep_db_object_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generated_ep_db_object_id": {
+          "name": "generated_ep_db_object_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence_no": {
+          "name": "sequence_no",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "earliest_start_time": {
+          "name": "earliest_start_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_start_time": {
+          "name": "planned_start_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planned_end_time": {
+          "name": "planned_end_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cadence_value": {
+          "name": "cadence_value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cadence_unit": {
+          "name": "cadence_unit",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_number_of_visits_snapshot": {
+          "name": "reviewed_number_of_visits_snapshot",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_single_exposure_time_snapshot": {
+          "name": "reviewed_single_exposure_time_snapshot",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_total_exposure_time_snapshot": {
+          "name": "reviewed_total_exposure_time_snapshot",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'planned'"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tootogp_schedule_approved_too_id_approved_too_id_fk": {
+          "name": "tootogp_schedule_approved_too_id_approved_too_id_fk",
+          "tableFrom": "tootogp_schedule",
+          "tableTo": "approved_too",
+          "columnsFrom": [
+            "approved_too_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "tootogp_schedule_generated_ep_db_object_id_unique": {
+          "name": "tootogp_schedule_generated_ep_db_object_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "generated_ep_db_object_id"
+          ]
+        },
+        "tootogp_schedule_parent_sequence_unique": {
+          "name": "tootogp_schedule_parent_sequence_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "approved_too_id",
+            "sequence_no"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "users_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "age": {
+          "name": "age",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "vip": {
+          "name": "vip",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        },
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.wxteffdaily": {
+      "name": "wxteffdaily",
+      "schema": "",
+      "columns": {
+        "record_date": {
+          "name": "record_date",
+          "type": "date",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "wxt_status_01_count": {
+          "name": "wxt_status_01_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_02_count": {
+          "name": "wxt_status_02_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_03_count": {
+          "name": "wxt_status_03_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_04_count": {
+          "name": "wxt_status_04_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_05_count": {
+          "name": "wxt_status_05_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_06_count": {
+          "name": "wxt_status_06_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_07_count": {
+          "name": "wxt_status_07_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_08_count": {
+          "name": "wxt_status_08_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_09_count": {
+          "name": "wxt_status_09_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_10_count": {
+          "name": "wxt_status_10_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_11_count": {
+          "name": "wxt_status_11_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wxt_status_12_count": {
+          "name": "wxt_status_12_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.x_passplan": {
+      "name": "x_passplan",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "recvid": {
+          "name": "recvid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priority": {
+          "name": "priority",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "orbitid": {
+          "name": "orbitid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "downloadmode": {
+          "name": "downloadmode",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transrate": {
+          "name": "transrate",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "channelid": {
+          "name": "channelid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sensorid": {
+          "name": "sensorid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "receivingstation": {
+          "name": "receivingstation",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arrivetime": {
+          "name": "arrivetime",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "leavetime": {
+          "name": "leavetime",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "begintime": {
+          "name": "begintime",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endtime": {
+          "name": "endtime",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "x_passplan_orbitid_key": {
+          "name": "x_passplan_orbitid_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "orbitid"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

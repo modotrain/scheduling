@@ -489,3 +489,26 @@ export const approvedToO = pgTable("approved_too", {
 	type: varchar("type", { length: 255 }),
 });
 
+export const tooToGpSchedule = pgTable("tootogp_schedule", {
+	id: serial().primaryKey().notNull(),
+	approvedTooId: integer("approved_too_id").notNull().references(() => approvedToO.id),
+	parentEpDbObjectId: varchar("parent_ep_db_object_id", { length: 255 }).notNull(),
+	generatedEpDbObjectId: varchar("generated_ep_db_object_id", { length: 255 }).notNull(),
+	sequenceNo: integer("sequence_no").notNull(),
+	earliestStartTime: timestamp("earliest_start_time", { withTimezone: true, mode: "string" }),
+	plannedStartTime: timestamp("planned_start_time", { withTimezone: true, mode: "string" }),
+	plannedEndTime: timestamp("planned_end_time", { withTimezone: true, mode: "string" }),
+	cadenceValue: integer("cadence_value"),
+	cadenceUnit: varchar("cadence_unit", { length: 32 }),
+	reviewedNumberOfVisitsSnapshot: integer("reviewed_number_of_visits_snapshot"),
+	reviewedSingleExposureTimeSnapshot: integer("reviewed_single_exposure_time_snapshot"),
+	reviewedTotalExposureTimeSnapshot: integer("reviewed_total_exposure_time_snapshot"),
+	status: varchar("status", { length: 32 }).notNull().default("planned"),
+	notes: text("notes"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+}, (table) => [
+	unique("tootogp_schedule_generated_ep_db_object_id_unique").on(table.generatedEpDbObjectId),
+	unique("tootogp_schedule_parent_sequence_unique").on(table.approvedTooId, table.sequenceNo),
+]);
+

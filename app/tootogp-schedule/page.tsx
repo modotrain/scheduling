@@ -3,43 +3,55 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
-type ApprovedTooRow = {
+type GpPlanningListRow = {
   id: number;
+  approvedTooId: number;
   sourceName: string | null;
-  proposalNo: string | null;
-  pi: string | null;
-  requestUrgencyOfObservation: string | null;
-  reviewedUrgencyOfObservation: string | null;
-  receivedTime: string | null;
-  type: string | null;
+  parentEpDbObjectId: string;
+  generatedEpDbObjectId: string;
+  sequenceNo: number;
+  plannedStartTime: string | null;
+  plannedEndTime: string | null;
+  cadenceValue: number | null;
+  cadenceUnit: string | null;
+  status: string;
   scheduledStatus: "scheduled" | "unscheduled";
+  matchedObsWpId: number | null;
 };
 
-type SortConfig = { col: keyof ApprovedTooRow | null; dir: "asc" | "desc" };
+type SortConfig = { col: keyof GpPlanningListRow | null; dir: "asc" | "desc" };
 
-const TABLE_COLS: (keyof ApprovedTooRow)[] = [
+const TABLE_COLS: (keyof GpPlanningListRow)[] = [
   "id",
   "sourceName",
-  "proposalNo",
-  "pi",
-  "requestUrgencyOfObservation",
-  "reviewedUrgencyOfObservation",
-  "receivedTime",
-  "type",
+  "parentEpDbObjectId",
+  "generatedEpDbObjectId",
+  "sequenceNo",
+  "plannedStartTime",
+  "plannedEndTime",
+  "scheduledStatus",
 ];
 
-const COL_LABELS: Partial<Record<keyof ApprovedTooRow, string>> = {
+const COL_LABELS: Partial<Record<keyof GpPlanningListRow, string>> = {
   id: "ID",
   sourceName: "Source",
-  proposalNo: "Proposal No",
-  pi: "PI",
-  requestUrgencyOfObservation: "Req. Urgency",
-  reviewedUrgencyOfObservation: "Rev. Urgency",
-  receivedTime: "Received Time",
-  type: "Type",
+  parentEpDbObjectId: "Parent EP DB Object ID",
+  generatedEpDbObjectId: "Planned EP DB Object ID",
+  sequenceNo: "Visit",
+  plannedStartTime: "Planned Start",
+  plannedEndTime: "Planned End",
+  scheduledStatus: "Status",
 };
 
-function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"] }) {
+const GP_PLANNING_CACHE_KEY = "tootogp-schedule-cache-v1";
+const GP_PLANNING_CACHE_TTL_MS = 10 * 60 * 1000;
+
+type GpPlanningCachePayload = {
+  ts: number;
+  rows: GpPlanningListRow[];
+};
+
+function StatusIndicator({ status }: { status: GpPlanningListRow["scheduledStatus"] }) {
   const scheduled = status === "scheduled";
 
   return (
@@ -56,47 +68,37 @@ function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"]
   );
 }
 
-const TOO_MANAGEMENT_CACHE_KEY = "too-management-list-cache-v1";
-const TOO_MANAGEMENT_CACHE_TTL_MS = 10 * 60 * 1000;
-
-type TooManagementCachePayload = {
-  ts: number;
-  rows: ApprovedTooRow[];
-};
-
-export default function TooManagementPage() {
-  const [rows, setRows] = useState<ApprovedTooRow[]>([]);
+export default function TooToGpSchedulePage() {
+  const [rows, setRows] = useState<GpPlanningListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [searchText, setSearchText] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
 
   const loadRows = useCallback(async () => {
     setLoading(true);
     try {
-      const rawCache = sessionStorage.getItem(TOO_MANAGEMENT_CACHE_KEY);
+      const rawCache = sessionStorage.getItem(GP_PLANNING_CACHE_KEY);
       if (rawCache) {
-        const parsed = JSON.parse(rawCache) as TooManagementCachePayload;
-        if (Date.now() - parsed.ts < TOO_MANAGEMENT_CACHE_TTL_MS) {
+        const parsed = JSON.parse(rawCache) as GpPlanningCachePayload;
+        if (Date.now() - parsed.ts < GP_PLANNING_CACHE_TTL_MS) {
           setRows(parsed.rows ?? []);
           setLoading(false);
           return;
         }
       }
 
-      const res = await fetch("/api/approved-too", { cache: "no-store" });
-      const data = (await res.json()) as { rows?: ApprovedTooRow[]; error?: string };
-      if (!res.ok) {
-        throw new Error(data.error ?? "Failed to load");
+      const response = await fetch("/api/tootogp-schedule", { cache: "no-store" });
+      const data = (await response.json()) as { rows?: GpPlanningListRow[]; error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to load GP planning list");
       }
+
       const nextRows = data.rows ?? [];
       setRows(nextRows);
-      const cachePayload: TooManagementCachePayload = { ts: Date.now(), rows: nextRows };
-      sessionStorage.setItem(TOO_MANAGEMENT_CACHE_KEY, JSON.stringify(cachePayload));
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to load");
-      setMessageTone("error");
+      sessionStorage.setItem(GP_PLANNING_CACHE_KEY, JSON.stringify({ ts: Date.now(), rows: nextRows }));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to load GP planning list");
     } finally {
       setLoading(false);
     }
@@ -106,7 +108,7 @@ export default function TooManagementPage() {
     void loadRows();
   }, [loadRows]);
 
-  function handleSort(col: keyof ApprovedTooRow) {
+  function handleSort(col: keyof GpPlanningListRow) {
     setSortConfig((prev) => ({
       col,
       dir: prev.col === col && prev.dir === "asc" ? "desc" : "asc",
@@ -138,7 +140,7 @@ export default function TooManagementPage() {
     });
   }
 
-  function SortIcon({ col }: { col: keyof ApprovedTooRow }) {
+  function SortIcon({ col }: { col: keyof GpPlanningListRow }) {
     if (sortConfig.col !== col) {
       return <span className="ml-1 text-slate-300 dark:text-slate-600">⇅</span>;
     }
@@ -150,40 +152,24 @@ export default function TooManagementPage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] p-4 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:p-8">
       <div className="mx-auto max-w-7xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">ToO Management</h1>
+            <h1 className="text-2xl font-semibold">GP Planning</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Approved ToO records with live schedule matching status. Click <strong>Details</strong> to view and edit a record.
+              Manual ToO-to-GP planning rows used to track pre-arranged visits before they appear in obs_wp.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/tootogp-schedule"
+              href="/too-management"
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              GP Planning
-            </Link>
-            <Link
-              href="/too-req"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              ToO Req
-            </Link>
-            <Link
-              href="/"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              ← Home
+              ← ToO Management
             </Link>
           </div>
         </div>
 
-        {message ? (
-          <p className={`mt-3 text-sm ${messageTone === "error" ? "text-rose-700" : "text-emerald-700"}`}>
-            {message}
-          </p>
-        ) : null}
+        {message ? <p className="mt-3 text-sm text-rose-700">{message}</p> : null}
 
         <div className="mt-4">
           <input
@@ -212,13 +198,12 @@ export default function TooManagementPage() {
                   </th>
                 ))}
                 <th className="whitespace-nowrap px-3 py-2">Actions</th>
-                <th className="whitespace-nowrap px-3 py-2">Status</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-3 py-4" colSpan={TABLE_COLS.length + 2}>
+                  <td className="px-3 py-4" colSpan={TABLE_COLS.length + 1}>
                     <div className="flex justify-center">
                       <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
                     </div>
@@ -226,21 +211,23 @@ export default function TooManagementPage() {
                 </tr>
               ) : displayRows.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={TABLE_COLS.length + 2}>
-                    {searchText ? "No matching rows." : "No rows found."}
+                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={TABLE_COLS.length + 1}>
+                    {searchText ? "No matching rows." : "No GP planning rows found."}
                   </td>
                 </tr>
               ) : (
-                displayRows.map((row, i) => (
+                displayRows.map((row, index) => (
                   <tr
                     key={row.id}
                     className={`border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60 ${
-                      i % 2 === 0 ? "bg-slate-50 dark:bg-slate-800/50" : ""
+                      index % 2 === 0 ? "bg-slate-50 dark:bg-slate-800/50" : ""
                     }`}
                   >
                     {TABLE_COLS.map((col) => (
                       <td key={col} className="whitespace-nowrap px-3 py-2">
-                        {row[col] === null || row[col] === undefined || row[col] === "" ? (
+                        {col === "scheduledStatus" ? (
+                          <StatusIndicator status={row.scheduledStatus} />
+                        ) : row[col] === null || row[col] === undefined || row[col] === "" ? (
                           <span className="text-slate-400">—</span>
                         ) : (
                           String(row[col])
@@ -248,15 +235,22 @@ export default function TooManagementPage() {
                       </td>
                     ))}
                     <td className="px-3 py-2">
-                      <Link
-                        href={`/too-management/${row.id}`}
-                        className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
-                      >
-                        Details
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusIndicator status={row.scheduledStatus} />
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/too-management/${row.approvedTooId}`}
+                          className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
+                        >
+                          ToO
+                        </Link>
+                        {row.matchedObsWpId ? (
+                          <Link
+                            href={`/obs-wp/${row.matchedObsWpId}`}
+                            className="rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            Obs
+                          </Link>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))

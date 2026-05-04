@@ -8,6 +8,13 @@
       "when": 1776393575118,
       "tag": "0000_dear_mandroid",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777912001509,
+      "tag": "0001_curious_micromax",
+      "breakpoints": true
     }
   ]
 }

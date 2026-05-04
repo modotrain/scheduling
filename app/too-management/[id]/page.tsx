@@ -89,6 +89,27 @@ type ScheduleRow = {
   user_name: string | null;
 };
 
+type PlanningRow = {
+  id: number;
+  approvedTooId: number;
+  sourceName: string | null;
+  parentEpDbObjectId: string;
+  generatedEpDbObjectId: string;
+  sequenceNo: number;
+  earliestStartTime: string | null;
+  plannedStartTime: string | null;
+  plannedEndTime: string | null;
+  cadenceValue: number | null;
+  cadenceUnit: string | null;
+  reviewedNumberOfVisitsSnapshot: number | null;
+  reviewedSingleExposureTimeSnapshot: number | null;
+  reviewedTotalExposureTimeSnapshot: number | null;
+  status: string;
+  notes: string | null;
+  scheduledStatus: "scheduled" | "unscheduled";
+  matchedObsWpId: number | null;
+};
+
 const FIELDS: Array<{ key: keyof InputRow; label: string; type?: "text" | "number" | "select" }> = [
   { key: "sourceName", label: "Source Name" },
   { key: "sourceId", label: "Source ID" },
@@ -261,6 +282,10 @@ export default function TooManagementDetailPage() {
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
+  const [planningRows, setPlanningRows] = useState<PlanningRow[]>([]);
+  const [planningLoading, setPlanningLoading] = useState(true);
+  const [creatingPlan, setCreatingPlan] = useState(false);
+  const [earliestStartInput, setEarliestStartInput] = useState("");
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
 
@@ -291,6 +316,26 @@ export default function TooManagementDetailPage() {
   useEffect(() => {
     void loadRow();
   }, [loadRow]);
+
+  const loadPlanning = useCallback(async () => {
+    setPlanningLoading(true);
+    try {
+      const response = await fetch(`/api/approved-too/${id}/gp-planning`, { cache: "no-store" });
+      const data = (await response.json()) as { rows?: PlanningRow[]; error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to load GP planning");
+      }
+      setPlanningRows(data.rows ?? []);
+    } catch {
+      setPlanningRows([]);
+    } finally {
+      setPlanningLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void loadPlanning();
+  }, [loadPlanning]);
 
   const loadSchedule = useCallback(async () => {
     setScheduleLoading(true);
@@ -348,6 +393,7 @@ export default function TooManagementDetailPage() {
         setInput(rowToInput(data.row));
       }
 
+      await loadPlanning();
       await loadSchedule();
       setEditing(false);
       setStatus("Saved successfully", "success");
@@ -378,6 +424,35 @@ export default function TooManagementDetailPage() {
   async function handleConfirmSave() {
     setConfirmOpen(false);
     await commitSave();
+  }
+
+  async function handleAddPlanning() {
+    setCreatingPlan(true);
+
+    try {
+      const response = await fetch(`/api/approved-too/${id}/gp-planning`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          earliestStartTime: earliestStartInput
+            ? new Date(earliestStartInput).toISOString()
+            : null,
+        }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to create GP planning record");
+      }
+
+      setEarliestStartInput("");
+      await loadPlanning();
+      setStatus("GP planning record created", "success");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to create GP planning record", "error");
+    } finally {
+      setCreatingPlan(false);
+    }
   }
 
   function handleCancel() {
@@ -415,6 +490,121 @@ export default function TooManagementDetailPage() {
         ) : null}
 
         <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
+            <h2 className="mr-auto text-base font-semibold">GP Planning</h2>
+            <span className="text-sm text-slate-600 dark:text-slate-300">
+              Planned visits: <span className="font-mono font-medium">{planningRows.length}</span>
+            </span>
+            <Link
+              href="/tootogp-schedule"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              All GP Planning
+            </Link>
+          </div>
+
+          <div className="border-b border-slate-200 bg-slate-50/60 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/30">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+              <div className="flex-1">
+                <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Earliest Start Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={earliestStartInput}
+                  onChange={(event) => setEarliestStartInput(event.target.value)}
+                  disabled={creatingPlan || loading || !row}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleAddPlanning()}
+                disabled={creatingPlan || loading || !row || !row.epDbObjectId}
+                className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
+              >
+                {creatingPlan ? "Adding..." : "Add Planned Visit"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              If no start time is provided, the next record defaults after the latest GP planning row using cadence when available. 1 orbit = 97 minutes.
+            </p>
+          </div>
+
+          {planningLoading ? (
+            <p className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">Loading GP planning…</p>
+          ) : planningRows.length === 0 ? (
+            <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
+              No GP planning rows yet. Add a planned visit to start tracking manual ToO-to-GP conversion.
+            </div>
+          ) : (
+            <div className="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-3">
+              {planningRows.map((item) => {
+                const scheduled = item.scheduledStatus === "scheduled";
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-xl bg-white/80 p-4 shadow-sm dark:bg-slate-900/70 ${scheduled ? "border border-slate-200 dark:border-slate-700" : "border border-dashed border-slate-300 dark:border-slate-600"}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className={`mb-2 inline-flex rounded-lg px-2.5 py-1 text-xs font-medium ${scheduled ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-primary/10 text-primary"}`}>
+                          {scheduled ? "Scheduled" : "Planned"}
+                        </div>
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {item.generatedEpDbObjectId}
+                        </h3>
+                      </div>
+                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        Visit {item.sequenceNo}
+                      </span>
+                    </div>
+
+                    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <div>
+                        <dt className="text-xs text-slate-500 dark:text-slate-400">Planned Start</dt>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.plannedStartTime || "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500 dark:text-slate-400">Planned End</dt>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.plannedEndTime || "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500 dark:text-slate-400">Cadence</dt>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">
+                          {item.cadenceValue ? `${item.cadenceValue} ${item.cadenceUnit || ""}`.trim() : "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500 dark:text-slate-400">Single Exp. Time</dt>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedSingleExposureTimeSnapshot ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500 dark:text-slate-400">Total Exp. Time</dt>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedTotalExposureTimeSnapshot ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500 dark:text-slate-400">Reviewed Visits</dt>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedNumberOfVisitsSnapshot ?? "—"}</dd>
+                      </div>
+                    </dl>
+
+                    {item.matchedObsWpId ? (
+                      <div className="mt-3 flex justify-end">
+                        <Link
+                          href={`/obs-wp/${item.matchedObsWpId}`}
+                          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                        >
+                          Observation Details
+                        </Link>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
             <h2 className="mr-auto text-base font-semibold">Schedule Information</h2>
             <span className="text-sm text-slate-600 dark:text-slate-300">
