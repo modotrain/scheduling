@@ -671,7 +671,11 @@ export default function TooManagementDetailPage() {
           </div>
 
           {planningLoading ? (
-            <p className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">Loading GP planning…</p>
+            <div className="px-4 py-4">
+              <div className="flex justify-center">
+                <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
+              </div>
+            </div>
           ) : planningRows.length === 0 ? (
             <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
               No GP planning for this target. Add a GP visit to start tracking GP-Scheduled ToO proposal.
@@ -781,7 +785,11 @@ export default function TooManagementDetailPage() {
           </div>
 
           {scheduleLoading ? (
-            <p className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">Loading schedule information…</p>
+            <div className="px-4 py-4">
+              <div className="flex justify-center">
+                <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
+              </div>
+            </div>
           ) : scheduleRows.length === 0 ? (
             <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
               No matching workplan records found for this proposal target.
@@ -874,7 +882,11 @@ export default function TooManagementDetailPage() {
           </div>
 
           {loading ? (
-            <p className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">Loading…</p>
+            <div className="px-4 py-4">
+              <div className="flex justify-center">
+                <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
+              </div>
+            </div>
           ) : !row ? (
             <p className="px-4 py-4 text-sm text-rose-600">Record not found.</p>
           ) : (
