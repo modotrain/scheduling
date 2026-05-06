@@ -122,7 +122,7 @@ const FIELDS: Array<{ key: keyof InputRow; label: string; type?: "text" | "numbe
   { key: "sourceType", label: "Source Type" },
   { key: "stp", label: "STP" },
   { key: "epscProposal", label: "EPSC Proposal", type: "select" },
-  { key: "epDbObjectId", label: "EP DB Object ID" },
+  { key: "epDbObjectId", label: "DB ID" },
   { key: "payload", label: "Payload" },
   { key: "flux03To10KeV", label: "0.3-10 keV Flux" },
   { key: "vBandMagnitude", label: "V-band Magnitude" },
@@ -665,7 +665,7 @@ export default function TooManagementDetailPage() {
                 disabled={planningSubmitting || loading || !row || !row.epDbObjectId}
                 className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
               >
-                Add Planned Visit
+                Add GP Visit
               </button>
             </div>
           </div>
@@ -784,7 +784,7 @@ export default function TooManagementDetailPage() {
             <p className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">Loading schedule information…</p>
           ) : scheduleRows.length === 0 ? (
             <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
-              No matching obs_wp records found for this EP DB Object ID.
+              No matching obs_wp records found for this EP_DB_Object_ID.
             </div>
           ) : (
             <div className="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-3">
@@ -1155,7 +1155,7 @@ export default function TooManagementDetailPage() {
                 disabled={planningSubmitting || loading || !row || !row.epDbObjectId || !plannedStartInput}
                 className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
               >
-                {planningSubmitting ? "Saving..." : editingPlanningId ? "Save Visit" : "Add Planned Visit"}
+                {planningSubmitting ? "Saving..." : editingPlanningId ? "Save GP Visit" : "Add GP Visit"}
               </button>
             </div>
           </div>

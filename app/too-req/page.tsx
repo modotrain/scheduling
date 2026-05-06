@@ -107,7 +107,7 @@ const FIELDS: FieldDef[] = [
   { key: "request_date", label: "Date" },
   { key: "request_urgency", label: "Urgency" },
   { key: "obs_type", label: "Obs Type" },
-  { key: "ep_db_object_id", label: "EP DB Object ID" },
+  { key: "ep_db_object_id", label: "DB ID" },
   { key: "right_ascension", label: "RA" },
   { key: "declination", label: "Dec" },
   { key: "requested_obs_duration_in_seconds", label: "Dur (s)", type: "number" },

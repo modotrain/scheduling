@@ -68,15 +68,15 @@ type ObsSortConfig = { col: keyof ObsListRow | null; dir: "asc" | "desc" };
 const OBS_COLS: { key: keyof ObsListRow; label: string }[] = [
   { key: "startDate", label: "Start Date" },
   { key: "endDate", label: "End Date" },
-  { key: "validSecs", label: "Valid Secs" },
+  { key: "validSecs", label: "Valid Dur." },
   { key: "obsId", label: "Obs ID" },
-  { key: "epDbObjectId", label: "EP DB Object ID" },
+  { key: "epDbObjectId", label: "EP DB ID" },
   { key: "observationModeA", label: "Mode A" },
   { key: "filterA", label: "Filter A" },
   { key: "observationModeB", label: "Mode B" },
   { key: "filterB", label: "Filter B" },
   { key: "pointingDurationInOrbits", label: "Obt" },
-  { key: "pointingDurationInSeconds", label: "Dur (sec)" },
+  { key: "pointingDurationInSeconds", label: "Duration" },
 ];
 
 type FieldInput = Omit<GpCycle2Row, "id">;
