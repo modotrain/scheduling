@@ -350,6 +350,7 @@ export default function TooManagementDetailPage() {
   const [planningNotes, setPlanningNotes] = useState("");
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
+  const pageLoading = loading || planningLoading || scheduleLoading;
 
   const resetPlanningForm = useCallback(() => {
     const fallback = planningWindowOptions[0];
@@ -646,6 +647,14 @@ export default function TooManagementDetailPage() {
           </p>
         ) : null}
 
+        {pageLoading ? (
+          <div className="mt-4 px-4">
+            <div className="flex justify-center">
+              <div className="h-2 w-36 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
+            </div>
+          </div>
+        ) : null}
+
         <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
             <h2 className="mr-auto text-base font-semibold">GP Planning</h2>
@@ -671,11 +680,7 @@ export default function TooManagementDetailPage() {
           </div>
 
           {planningLoading ? (
-            <div className="px-4 py-4">
-              <div className="flex justify-center">
-                <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
-              </div>
-            </div>
+            <div className="px-4 py-4" aria-hidden="true" />
           ) : planningRows.length === 0 ? (
             <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
               No GP planning for this target. Add a GP visit to start tracking GP-Scheduled ToO proposal.
@@ -785,11 +790,7 @@ export default function TooManagementDetailPage() {
           </div>
 
           {scheduleLoading ? (
-            <div className="px-4 py-4">
-              <div className="flex justify-center">
-                <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
-              </div>
-            </div>
+            <div className="px-4 py-4" aria-hidden="true" />
           ) : scheduleRows.length === 0 ? (
             <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
               No matching workplan records found for this proposal target.
@@ -882,11 +883,7 @@ export default function TooManagementDetailPage() {
           </div>
 
           {loading ? (
-            <div className="px-4 py-4">
-              <div className="flex justify-center">
-                <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
-              </div>
-            </div>
+            <div className="px-4 py-4" aria-hidden="true" />
           ) : !row ? (
             <p className="px-4 py-4 text-sm text-rose-600">Record not found.</p>
           ) : (
