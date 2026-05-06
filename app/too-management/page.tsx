@@ -22,7 +22,7 @@ const TABLE_COLS: (keyof ApprovedTooRow)[] = [
   "sourceName",
   "proposalNo",
   "pi",
-  "requestUrgencyOfObservation",
+  // "requestUrgencyOfObservation",
   "reviewedUrgencyOfObservation",
   "receivedTime",
   "type",
@@ -43,16 +43,9 @@ function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"]
   const scheduled = status === "scheduled";
 
   return (
-    <div className="flex min-w-[140px] items-center gap-2">
-      <div className="flex h-5 w-14 items-end gap-1 rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
-        <span className={`block w-1.5 rounded-sm ${scheduled ? "h-2 bg-emerald-400" : "h-1 bg-slate-300 dark:bg-slate-600"}`} />
-        <span className={`block w-1.5 rounded-sm ${scheduled ? "h-3.5 bg-emerald-500" : "h-1.5 bg-slate-300 dark:bg-slate-600"}`} />
-        <span className={`block w-1.5 rounded-sm ${scheduled ? "h-5 bg-emerald-600" : "h-2 bg-slate-300 dark:bg-slate-600"}`} />
-      </div>
-      <span className={`text-xs font-medium uppercase tracking-wide ${scheduled ? "text-emerald-700 dark:text-emerald-300" : "text-slate-500 dark:text-slate-400"}`}>
-        {status}
-      </span>
-    </div>
+    <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-medium uppercase tracking-wide ${scheduled ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-slate-200/60 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300"}`}>
+      {status}
+    </span>
   );
 }
 
@@ -211,8 +204,8 @@ export default function TooManagementPage() {
                     </span>
                   </th>
                 ))}
-                <th className="whitespace-nowrap px-3 py-2">Actions</th>
                 <th className="whitespace-nowrap px-3 py-2">Status</th>
+                <th className="whitespace-nowrap px-3 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -248,15 +241,15 @@ export default function TooManagementPage() {
                       </td>
                     ))}
                     <td className="px-3 py-2">
+                      <StatusIndicator status={row.scheduledStatus} />
+                    </td>
+                    <td className="px-3 py-2">
                       <Link
                         href={`/too-management/${row.id}`}
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >
                         Details
                       </Link>
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusIndicator status={row.scheduledStatus} />
                     </td>
                   </tr>
                 ))
