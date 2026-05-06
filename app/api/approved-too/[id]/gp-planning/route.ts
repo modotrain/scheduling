@@ -161,7 +161,7 @@ export async function POST(request: Request, { params }: Params) {
 
     if (!parent.epDbObjectId?.trim()) {
       return NextResponse.json(
-        { error: "EP DB Object ID is required before creating GP planning records" },
+        { error: "EP_DB_Object_ID is required before creating GP planning records" },
         { status: 400 },
       );
     }

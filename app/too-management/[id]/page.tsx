@@ -674,7 +674,7 @@ export default function TooManagementDetailPage() {
             <p className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">Loading GP planning…</p>
           ) : planningRows.length === 0 ? (
             <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
-              No GP planning rows yet. Add a planned visit to start tracking manual ToO-to-GP conversion.
+              No GP planning for this target. Add a GP visit to start tracking GP-Scheduled ToO proposal.
             </div>
           ) : (
             <div className="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-3">
@@ -784,7 +784,7 @@ export default function TooManagementDetailPage() {
             <p className="px-4 py-4 text-sm text-slate-500 dark:text-slate-400">Loading schedule information…</p>
           ) : scheduleRows.length === 0 ? (
             <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
-              No matching obs_wp records found for this EP_DB_Object_ID.
+              No matching workplan records found for this proposal target.
             </div>
           ) : (
             <div className="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-3">

@@ -70,7 +70,7 @@ const OBS_COLS: { key: keyof ObsListRow; label: string }[] = [
   { key: "endDate", label: "End Date" },
   { key: "validSecs", label: "Valid Dur." },
   { key: "obsId", label: "Obs ID" },
-  { key: "epDbObjectId", label: "EP DB ID" },
+  { key: "epDbObjectId", label: "DB ID" },
   { key: "observationModeA", label: "Mode A" },
   { key: "filterA", label: "Filter A" },
   { key: "observationModeB", label: "Mode B" },
