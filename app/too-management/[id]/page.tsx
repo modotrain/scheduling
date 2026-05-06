@@ -1017,7 +1017,7 @@ export default function TooManagementDetailPage() {
           <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
             <div className="border-b border-slate-200 px-6 py-4 dark:border-slate-700">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                {editingPlanningId ? "Edit GP Planning" : "Add GP Planning"}
+                {editingPlanningId ? "Edit GP Plan" : "Add GP Plan"}
               </h3>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                 Define the schedulable date window and planning parameters for this GP visit.
