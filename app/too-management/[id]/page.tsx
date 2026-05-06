@@ -343,7 +343,7 @@ export default function TooManagementDetailPage() {
   const [planningWindowPreset, setPlanningWindowPreset] = useState(planningWindowOptions[0]?.value ?? "custom");
   const [plannedStartInput, setPlannedStartInput] = useState(planningWindowOptions[0]?.start ?? "");
   const [plannedEndInput, setPlannedEndInput] = useState(planningWindowOptions[0]?.end ?? "");
-  const [planningCadenceValue, setPlanningCadenceValue] = useState("");
+  const [planningCadenceValue, setPlanningCadenceValue] = useState("0");
   const [planningCadenceUnit, setPlanningCadenceUnit] = useState("");
   const [planningSingleExposureTime, setPlanningSingleExposureTime] = useState("");
   const [planningTotalExposureTime, setPlanningTotalExposureTime] = useState("");
@@ -352,6 +352,57 @@ export default function TooManagementDetailPage() {
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const pageLoading = loading || planningLoading || scheduleLoading;
 
+  const matchedWindowPreset = useMemo(() => {
+    return planningWindowOptions.find(
+      (option) => option.start === plannedStartInput && option.end === plannedEndInput,
+    );
+  }, [plannedEndInput, plannedStartInput, planningWindowOptions]);
+
+  const cadenceNumeric = planningCadenceValue === "" ? null : Number(planningCadenceValue);
+  const singleExposureNumeric = planningSingleExposureTime === "" ? null : Number(planningSingleExposureTime);
+  const totalExposureNumeric = planningTotalExposureTime === "" ? null : Number(planningTotalExposureTime);
+
+  const planningValidationErrors = useMemo(() => {
+    const errors: string[] = [];
+
+    if (cadenceNumeric !== null) {
+      if (Number.isNaN(cadenceNumeric) || cadenceNumeric < 0) {
+        errors.push("Cadence must be greater than or equal to 0.");
+      }
+      if (cadenceNumeric > 0 && !planningCadenceUnit) {
+        errors.push("Cadence Unit is required when Cadence is greater than 0.");
+      }
+    }
+
+    if (singleExposureNumeric !== null) {
+      if (Number.isNaN(singleExposureNumeric) || singleExposureNumeric < 1000) {
+        errors.push("Single Exposure Time must be at least 1000.");
+      }
+    }
+
+    if (totalExposureNumeric !== null) {
+      if (Number.isNaN(totalExposureNumeric) || totalExposureNumeric < 1000) {
+        errors.push("Total Exposure Time must be at least 1000.");
+      }
+    }
+
+    if (singleExposureNumeric !== null && totalExposureNumeric !== null) {
+      if (singleExposureNumeric >= 1000 && totalExposureNumeric >= 1000 && totalExposureNumeric % singleExposureNumeric !== 0) {
+        errors.push("Total Exposure Time must be an integer multiple of Single Exposure Time.");
+      }
+    }
+
+    return errors;
+  }, [cadenceNumeric, planningCadenceUnit, singleExposureNumeric, totalExposureNumeric]);
+
+  const canSubmitPlanning =
+    !planningSubmitting &&
+    !loading &&
+    !!row &&
+    !!row.epDbObjectId &&
+    !!plannedStartInput &&
+    planningValidationErrors.length === 0;
+
   const resetPlanningForm = useCallback(() => {
     const fallback = planningWindowOptions[0];
     setPlanningModalOpen(false);
@@ -359,12 +410,12 @@ export default function TooManagementDetailPage() {
     setPlanningWindowPreset(fallback?.value ?? "custom");
     setPlannedStartInput(fallback?.start ?? "");
     setPlannedEndInput(fallback?.end ?? "");
-    setPlanningCadenceValue(row?.reviewedCadence ?? "");
-    setPlanningCadenceUnit(row?.reviewedCadenceUnit ?? "");
+    setPlanningCadenceValue("0");
+    setPlanningCadenceUnit("");
     setPlanningSingleExposureTime(row?.reviewedSingleExposureTime ?? "");
     setPlanningTotalExposureTime(row?.reviewedTotalExposureTime ?? "");
     setPlanningNotes("");
-  }, [planningWindowOptions, row?.reviewedCadence, row?.reviewedCadenceUnit, row?.reviewedSingleExposureTime, row?.reviewedTotalExposureTime]);
+  }, [planningWindowOptions, row?.reviewedSingleExposureTime, row?.reviewedTotalExposureTime]);
 
   function setStatus(nextMessage: string, tone: "success" | "error") {
     setMessage(nextMessage);
@@ -508,6 +559,11 @@ export default function TooManagementDetailPage() {
   }
 
   async function handleSubmitPlanning() {
+    if (planningValidationErrors.length > 0) {
+      setStatus("Please resolve GP plan validation issues before saving", "error");
+      return;
+    }
+
     setPlanningSubmitting(true);
 
     try {
@@ -581,8 +637,8 @@ export default function TooManagementDetailPage() {
     setPlanningWindowPreset(fallback?.value ?? "custom");
     setPlannedStartInput(fallback?.start ?? "");
     setPlannedEndInput(fallback?.end ?? "");
-    setPlanningCadenceValue(row?.reviewedCadence ?? "");
-    setPlanningCadenceUnit(row?.reviewedCadenceUnit ?? "");
+    setPlanningCadenceValue("0");
+    setPlanningCadenceUnit("");
     setPlanningSingleExposureTime(row?.reviewedSingleExposureTime ?? "");
     setPlanningTotalExposureTime(row?.reviewedTotalExposureTime ?? "");
     setPlanningNotes("");
@@ -1026,7 +1082,7 @@ export default function TooManagementDetailPage() {
 
             <div className="max-h-[70vh] overflow-auto px-6 py-4">
               <p className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
-                Planned Start and Planned End are the schedulable date window. The default preset starts from the first Tuesday after three days from today and spans to the following Tuesday.
+                The default preset starts from the first Tuesday after three days from today and spans to the following Tuesday.
               </p>
 
               <div className="grid gap-3 lg:grid-cols-[1.1fr_1fr_1fr] lg:items-end">
@@ -1038,7 +1094,11 @@ export default function TooManagementDetailPage() {
                     value={planningWindowPreset}
                     onChange={(event) => handlePlanningPresetChange(event.target.value)}
                     disabled={planningSubmitting || loading || !row}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    className={`w-full rounded-md border px-3 py-2 text-sm dark:text-slate-100 ${
+                      matchedWindowPreset
+                        ? "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-700 dark:bg-sky-900/25"
+                        : "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800"
+                    }`}
                   >
                     {planningWindowOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -1085,13 +1145,37 @@ export default function TooManagementDetailPage() {
                   <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Cadence
                   </label>
-                  <input
-                    type="number"
-                    value={planningCadenceValue}
-                    onChange={(event) => setPlanningCadenceValue(event.target.value)}
-                    disabled={planningSubmitting || loading || !row}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={planningCadenceValue}
+                      min={0}
+                      step={1}
+                      placeholder="0"
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        if (nextValue === "") {
+                          setPlanningCadenceValue("");
+                          setPlanningCadenceUnit("");
+                          return;
+                        }
+                        const parsed = Number(nextValue);
+                        if (!Number.isNaN(parsed) && parsed >= 0) {
+                          setPlanningCadenceValue(nextValue);
+                          if (parsed === 0) {
+                            setPlanningCadenceUnit("");
+                          }
+                        }
+                      }}
+                      disabled={planningSubmitting || loading || !row}
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                    {cadenceNumeric === 0 ? (
+                      <span className="pointer-events-none absolute inset-y-0 left-8 flex items-center text-xs text-slate-500 dark:text-slate-400">
+                        (one-time visit)
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -1100,7 +1184,7 @@ export default function TooManagementDetailPage() {
                   <select
                     value={planningCadenceUnit}
                     onChange={(event) => setPlanningCadenceUnit(event.target.value)}
-                    disabled={planningSubmitting || loading || !row}
+                    disabled={planningSubmitting || loading || !row || cadenceNumeric === null || cadenceNumeric <= 0}
                     className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                   >
                     <option value="">—</option>
@@ -1114,6 +1198,8 @@ export default function TooManagementDetailPage() {
                   </label>
                   <input
                     type="number"
+                    min={1000}
+                    step={1000}
                     value={planningSingleExposureTime}
                     onChange={(event) => setPlanningSingleExposureTime(event.target.value)}
                     disabled={planningSubmitting || loading || !row}
@@ -1126,12 +1212,35 @@ export default function TooManagementDetailPage() {
                   </label>
                   <input
                     type="number"
+                    min={1000}
+                    step={1000}
                     value={planningTotalExposureTime}
                     onChange={(event) => setPlanningTotalExposureTime(event.target.value)}
                     disabled={planningSubmitting || loading || !row}
                     className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                   />
                 </div>
+              </div>
+
+              <div
+                className={`mt-4 h-10 rounded-lg border px-4 text-sm ${
+                  planningValidationErrors.length > 0
+                    ? "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-200"
+                    : "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700/70 dark:bg-emerald-950/30 dark:text-emerald-200"
+                }`}
+              >
+                <p
+                  className="flex h-full items-center truncate"
+                  title={
+                    planningValidationErrors.length > 0
+                      ? planningValidationErrors.join(" | ")
+                      : "All planning constraints are satisfied and ready to save."
+                  }
+                >
+                  {planningValidationErrors.length > 0
+                    ? planningValidationErrors.join(" | ")
+                    : "All planning constraints are satisfied and ready to save."}
+                </p>
               </div>
 
               <div className="mt-4">
@@ -1161,7 +1270,7 @@ export default function TooManagementDetailPage() {
               <button
                 type="button"
                 onClick={() => void handleSubmitPlanning()}
-                disabled={planningSubmitting || loading || !row || !row.epDbObjectId || !plannedStartInput}
+                disabled={!canSubmitPlanning}
                 className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
               >
                 {planningSubmitting ? "Saving..." : editingPlanningId ? "Save GP Visit" : "Add GP Visit"}
