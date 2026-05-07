@@ -11,6 +11,12 @@ type ApprovedTooRow = {
   requestUrgencyOfObservation: string | null;
   reviewedUrgencyOfObservation: string | null;
   receivedTime: string | null;
+  reviewedTime: string | null;
+  reviewedSingleExposureTime: string | null;
+  reviewedNumberOfVisits: string | null;
+  reviewedTotalExposureTime: string | null;
+  reviewedCadence: string | null;
+  reviewedCadenceUnit: string | null;
   type: string | null;
   scheduledStatus: "scheduled" | "unscheduled";
 };
@@ -22,10 +28,15 @@ const TABLE_COLS: (keyof ApprovedTooRow)[] = [
   "sourceName",
   "proposalNo",
   "pi",
-  // "requestUrgencyOfObservation",
-  "reviewedUrgencyOfObservation",
   "receivedTime",
-  "type",
+  // "requestUrgencyOfObservation",
+  // "reviewedUrgencyOfObservation",
+  // "reviewedTime",
+  "reviewedSingleExposureTime",
+  "reviewedNumberOfVisits",
+  "reviewedTotalExposureTime",
+  "reviewedCadence",
+  // "type",
 ];
 
 const COL_LABELS: Partial<Record<keyof ApprovedTooRow, string>> = {
@@ -33,11 +44,36 @@ const COL_LABELS: Partial<Record<keyof ApprovedTooRow, string>> = {
   sourceName: "Source",
   proposalNo: "Proposal No",
   pi: "PI",
+  receivedTime: "Received",
   requestUrgencyOfObservation: "Req. Urgency",
   reviewedUrgencyOfObservation: "Rev. Urgency",
-  receivedTime: "Received Time",
+  reviewedTime: "Reviewed Time",
+  reviewedSingleExposureTime: "Exp.",
+  reviewedNumberOfVisits: "# Visits",
+  reviewedTotalExposureTime: "Total",
+  reviewedCadence: "Cadence",
+  // receivedTime: "Received Time",
   type: "Type",
 };
+
+function formatCadence(row: ApprovedTooRow) {
+  const cadence = row.reviewedCadence?.trim() ?? "";
+  const cadenceUnit = row.reviewedCadenceUnit?.trim() ?? "";
+
+  if (cadence === "1" && !cadenceUnit) {
+    return "—";
+  }
+
+  if (cadence && cadenceUnit) {
+    return `${cadence} ${cadenceUnit}`;
+  }
+
+  return cadence || cadenceUnit;
+}
+
+function formatReceivedDate(value: string | null) {
+  return value?.split(" ")[0] ?? "";
+}
 
 function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"] }) {
   const scheduled = status === "scheduled";
@@ -231,15 +267,24 @@ export default function TooManagementPage() {
                       i % 2 === 0 ? "bg-slate-50 dark:bg-slate-800/50" : ""
                     }`}
                   >
-                    {TABLE_COLS.map((col) => (
-                      <td key={col} className="whitespace-nowrap px-3 py-2">
-                        {row[col] === null || row[col] === undefined || row[col] === "" ? (
-                          <span className="text-slate-400">—</span>
-                        ) : (
-                          String(row[col])
-                        )}
-                      </td>
-                    ))}
+                    {TABLE_COLS.map((col) => {
+                      const cellValue =
+                        col === "reviewedCadence"
+                          ? formatCadence(row)
+                          : col === "receivedTime"
+                            ? formatReceivedDate(row.receivedTime)
+                            : row[col];
+
+                      return (
+                        <td key={col} className="whitespace-nowrap px-3 py-2">
+                          {cellValue === null || cellValue === undefined || cellValue === "" ? (
+                            <span className="text-slate-400">—</span>
+                          ) : (
+                            String(cellValue)
+                          )}
+                        </td>
+                      );
+                    })}
                     <td className="px-3 py-2">
                       <StatusIndicator status={row.scheduledStatus} />
                     </td>
