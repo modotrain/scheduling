@@ -49,7 +49,7 @@ const COL_LABELS: Partial<Record<keyof GpPlanningListRow, string>> = {
 };
 
 const GP_PLANNING_CACHE_KEY = "tootogp-schedule-cache-v1";
-const GP_PLANNING_CACHE_TTL_MS = 10 * 60 * 1000;
+const GP_PLANNING_CACHE_TTL_MS = 10 * 1000;
 
 type GpPlanningCachePayload = {
   ts: number;

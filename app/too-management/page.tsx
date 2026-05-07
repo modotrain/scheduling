@@ -50,7 +50,7 @@ function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"]
 }
 
 const TOO_MANAGEMENT_CACHE_KEY = "too-management-list-cache-v1";
-const TOO_MANAGEMENT_CACHE_TTL_MS = 10 * 1000;
+const TOO_MANAGEMENT_CACHE_TTL_MS = 10 * 60 * 1000;
 
 type TooManagementCachePayload = {
   ts: number;
