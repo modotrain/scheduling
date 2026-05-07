@@ -10,7 +10,7 @@ export async function GET() {
       .select({
         id: tooToGpSchedule.id,
         approvedTooId: tooToGpSchedule.approvedTooId,
-        operatorName: tooToGpSchedule.operatorName,
+        pi: approvedToO.pi,
         sourceName: approvedToO.sourceName,
         parentEpDbObjectId: tooToGpSchedule.parentEpDbObjectId,
         generatedEpDbObjectId: tooToGpSchedule.generatedEpDbObjectId,
