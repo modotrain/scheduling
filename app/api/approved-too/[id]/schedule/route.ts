@@ -30,10 +30,10 @@ export async function GET(_request: Request, { params }: Params) {
         o.user_name
       FROM approved_too a
       JOIN obs_wp o
-        ON a.ep_db_object_id IS NOT NULL
-       AND a.ep_db_object_id <> ''
-       AND o.ep_db_object_id IS NOT NULL
-       AND o.ep_db_object_id ILIKE '%' || a.ep_db_object_id || '%'
+        ON a.source_id IS NOT NULL
+       AND a.source_id <> ''
+       AND o.source_id IS NOT NULL
+       AND o.source_id = a.source_id
       WHERE a.id = ${numId}
       ORDER BY o.start_date ASC NULLS LAST, o.id ASC
     `);

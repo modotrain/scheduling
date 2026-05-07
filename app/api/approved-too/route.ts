@@ -11,13 +11,13 @@ export async function GET() {
       db.execute(sql`
         SELECT a.id
         FROM approved_too a
-        WHERE a.ep_db_object_id IS NOT NULL
-          AND a.ep_db_object_id <> ''
+        WHERE a.source_id IS NOT NULL
+          AND a.source_id <> ''
           AND EXISTS (
             SELECT 1
             FROM obs_wp o
-            WHERE o.ep_db_object_id IS NOT NULL
-              AND o.ep_db_object_id ILIKE '%' || a.ep_db_object_id || '%'
+            WHERE o.source_id IS NOT NULL
+              AND o.source_id = a.source_id
           )
       `),
     ]);

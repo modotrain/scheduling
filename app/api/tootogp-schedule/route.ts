@@ -27,8 +27,10 @@ export async function GET() {
             when exists (
               select 1
               from obs_wp o
-              where o.ep_db_object_id is not null
-                and o.ep_db_object_id ilike '%' || ${tooToGpSchedule.generatedEpDbObjectId} || '%'
+              where ${approvedToO.sourceId} is not null
+                and ${approvedToO.sourceId} <> ''
+                and o.source_id is not null
+                and o.source_id = ${approvedToO.sourceId}
             ) then 'scheduled'
             else 'unscheduled'
           end
@@ -36,8 +38,10 @@ export async function GET() {
         matchedObsWpId: sql<number | null>`(
           select o.id
           from obs_wp o
-          where o.ep_db_object_id is not null
-            and o.ep_db_object_id ilike '%' || ${tooToGpSchedule.generatedEpDbObjectId} || '%'
+          where ${approvedToO.sourceId} is not null
+            and ${approvedToO.sourceId} <> ''
+            and o.source_id is not null
+            and o.source_id = ${approvedToO.sourceId}
           order by o.id desc
           limit 1
         )`,
