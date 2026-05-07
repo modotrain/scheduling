@@ -64,12 +64,17 @@ const TABLE_COLS: (keyof GpCycle2Row)[] = [
   "sourceName",
   "proposalNo",
   "pi",
+  "stp",
   "obsType",
 //   "ra",
 //   "dec",
   "totalExposureTime",
 //   "lastValidNomRatio",
+
+  "visitNumber",
+  "cadence",
   "validTimeRatio",
+
 //   "exposureTimeUnit",
 //   "sourcePriority",
 //   "anticipatedToo",
@@ -86,6 +91,9 @@ const COL_LABELS: Partial<Record<keyof GpCycle2Row, string>> = {
   totalExposureTime: "Request Exp.",
   lastValidNomRatio: "Last Obs Compl.",
   validTimeRatio: "Completeness",
+  stp: "STP",
+  cadence: "Cadence",
+  visitNumber: "Visits",
   exposureTimeUnit: "Exp. Unit",
   sourcePriority: "Priority",
   anticipatedToo: "Anticipated ToO",
@@ -199,7 +207,7 @@ export default function GpCycle2Page() {
             <h1 className="text-2xl font-semibold">GP Cycle 2</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               Browse observations. Click <strong>Details</strong> to view and edit all fields in a
-              new tab.
+              new page.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -237,14 +245,15 @@ export default function GpCycle2Page() {
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full border-collapse text-left text-sm">
+          <table className="min-w-full border-collapse text-left text-xs md:text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                <th className="w-10 whitespace-nowrap px-2 py-2 text-center">#</th>
                 {TABLE_COLS.map((col) => (
                   <th
                     key={col}
                     onClick={() => handleSort(col)}
-                    className="cursor-pointer whitespace-nowrap px-3 py-2 select-none hover:bg-slate-200 dark:hover:bg-slate-700"
+                    className="cursor-pointer whitespace-nowrap px-2 py-2 select-none hover:bg-slate-200 dark:hover:bg-slate-700"
                   >
                     <span className="flex items-center">
                       {COL_LABELS[col] ?? col}
@@ -252,13 +261,13 @@ export default function GpCycle2Page() {
                     </span>
                   </th>
                 ))}
-                <th className="whitespace-nowrap px-3 py-2">Actions</th>
+                <th className="whitespace-nowrap px-2 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-3 py-4" colSpan={TABLE_COLS.length + 1}>
+                  <td className="px-2 py-4" colSpan={TABLE_COLS.length + 2}>
                     <div className="flex justify-center">
                       <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
                     </div>
@@ -267,18 +276,19 @@ export default function GpCycle2Page() {
               ) : displayRows.length === 0 ? (
                 <tr>
                   <td
-                    className="px-3 py-4 text-slate-500 dark:text-slate-400"
-                    colSpan={TABLE_COLS.length + 1}
+                    className="px-2 py-4 text-slate-500 dark:text-slate-400"
+                    colSpan={TABLE_COLS.length + 2}
                   >
                     {searchText ? "No matching rows." : "No rows found."}
                   </td>
                 </tr>
               ) : (
-                displayRows.map((row) => (
+                displayRows.map((row, index) => (
                   <tr
                     key={row.id}
                     className="border-b border-slate-100 odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/70 dark:border-slate-800 dark:odd:bg-slate-900 dark:even:bg-slate-800/35 dark:hover:bg-slate-800/70"
                   >
+                    <td className="px-2 py-2 text-center font-mono text-slate-500 dark:text-slate-400">{index + 1}</td>
                     {TABLE_COLS.map((col) => {
                       const val = row[col];
                       const ratio =
@@ -296,7 +306,7 @@ export default function GpCycle2Page() {
                               : ""
                           : "";
                       return (
-                        <td key={col} className={`whitespace-nowrap px-3 py-2 ${ratioCellClass}`}>
+                        <td key={col} className={`px-2 py-2 ${ratioCellClass}`}>
                           {val === null || val === undefined || val === "" ? (
                             <span className="text-slate-400">—</span>
                           ) : (
@@ -305,7 +315,7 @@ export default function GpCycle2Page() {
                         </td>
                       );
                     })}
-                    <td className="px-3 py-2">
+                    <td className="px-2 py-2">
                       <Link
                         href={`/gp-cycle2/${row.id}`}
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
