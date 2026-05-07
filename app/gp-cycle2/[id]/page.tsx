@@ -614,11 +614,11 @@ export default function GpCycle2DetailPage() {
             <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
           </div>
         ) : !row ? (
-          <p className="mt-8 text-rose-600">Record not found.</p>
+          <p className="mt-8 text-rose-600">Proposal not found.</p>
         ) : (
           <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
             <div className="flex items-center justify-between rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-              <h2 className="text-base font-semibold">Record Information</h2>
+              <h2 className="text-base font-semibold">Proposal Information</h2>
               {editing ? (
                 <div className="flex items-center gap-2">
                   <button

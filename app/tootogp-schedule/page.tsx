@@ -238,7 +238,7 @@ export default function TooToGpSchedulePage() {
                           href={`/too-management/${row.approvedTooId}`}
                           className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                         >
-                          ToO
+                          Details
                         </Link>
                         {row.matchedObsWpId ? (
                           <Link
