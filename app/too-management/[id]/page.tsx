@@ -111,6 +111,13 @@ type PlanningRow = {
   matchedObsWpId: number | null;
 };
 
+type TooManagementCachePayload = {
+  ts: number;
+  rows: Array<{ id: number; sourceName: string | null }>;
+};
+
+const TOO_MANAGEMENT_CACHE_KEY = "too-management-list-cache-v1";
+
 const FIELDS: Array<{ key: keyof InputRow; label: string; type?: "text" | "number" | "select" }> = [
   { key: "sourceName", label: "Source Name" },
   { key: "sourceId", label: "Source ID" },
@@ -332,6 +339,8 @@ export default function TooManagementDetailPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
+  const [isVipUser, setIsVipUser] = useState(false);
+  const [cachedSourceName, setCachedSourceName] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
   const [planningRows, setPlanningRows] = useState<PlanningRow[]>([]);
@@ -445,6 +454,46 @@ export default function TooManagementDetailPage() {
     void loadRow();
   }, [loadRow]);
 
+  useEffect(() => {
+    try {
+      const rawCache = sessionStorage.getItem(TOO_MANAGEMENT_CACHE_KEY);
+      if (!rawCache) {
+        setCachedSourceName(null);
+        return;
+      }
+
+      const parsed = JSON.parse(rawCache) as TooManagementCachePayload;
+      const hit = parsed.rows?.find((item) => String(item.id) === id);
+      setCachedSourceName(hit?.sourceName ?? null);
+    } catch {
+      setCachedSourceName(null);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSession() {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        const data = (await response.json()) as { vip?: boolean };
+        if (!cancelled) {
+          setIsVipUser(Boolean(data.vip));
+        }
+      } catch {
+        if (!cancelled) {
+          setIsVipUser(false);
+        }
+      }
+    }
+
+    void loadSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const loadPlanning = useCallback(async () => {
     setPlanningLoading(true);
     try {
@@ -523,6 +572,7 @@ export default function TooManagementDetailPage() {
       if (data.row) {
         setRow(data.row);
         setInput(rowToInput(data.row));
+        setCachedSourceName(data.row.sourceName ?? null);
       }
 
       await loadPlanning();
@@ -679,12 +729,15 @@ export default function TooManagementDetailPage() {
     setMessage("");
   }
 
+  const headerSourceName = row?.sourceName ?? cachedSourceName;
+  const headerTitle = headerSourceName ?? (loading ? "Loading…" : `Record #${id}`);
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] p-4 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:p-8">
       <div className="mx-auto max-w-screen-xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">ToO Management — {row?.sourceName ?? `Record #${id}`}</h1>
+            <h1 className="text-2xl font-semibold">ToO Management — {headerTitle}</h1>
             {row?.pi ? <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.pi}</p> : null}
           </div>
           <div className="flex items-center gap-2">
@@ -907,7 +960,7 @@ export default function TooManagementDetailPage() {
           )}
 
           <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-            <h2 className="text-base font-semibold">Request Information</h2>
+            <h2 className="text-base font-semibold">Proposal Information</h2>
             {editing ? (
               <div className="flex items-center gap-2">
                 <button
@@ -927,14 +980,16 @@ export default function TooManagementDetailPage() {
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                disabled={loading || !row}
-                onClick={() => setEditing(true)}
-                className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
-              >
-                Edit
-              </button>
+              <span title={isVipUser ? "" : "Permission denied: VIP only"}>
+                <button
+                  type="button"
+                  disabled={loading || !row || !isVipUser}
+                  onClick={() => setEditing(true)}
+                  className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Edit
+                </button>
+              </span>
             )}
           </div>
 
