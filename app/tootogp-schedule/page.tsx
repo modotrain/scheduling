@@ -73,6 +73,8 @@ export default function TooToGpSchedulePage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [searchText, setSearchText] = useState("");
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
 
   const loadRows = useCallback(async () => {
@@ -117,13 +119,39 @@ export default function TooToGpSchedulePage() {
 
   function getSortedAndFilteredRows() {
     const query = searchText.toLowerCase().trim();
-    const filtered = query
-      ? rows.filter((row) =>
-          Object.values(row).some(
-            (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(query),
-          ),
+    const normalizeDate = (value: string | null) => {
+      if (!value) return "";
+      const dateTimeSplit = value.split(" ")[0] ?? "";
+      return dateTimeSplit.split("T")[0] ?? "";
+    };
+
+    const filtered = rows.filter((row) => {
+      if (
+        query &&
+        !Object.values(row).some(
+          (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(query),
         )
-      : rows;
+      ) {
+        return false;
+      }
+
+      const rowStart = normalizeDate(row.plannedStartTime);
+      const rowEnd = normalizeDate(row.plannedEndTime);
+
+      // For range filtering, include rows that overlap with the selected window.
+      const effectiveStart = rowStart || rowEnd;
+      const effectiveEnd = rowEnd || rowStart;
+
+      if (startDateFilter && (!effectiveEnd || effectiveEnd < startDateFilter)) {
+        return false;
+      }
+
+      if (endDateFilter && (!effectiveStart || effectiveStart > endDateFilter)) {
+        return false;
+      }
+
+      return true;
+    });
 
     if (!sortConfig.col) {
       return filtered;
@@ -154,7 +182,7 @@ export default function TooToGpSchedulePage() {
       <div className="mx-auto max-w-7xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">GP Planning</h1>
+            <h1 className="text-2xl font-semibold">GP Planning Pool</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               Manual ToO-to-GP planning rows used to track pre-arranged visits before they are scheduled.
             </p>
@@ -171,13 +199,29 @@ export default function TooToGpSchedulePage() {
 
         {message ? <p className="mt-3 text-sm text-rose-700">{message}</p> : null}
 
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <input
             type="text"
             placeholder="Search all columns..."
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            className="min-w-0 flex-1 rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          />
+          <span className="text-sm text-slate-600 dark:text-slate-300">Time Range</span>
+          <input
+            type="date"
+            value={startDateFilter}
+            onChange={(event) => setStartDateFilter(event.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            aria-label="Filter start date"
+          />
+          <span className="text-slate-400 dark:text-slate-500">-</span>
+          <input
+            type="date"
+            value={endDateFilter}
+            onChange={(event) => setEndDateFilter(event.target.value)}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            aria-label="Filter end date"
           />
         </div>
 
