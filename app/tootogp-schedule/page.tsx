@@ -179,7 +179,7 @@ export default function TooToGpSchedulePage() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] p-4 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:p-8">
-      <div className="mx-auto max-w-7xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
+      <div className="mx-auto max-w-screen-2xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold">GP Planning Pool</h1>
@@ -229,6 +229,7 @@ export default function TooToGpSchedulePage() {
           <table className="min-w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                <th className="whitespace-nowrap px-3 py-2 text-slate-400 dark:text-slate-500">#</th>
                 {TABLE_COLS.map((col) => (
                   <th
                     key={col}
@@ -247,7 +248,7 @@ export default function TooToGpSchedulePage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-3 py-4" colSpan={TABLE_COLS.length + 1}>
+                  <td className="px-3 py-4" colSpan={TABLE_COLS.length + 2}>
                     <div className="flex justify-center">
                       <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
                     </div>
@@ -255,7 +256,7 @@ export default function TooToGpSchedulePage() {
                 </tr>
               ) : displayRows.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={TABLE_COLS.length + 1}>
+                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={TABLE_COLS.length + 2}>
                     {searchText ? "No matching rows." : "No GP planning rows found."}
                   </td>
                 </tr>
@@ -267,6 +268,7 @@ export default function TooToGpSchedulePage() {
                       index % 2 === 0 ? "bg-slate-50 dark:bg-slate-800/50" : ""
                     }`}
                   >
+                    <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-slate-400 dark:text-slate-500">{index + 1}</td>
                     {TABLE_COLS.map((col) => (
                       <td key={col} className="whitespace-nowrap px-3 py-2">
                         {col === "scheduledStatus" ? (
