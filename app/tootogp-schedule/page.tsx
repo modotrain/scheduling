@@ -43,10 +43,10 @@ const COL_LABELS: Partial<Record<keyof GpPlanningListRow, string>> = {
   pi: "PI",
   parentEpDbObjectId: "Parent DB ID",
   generatedEpDbObjectId: "Planned DB ID",
-  reviewedSingleExposureTimeSnapshot: "Exp. Time",
+  reviewedSingleExposureTimeSnapshot: "Exp.",
   sequenceNo: "Visit",
-  plannedStartTime: "Window Start",
-  plannedEndTime: "Window End",
+  plannedStartTime: "Start",
+  plannedEndTime: "End",
   scheduledStatus: "Status",
 };
 
