@@ -8,6 +8,7 @@ type ApprovedTooRow = {
   sourceName: string | null;
   proposalNo: string | null;
   pi: string | null;
+  stp: string | null;
   requestUrgencyOfObservation: string | null;
   reviewedUrgencyOfObservation: string | null;
   receivedTime: string | null;
@@ -28,6 +29,7 @@ const TABLE_COLS: (keyof ApprovedTooRow)[] = [
   "sourceName",
   "proposalNo",
   "pi",
+  "stp",
   "receivedTime",
   // "requestUrgencyOfObservation",
   // "reviewedUrgencyOfObservation",
@@ -39,17 +41,21 @@ const TABLE_COLS: (keyof ApprovedTooRow)[] = [
   // "type",
 ];
 
+const STP_VALUES = ["1", "2", "3", "4", "5", "EPSC"] as const;
+type StpFilter = (typeof STP_VALUES)[number] | null;
+
 const COL_LABELS: Partial<Record<keyof ApprovedTooRow, string>> = {
   id: "ID",
   sourceName: "Source",
   proposalNo: "Proposal No",
   pi: "PI",
+  stp: "STP",
   receivedTime: "Received",
   requestUrgencyOfObservation: "Req. Urgency",
   reviewedUrgencyOfObservation: "Rev. Urgency",
   reviewedTime: "Reviewed Time",
   reviewedSingleExposureTime: "Exp.",
-  reviewedNumberOfVisits: "# Visits",
+  reviewedNumberOfVisits: "Visits",
   reviewedTotalExposureTime: "Total",
   reviewedCadence: "Cadence",
   // receivedTime: "Received Time",
@@ -99,6 +105,7 @@ export default function TooManagementPage() {
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [searchText, setSearchText] = useState("");
+  const [stpFilter, setStpFilter] = useState<StpFilter>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
 
   const loadRows = useCallback(async () => {
@@ -144,13 +151,13 @@ export default function TooManagementPage() {
 
   function getSortedAndFilteredRows() {
     const query = searchText.toLowerCase().trim();
-    const filtered = query
-      ? rows.filter((row) =>
-          Object.values(row).some(
-            (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(query),
-          ),
-        )
-      : rows;
+    const filtered = rows.filter((row) => {
+      if (stpFilter !== null && row.stp !== stpFilter) return false;
+      if (query && !Object.values(row).some(
+        (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(query),
+      )) return false;
+      return true;
+    });
 
     if (!sortConfig.col) {
       return filtered;
@@ -214,14 +221,42 @@ export default function TooManagementPage() {
           </p>
         ) : null}
 
-        <div className="mt-4">
+        <div className="mt-4 flex items-center gap-3">
           <input
             type="text"
             placeholder="Search all columns..."
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            className="flex-1 rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
           />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-xs text-slate-500 dark:text-slate-400">STP</span>
+            <div className="flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-600 text-xs">
+              <button
+                onClick={() => setStpFilter(null)}
+                className={`px-3 py-1.5 transition-colors ${
+                  stpFilter === null
+                    ? "bg-primary text-white"
+                    : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                }`}
+              >
+                All
+              </button>
+              {STP_VALUES.map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setStpFilter((prev) => (prev === v ? null : v))}
+                  className={`border-l border-slate-300 px-3 py-1.5 transition-colors dark:border-slate-600 ${
+                    stpFilter === v
+                      ? "bg-primary text-white"
+                      : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="mt-4 overflow-x-auto">
@@ -232,9 +267,11 @@ export default function TooManagementPage() {
                   <th
                     key={col}
                     onClick={() => handleSort(col)}
-                    className="cursor-pointer whitespace-nowrap px-3 py-2 select-none hover:bg-slate-200 dark:hover:bg-slate-700"
+                    className={`cursor-pointer whitespace-nowrap px-3 py-2 select-none hover:bg-slate-200 dark:hover:bg-slate-700 ${
+                      col === "sourceName" || col === "pi" ? "max-w-[9rem]" : ""
+                    }`}
                   >
-                    <span className="flex items-center">
+                    <span className={`flex items-center ${col === "sourceName" || col === "pi" ? "max-w-[9rem] truncate" : ""}`}>
                       {COL_LABELS[col] ?? col}
                       <SortIcon col={col} />
                     </span>
@@ -276,11 +313,18 @@ export default function TooManagementPage() {
                             : row[col];
 
                       return (
-                        <td key={col} className="whitespace-nowrap px-3 py-2">
+                        <td
+                          key={col}
+                          className={`whitespace-nowrap px-3 py-2 ${
+                            col === "sourceName" || col === "pi" ? "max-w-[8rem]" : ""
+                          }`}
+                        >
                           {cellValue === null || cellValue === undefined || cellValue === "" ? (
                             <span className="text-slate-400">—</span>
                           ) : (
-                            String(cellValue)
+                            <span className={col === "sourceName" || col === "pi" ? "block max-w-[8rem] truncate" : ""}>
+                              {String(cellValue)}
+                            </span>
                           )}
                         </td>
                       );
