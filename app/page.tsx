@@ -130,17 +130,17 @@ export default async function HomePage() {
                   className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
                 >
                   <div className="mb-3 inline-flex rounded-lg bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-                    VIP Only
+                    Admin Only
                   </div>
                   <h2 className="text-lg font-semibold">Users</h2>
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    Manage accounts, credentials and VIP permissions.
+                    Manage accounts, credentials and admin permissions.
                   </p>
                 </Link>
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-white/65 p-5 dark:border-slate-700 dark:bg-slate-900/50">
                   <div className="mb-3 inline-flex rounded-lg bg-slate-200/80 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                    VIP Only
+                    Admin Only
                   </div>
                   <h2 className="text-lg font-semibold text-slate-600 dark:text-slate-300">Users</h2>
                   <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">

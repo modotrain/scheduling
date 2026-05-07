@@ -198,14 +198,14 @@ export default function TooManagementPage() {
               href="/tootogp-schedule"
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              GP Planning
+              GP Pool
             </Link>
-            <Link
-              href="/too-req"
+            {/* <Link
+              href="/tootogp-schedule"
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              ToO Req
-            </Link>
+              GP Pool
+            </Link> */}
             <Link
               href="/"
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
