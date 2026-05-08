@@ -88,7 +88,7 @@ export default async function HomePage() {
                 Target of Opportunity
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Link
+                {/* <Link
                   href="/too-req"
                   className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
                 >
@@ -99,7 +99,7 @@ export default async function HomePage() {
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                     Review, edit and triage incoming target-of-opportunity requests.
                   </p>
-                </Link>
+                </Link> */}
 
                 <Link
                   href="/too-management"
@@ -145,7 +145,7 @@ export default async function HomePage() {
                   <div className="mb-3 inline-flex rounded-lg bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
                     Admin Only
                   </div>
-                  <h2 className="text-lg font-semibold">Users</h2>
+                  <h2 className="text-lg font-semibold">Administration</h2>
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                     Manage accounts, credentials and admin permissions.
                   </p>
@@ -155,7 +155,7 @@ export default async function HomePage() {
                   <div className="mb-3 inline-flex rounded-lg bg-slate-200/80 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">
                     Admin Only
                   </div>
-                  <h2 className="text-lg font-semibold text-slate-600 dark:text-slate-300">Users</h2>
+                  <h2 className="text-lg font-semibold text-slate-600 dark:text-slate-300">Administration</h2>
                   <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                     Your account does not have access to users administration.
                   </p>
