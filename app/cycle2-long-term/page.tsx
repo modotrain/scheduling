@@ -65,6 +65,15 @@ type LongTermCachePayload = {
   rows: LongTermRow[];
 };
 
+function parseWeekId(value: string | null): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 const CACHE_KEY = "cycle2-long-term-cache-v1";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -102,6 +111,7 @@ export default function Cycle2LongTermPage() {
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [searchText, setSearchText] = useState("");
+  const [weekFilter, setWeekFilter] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
 
   const loadRows = useCallback(async () => {
@@ -147,19 +157,43 @@ export default function Cycle2LongTermPage() {
 
   function getSortedAndFilteredRows() {
     const query = searchText.toLowerCase().trim();
-    const filtered = query
-      ? rows.filter((row) =>
-          Object.values(row).some(
+    const normalizedWeekFilter = weekFilter.trim();
+    const filtered = rows.filter((row) => {
+      const matchesSearch = query
+        ? Object.values(row).some(
             (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(query),
-          ),
-        )
-      : rows;
+          )
+        : true;
+      const matchesWeek = normalizedWeekFilter
+        ? String(parseWeekId(row.weekId) ?? row.weekId ?? "") === normalizedWeekFilter
+        : true;
+
+      return matchesSearch && matchesWeek;
+    });
 
     if (!sortConfig.col) {
       return filtered;
     }
 
     return [...filtered].sort((a, b) => {
+      if (sortConfig.col === "weekId") {
+        const aWeek = parseWeekId(a.weekId);
+        const bWeek = parseWeekId(b.weekId);
+
+        if (aWeek !== null && bWeek !== null) {
+          const cmp = aWeek - bWeek;
+          return sortConfig.dir === "asc" ? cmp : -cmp;
+        }
+
+        if (aWeek !== null) {
+          return sortConfig.dir === "asc" ? -1 : 1;
+        }
+
+        if (bWeek !== null) {
+          return sortConfig.dir === "asc" ? 1 : -1;
+        }
+      }
+
       const aVal = a[sortConfig.col!] ?? "";
       const bVal = b[sortConfig.col!] ?? "";
       const cmp =
@@ -211,14 +245,25 @@ export default function Cycle2LongTermPage() {
           </p>
         ) : null}
 
-        <div className="mt-4">
+        <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
           <input
             type="text"
             placeholder="Search all columns..."
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
-            className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 lg:flex-1"
           />
+          <div className="flex items-center gap-2 lg:w-56 lg:shrink-0">
+            <span className="whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">Week Filter</span>
+            <input
+              type="number"
+              min="1"
+              placeholder="Week"
+              value={weekFilter}
+              onChange={(event) => setWeekFilter(event.target.value)}
+              className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
         </div>
 
         <div className="mt-4 overflow-x-auto">
@@ -269,6 +314,8 @@ export default function Cycle2LongTermPage() {
                       <td key={col} className="whitespace-nowrap px-3 py-2">
                         {row[col] === null || row[col] === undefined || row[col] === "" ? (
                           <span className="text-slate-400">—</span>
+                        ) : col === "weekId" ? (
+                          parseWeekId(row.weekId) ?? <span className="text-slate-400">—</span>
                         ) : (
                           String(row[col])
                         )}
