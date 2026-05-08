@@ -83,20 +83,24 @@ const TABLE_COLS: (keyof LongTermRow)[] = [
   "weekId",
 //   "tdicId",
   "sourceName",
+  "sourceId",
   "proposalNo",
   "pi",
   "obsType",
+  "sourcePriority",
   "startTime",
   "endTime",
   "totalExposureTime",
-  "cadence",
-  "leftMtDays",
+  "visitNumber",
+  // "cadence",
+  // "leftMtDays",
 ];
 
 const COL_LABELS: Partial<Record<keyof LongTermRow, string>> = {
   weekId: "Week",
   tdicId: "TDIC ID",
   sourceName: "Source",
+  sourceId: "Source ID",
   proposalNo: "Proposal No",
   pi: "PI",
   obsType: "Obs Type",
@@ -105,6 +109,8 @@ const COL_LABELS: Partial<Record<keyof LongTermRow, string>> = {
   totalExposureTime: "Total Exp.",
   cadence: "Cadence",
   leftMtDays: "Left MT",
+  sourcePriority: "Priority",
+  visitNumber: "Visit #",
 };
 
 export default function Cycle2LongTermPage() {
