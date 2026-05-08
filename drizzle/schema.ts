@@ -1,5 +1,5 @@
 import { pgTable, integer, text, boolean, serial, varchar, unique, timestamp, date, doublePrecision, foreignKey } from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
+// import { sql } from "drizzle-orm"
 
 
 
@@ -103,13 +103,13 @@ export const gpCycle2 = pgTable("gp_cycle2", {
 	stp: varchar({ length: 255 }),
 	category: varchar({ length: 255 }),
 	type: varchar({ length: 255 }),
-	payload: varchar({ length: 255 }).default('),
-	wxtCmos: varchar("wxt_cmos", { length: 255 }).default('),
-	cmosX: varchar("cmos_x", { length: 255 }).default('),
-	cmosY: varchar("cmos_y", { length: 255 }).default('),
-	fxtCmr: varchar("fxt_cmr", { length: 255 }).default('),
-	cmrX: varchar("cmr_x", { length: 255 }).default('),
-	cmrY: varchar("cmr_y", { length: 255 }).default('),
+	payload: varchar({ length: 255 }).default(''),
+	wxtCmos: varchar("wxt_cmos", { length: 255 }).default(''),
+	cmosX: varchar("cmos_x", { length: 255 }).default(''),
+	cmosY: varchar("cmos_y", { length: 255 }).default(''),
+	fxtCmr: varchar("fxt_cmr", { length: 255 }).default(''),
+	cmrX: varchar("cmr_x", { length: 255 }).default(''),
+	cmrY: varchar("cmr_y", { length: 255 }).default(''),
 });
 
 export const gpCycle2Proposal = pgTable("gp_cycle2_proposal", {
@@ -199,7 +199,7 @@ export const users = pgTable("users", {
 	email: varchar({ length: 255 }).notNull(),
 	vip: boolean().default(false).notNull(),
 	username: varchar({ length: 255 }).notNull(),
-	passwordHash: text("password_hash").default(').notNull(),
+	passwordHash: text("password_hash").default('').notNull(),
 }, (table) => [
 	unique("users_email_unique").on(table.email),
 	unique("users_username_unique").on(table.username),
