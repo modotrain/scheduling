@@ -25,7 +25,7 @@ export default async function HomePage() {
           />
           <Image
             src="/ep-vi-logo-3-26.svg"
-            alt="Einstein Probe VI Logo"
+            alt="Einstein Probe Logo"
             width={540}
             height={156}
             priority
@@ -39,130 +39,92 @@ export default async function HomePage() {
             Scheduling Control Center
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300 md:text-base">
-            Choose a workspace to continue. ToO requests and GP cycle planning are always available.
-            Users administration is restricted to VIP accounts.
+            Choose a workspace to continue.
           </p>
 
-          <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start">
+          <div className="mt-8 space-y-6">
+            <div className="grid gap-8 xl:grid-cols-2">
+              <section className="flex flex-col gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                  Cycle-2 Planning
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Link
+                    href="/gp-cycle2"
+                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                      Planning Workspace
+                    </div>
+                    <h2 className="text-lg font-semibold">Cycle-2 Sources & Status</h2>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                      Track cycle proposals, completion ratios, and detailed observation timelines.
+                    </p>
+                  </Link>
 
-            {/* Column 1 — GP Planning */}
-            <div className="flex flex-col gap-3 lg:w-72 lg:shrink-0">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                Planning
-              </p>
-              <div className="grid gap-4">
-                <Link
-                  href="/gp-cycle2"
-                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-                >
-                  <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                    Planning Workspace
-                  </div>
-                  <h2 className="text-lg font-semibold">GP Cycle 2</h2>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    Track cycle proposals, completion ratios, and detailed observation timelines.
-                  </p>
-                </Link>
+                  <Link
+                    href="/cycle2-long-term"
+                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                      Weekly Plan Workspace
+                    </div>
+                    <h2 className="text-lg font-semibold">Cycle-2 Long-Term Schedule</h2>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                      Browse weekly-based long-term scheduling plans and inspect every scheduling detail.
+                    </p>
+                  </Link>
+                </div>
+              </section>
 
-                <Link
-                  href="/cycle2-long-term"
-                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-                >
-                  <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                    Weekly Plan Workspace
-                  </div>
-                  <h2 className="text-lg font-semibold">Cycle 2 Long-Term</h2>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    Browse imported weekly long-term scheduling plans and inspect every generated scheduling field.
-                  </p>
-                </Link>
-              </div>
+              <section className="flex flex-col gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                  Target of Opportunity
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Link
+                    href="/too-management"
+                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                      Reviewed ToO Proposals 
+                    </div>
+                    <h2 className="text-lg font-semibold">ToO Management</h2>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                      Manage approved ToO records with detail view and editable request/review fields.
+                    </p>
+                  </Link>
+
+                  <Link
+                    href="/tootogp-schedule"
+                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                      Planning Queue
+                    </div>
+                    <h2 className="text-lg font-semibold">Schedule ToO in GP</h2>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                      Review all manually added ToO-to-GP planning windows before they become scheduled observations.
+                    </p>
+                  </Link>
+                </div>
+              </section>
             </div>
 
-            {/* Divider */}
-            <div className="hidden w-px self-stretch bg-slate-200 dark:bg-slate-700/60 lg:block" />
-
-            {/* Column 2 — ToO */}
-            <div className="flex flex-1 flex-col gap-3">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                Target of Opportunity
-              </p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* <Link
-                  href="/too-req"
-                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-                >
-                  <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                    ToO Workspace
-                  </div>
-                  <h2 className="text-lg font-semibold">ToO Requests</h2>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    Review, edit and triage incoming target-of-opportunity requests.
-                  </p>
-                </Link> */}
-
-                <Link
-                  href="/too-management"
-                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-                >
-                  <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                    Review Workspace
-                  </div>
-                  <h2 className="text-lg font-semibold">ToO Management</h2>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    Manage approved ToO records with detail view and editable request/review fields.
-                  </p>
-                </Link>
-
-                <Link
-                  href="/tootogp-schedule"
-                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-                >
-                  <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                    Planning Queue
-                  </div>
-                  <h2 className="text-lg font-semibold">GP Planning</h2>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    Review all manually added ToO-to-GP planning windows before they become scheduled observations.
-                  </p>
-                </Link>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="hidden w-px self-stretch bg-slate-200 dark:bg-slate-700/60 lg:block" />
-
-            {/* Column 3 — Administration */}
-            <div className="flex flex-col gap-3 lg:w-60 lg:shrink-0">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                Administration
-              </p>
+            <div className="flex items-center justify-end border-t border-slate-200/80 pt-4 dark:border-slate-700/70">
               {isVip ? (
                 <Link
                   href="/users"
-                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                  className="inline-flex items-center rounded-md border border-slate-300/70 bg-white/70 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-200"
                 >
-                  <div className="mb-3 inline-flex rounded-lg bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-                    Admin Only
-                  </div>
-                  <h2 className="text-lg font-semibold">Administration</h2>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    Manage accounts, credentials and admin permissions.
-                  </p>
+                  Admin Panel
                 </Link>
               ) : (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-white/65 p-5 dark:border-slate-700 dark:bg-slate-900/50">
-                  <div className="mb-3 inline-flex rounded-lg bg-slate-200/80 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                    Admin Only
-                  </div>
-                  <h2 className="text-lg font-semibold text-slate-600 dark:text-slate-300">Administration</h2>
-                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                    Your account does not have access to users administration.
-                  </p>
-                </div>
+                <span className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  Administration: restricted
+                </span>
               )}
             </div>
-
           </div>
         </div>
       </section>

@@ -1,5 +1,5 @@
 import { pgTable, unique, integer, varchar, boolean } from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
+// import { sql } from "drizzle-orm"
 
 
 
