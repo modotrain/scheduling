@@ -271,18 +271,45 @@ export default function Cycle2LongTermDetailPage() {
                   </p>
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {section.fields.map((field) => {
-                      const displayValue = formatValue(row[field]);
+                      const isDateRangeField =
+                        field === "visibleDateRanges" || field === "visibleDateRangesOnlySun";
+                      const rawValue = row[field];
+                      const displayValue = formatValue(rawValue);
+                      const dateRangeItems =
+                        isDateRangeField && rawValue
+                          ? String(rawValue)
+                              .split(";")
+                              .map((segment: string) => segment.trim().replace(/\s+to\s+/g, " – "))
+                              .filter(Boolean)
+                          : null;
+
                       return (
                         <div key={field}>
                           <dt className="text-[11px] text-slate-500 dark:text-slate-400">{LABELS[field]}</dt>
-                          <dd
-                            className={`break-words text-xs font-medium ${
-                              displayValue === "—"
-                                ? "text-slate-300 dark:text-slate-600"
-                                : "text-slate-900 dark:text-slate-100"
-                            }`}
-                          >
-                            {displayValue}
+                          <dd className="text-xs font-medium">
+                            {dateRangeItems ? (
+                              dateRangeItems.length > 0 ? (
+                                <ul className="mt-0.5 space-y-0.5">
+                                  {dateRangeItems.map((item) => (
+                                    <li key={item} className="text-slate-900 dark:text-slate-100">
+                                      {item}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="text-slate-300 dark:text-slate-600">—</span>
+                              )
+                            ) : (
+                              <span
+                                className={`break-words ${
+                                  displayValue === "—"
+                                    ? "text-slate-300 dark:text-slate-600"
+                                    : "text-slate-900 dark:text-slate-100"
+                                }`}
+                              >
+                                {displayValue}
+                              </span>
+                            )}
                           </dd>
                         </div>
                       );
