@@ -100,17 +100,17 @@ const COL_LABELS: Partial<Record<keyof LongTermRow, string>> = {
   weekId: "Week",
   tdicId: "TDIC ID",
   sourceName: "Source",
-  sourceId: "Source ID",
+  sourceId: "Src ID",
   proposalNo: "Proposal No",
   pi: "PI",
   obsType: "Obs Type",
   startTime: "Start",
   endTime: "End",
-  totalExposureTime: "Total Exp.",
+  totalExposureTime: "Exp.",
   cadence: "Cadence",
   leftMtDays: "Left MT",
-  sourcePriority: "Priority",
-  visitNumber: "Visit #",
+  sourcePriority: "Pri.",
+  visitNumber: "Visit",
 };
 
 export default function Cycle2LongTermPage() {
