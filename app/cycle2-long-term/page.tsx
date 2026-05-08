@@ -1,0 +1,298 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+
+type LongTermRow = {
+  id: number;
+  tdicId: string | null;
+  sourceId: string | null;
+  proposalId: string | null;
+  proposalNo: string | null;
+  epDbObjectId: string | null;
+  weekId: string | null;
+  pi: string | null;
+  groupName: string | null;
+  sourceName: string | null;
+  obsType: string | null;
+  ra: string | null;
+  dec: string | null;
+  totalExposureTime: string | null;
+  totalExposureTimeAll: string | null;
+  exposureTimeUnit: string | null;
+  continousExposure: string | null;
+  visitNumber: string | null;
+  exposurePerVistMin: string | null;
+  exposurePerVistMax: string | null;
+  completeness: string | null;
+  cadence: string | null;
+  cadenceUnit: string | null;
+  precision: string | null;
+  precisionUnit: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  sourcePriority: string | null;
+  fxt1WindowMode: string | null;
+  fxt1Filter: string | null;
+  fxt2WindowMode: string | null;
+  fxt2Filter: string | null;
+  isUpdated: string | null;
+  payload: string | null;
+  wxtCmos: string | null;
+  wxtCmosX: string | null;
+  wxtCmosY: string | null;
+  fxtCmr: string | null;
+  fxtX: string | null;
+  fxtY: string | null;
+  isForDisrupted: string | null;
+  visibleDays: string | null;
+  visibleDateRanges: string | null;
+  visibleRangeCount: string | null;
+  visibleTotalDays: string | null;
+  visibleDateRangesOnlySun: string | null;
+  visibleFirstEnd: string | null;
+  visibleLastEnd: string | null;
+  mtDays: string | null;
+  leftMtDays: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type SortConfig = { col: keyof LongTermRow | null; dir: "asc" | "desc" };
+
+type LongTermCachePayload = {
+  ts: number;
+  rows: LongTermRow[];
+};
+
+const CACHE_KEY = "cycle2-long-term-cache-v1";
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+const TABLE_COLS: (keyof LongTermRow)[] = [
+  "weekId",
+//   "tdicId",
+  "sourceName",
+  "proposalNo",
+  "pi",
+  "obsType",
+  "startTime",
+  "endTime",
+  "totalExposureTime",
+  "cadence",
+  "leftMtDays",
+];
+
+const COL_LABELS: Partial<Record<keyof LongTermRow, string>> = {
+  weekId: "Week",
+  tdicId: "TDIC ID",
+  sourceName: "Source",
+  proposalNo: "Proposal No",
+  pi: "PI",
+  obsType: "Obs Type",
+  startTime: "Start",
+  endTime: "End",
+  totalExposureTime: "Total Exp.",
+  cadence: "Cadence",
+  leftMtDays: "Left MT",
+};
+
+export default function Cycle2LongTermPage() {
+  const [rows, setRows] = useState<LongTermRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"success" | "error">("success");
+  const [searchText, setSearchText] = useState("");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
+
+  const loadRows = useCallback(async () => {
+    setLoading(true);
+    try {
+      const rawCache = sessionStorage.getItem(CACHE_KEY);
+      if (rawCache) {
+        const parsed = JSON.parse(rawCache) as LongTermCachePayload;
+        if (Date.now() - parsed.ts < CACHE_TTL_MS) {
+          setRows(parsed.rows ?? []);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const response = await fetch("/api/cycle2-long-term", { cache: "no-store" });
+      const data = (await response.json()) as { rows?: LongTermRow[]; error?: string };
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to load cycle2 long-term list");
+      }
+
+      const nextRows = data.rows ?? [];
+      setRows(nextRows);
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), rows: nextRows }));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to load cycle2 long-term list");
+      setMessageTone("error");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRows();
+  }, [loadRows]);
+
+  function handleSort(col: keyof LongTermRow) {
+    setSortConfig((prev) => ({
+      col,
+      dir: prev.col === col && prev.dir === "asc" ? "desc" : "asc",
+    }));
+  }
+
+  function getSortedAndFilteredRows() {
+    const query = searchText.toLowerCase().trim();
+    const filtered = query
+      ? rows.filter((row) =>
+          Object.values(row).some(
+            (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(query),
+          ),
+        )
+      : rows;
+
+    if (!sortConfig.col) {
+      return filtered;
+    }
+
+    return [...filtered].sort((a, b) => {
+      const aVal = a[sortConfig.col!] ?? "";
+      const bVal = b[sortConfig.col!] ?? "";
+      const cmp =
+        typeof aVal === "number" && typeof bVal === "number"
+          ? aVal - bVal
+          : String(aVal).localeCompare(String(bVal));
+      return sortConfig.dir === "asc" ? cmp : -cmp;
+    });
+  }
+
+  function SortIcon({ col }: { col: keyof LongTermRow }) {
+    if (sortConfig.col !== col) {
+      return <span className="ml-1 text-slate-300 dark:text-slate-600">⇅</span>;
+    }
+    return <span className="ml-1 text-primary">{sortConfig.dir === "asc" ? "↑" : "↓"}</span>;
+  }
+
+  const displayRows = getSortedAndFilteredRows();
+
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] p-4 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:p-8">
+      <div className="mx-auto max-w-screen-2xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold">Cycle 2 Long-Term</h1>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              Weekly long-term scheduling records imported from generated CSV plans.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/gp-cycle2"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              GP Cycle 2
+            </Link>
+            <Link
+              href="/"
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              ← Home
+            </Link>
+          </div>
+        </div>
+
+        {message ? (
+          <p className={`mt-3 text-sm ${messageTone === "error" ? "text-rose-700" : "text-emerald-700"}`}>
+            {message}
+          </p>
+        ) : null}
+
+        <div className="mt-4">
+          <input
+            type="text"
+            placeholder="Search all columns..."
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          />
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                <th className="whitespace-nowrap px-3 py-2 text-slate-400 dark:text-slate-500">#</th>
+                {TABLE_COLS.map((col) => (
+                  <th
+                    key={col}
+                    onClick={() => handleSort(col)}
+                    className="cursor-pointer whitespace-nowrap px-3 py-2 select-none hover:bg-slate-200 dark:hover:bg-slate-700"
+                  >
+                    <span className="flex items-center">
+                      {COL_LABELS[col] ?? col}
+                      <SortIcon col={col} />
+                    </span>
+                  </th>
+                ))}
+                <th className="whitespace-nowrap px-3 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td className="px-3 py-4" colSpan={TABLE_COLS.length + 2}>
+                    <div className="flex justify-center">
+                      <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
+                    </div>
+                  </td>
+                </tr>
+              ) : displayRows.length === 0 ? (
+                <tr>
+                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={TABLE_COLS.length + 2}>
+                    {searchText ? "No matching rows." : "No cycle2 long-term rows found."}
+                  </td>
+                </tr>
+              ) : (
+                displayRows.map((row, index) => (
+                  <tr
+                    key={row.id}
+                    className={`border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60 ${
+                      index % 2 === 0 ? "bg-slate-50 dark:bg-slate-800/50" : ""
+                    }`}
+                  >
+                    <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-slate-400 dark:text-slate-500">{index + 1}</td>
+                    {TABLE_COLS.map((col) => (
+                      <td key={col} className="whitespace-nowrap px-3 py-2">
+                        {row[col] === null || row[col] === undefined || row[col] === "" ? (
+                          <span className="text-slate-400">—</span>
+                        ) : (
+                          String(row[col])
+                        )}
+                      </td>
+                    ))}
+                    <td className="px-3 py-2">
+                      <Link
+                        href={`/cycle2-long-term/${row.id}`}
+                        className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
+                      >
+                        Details
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
+          {loading ? "" : `${displayRows.length} of ${rows.length} rows`}
+        </p>
+      </div>
+    </main>
+  );
+}

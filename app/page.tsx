@@ -65,15 +65,15 @@ export default async function HomePage() {
                 </Link>
 
                 <Link
-                  href="/tootogp-schedule"
+                  href="/cycle2-long-term"
                   className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
                 >
                   <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                    Planning Queue
+                    Weekly Plan Workspace
                   </div>
-                  <h2 className="text-lg font-semibold">GP Planning</h2>
+                  <h2 className="text-lg font-semibold">Cycle 2 Long-Term</h2>
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    Review all manually added ToO-to-GP planning windows before they become scheduled observations.
+                    Browse imported weekly long-term scheduling plans and inspect every generated scheduling field.
                   </p>
                 </Link>
               </div>
@@ -111,6 +111,19 @@ export default async function HomePage() {
                   <h2 className="text-lg font-semibold">ToO Management</h2>
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                     Manage approved ToO records with detail view and editable request/review fields.
+                  </p>
+                </Link>
+
+                <Link
+                  href="/tootogp-schedule"
+                  className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                    Planning Queue
+                  </div>
+                  <h2 className="text-lg font-semibold">GP Planning</h2>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    Review all manually added ToO-to-GP planning windows before they become scheduled observations.
                   </p>
                 </Link>
               </div>
