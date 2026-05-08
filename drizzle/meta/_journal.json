@@ -15,6 +15,13 @@
       "when": 1777912001509,
       "tag": "0001_curious_micromax",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778233442608,
+      "tag": "0002_real_sumo",
+      "breakpoints": true
     }
   ]
 }
