@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
+import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "./detail-title-cache";
+
 type LongTermRow = {
   id: number;
   tdicId: string | null;
@@ -75,7 +77,7 @@ function parseWeekId(value: string | null): number | null {
 }
 
 const CACHE_KEY = "cycle2-long-term-cache-v1";
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 10 * 60 * 1000;
 
 const TABLE_COLS: (keyof LongTermRow)[] = [
   "weekId",
@@ -153,6 +155,14 @@ export default function Cycle2LongTermPage() {
       col,
       dir: prev.col === col && prev.dir === "asc" ? "desc" : "asc",
     }));
+  }
+
+  function cacheDetailSourceName(id: number, sourceName: string | null) {
+    if (!sourceName) {
+      return;
+    }
+
+    sessionStorage.setItem(`${DETAIL_TITLE_CACHE_KEY_PREFIX}${id}`, sourceName);
   }
 
   function getSortedAndFilteredRows() {
@@ -324,6 +334,7 @@ export default function Cycle2LongTermPage() {
                     <td className="px-3 py-2">
                       <Link
                         href={`/cycle2-long-term/${row.id}`}
+                        onClick={() => cacheDetailSourceName(row.id, row.sourceName)}
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >
                         Details

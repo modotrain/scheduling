@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "../detail-title-cache";
 
 type LongTermRow = {
   id: number;
@@ -184,6 +186,13 @@ export default function Cycle2LongTermDetailPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
+  const [prefetchedSourceName, setPrefetchedSourceName] = useState("");
+  const titleSourceName = row?.sourceName || prefetchedSourceName || `Record #${id}`;
+
+  useLayoutEffect(() => {
+    const cachedSourceName = sessionStorage.getItem(`${DETAIL_TITLE_CACHE_KEY_PREFIX}${id}`)?.trim() ?? "";
+    setPrefetchedSourceName(cachedSourceName);
+  }, [id]);
 
   const loadRow = useCallback(async () => {
     setLoading(true);
@@ -208,13 +217,22 @@ export default function Cycle2LongTermDetailPage() {
     void loadRow();
   }, [loadRow]);
 
+  useEffect(() => {
+    if (!row?.sourceName) {
+      return;
+    }
+
+    sessionStorage.setItem(`${DETAIL_TITLE_CACHE_KEY_PREFIX}${id}`, row.sourceName);
+    setPrefetchedSourceName(row.sourceName);
+  }, [id, row?.sourceName]);
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] p-4 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:p-8">
       <div className="mx-auto max-w-screen-xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold">
-              Cycle 2 Long-Term — {row?.sourceName ?? `Record #${id}`}
+              Cycle 2 Long-Term — {titleSourceName}
             </h1>
             {row?.pi ? <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.pi}</p> : null}
           </div>
