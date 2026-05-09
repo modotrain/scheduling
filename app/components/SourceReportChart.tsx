@@ -21,6 +21,9 @@ interface SourceReportChartProps {
   sourceId: string | null;
   isDarkMode?: boolean;
   embedded?: boolean;
+  activePointKey?: string | null;
+  onPointHover?: (key: string | null) => void;
+  onPointClick?: (key: string | null) => void;
 }
 
 interface TooltipData {
@@ -35,6 +38,9 @@ export default function SourceReportChart({
   sourceId,
   isDarkMode = false,
   embedded = false,
+  activePointKey = null,
+  onPointHover,
+  onPointClick,
 }: SourceReportChartProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,6 +166,33 @@ export default function SourceReportChart({
     return padding.top + chartHeight - (expK / maxY) * chartHeight;
   };
 
+  const normalizeDateKey = (value: string | null | undefined): string | null => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+    const match = value.match(/\d{4}-\d{2}-\d{2}/);
+    return match?.[0] ?? null;
+  };
+
+  const buildPointKey = (
+    dateValue: string | null | undefined,
+    expValue: number | null | undefined,
+  ): string | null => {
+    const normalizedDate = normalizeDateKey(dateValue);
+    if (!normalizedDate || expValue === null || expValue === undefined) return null;
+    return `${normalizedDate}|${Math.round(expValue)}`;
+  };
+
+  const buildPointAliases = (obs: ScheduledObs): string[] => {
+    const aliases: string[] = [];
+    const dateKey = normalizeDateKey(obs.date);
+    const fullKey = buildPointKey(obs.date, obs.exp_s);
+    if (obs.week !== null && obs.week !== undefined) aliases.push(`w:${obs.week}`);
+    if (dateKey) aliases.push(`d:${dateKey}`);
+    if (fullKey) aliases.push(`f:${fullKey}`);
+    return aliases;
+  };
+
   // Render visible ranges as grey background
   const visibleRects = chartData.visibleRanges.map((range, i) => {
     const x1 = dateToX(range[0]);
@@ -211,6 +244,10 @@ export default function SourceReportChart({
     if (!obs.date) return null;
     const x = dateToX(obs.date);
     const y = expToY(obs.exp_s);
+    const aliases = buildPointAliases(obs);
+    const primaryKey = aliases[0] ?? null;
+    const isActive = Boolean(activePointKey && aliases.includes(activePointKey));
+    const dimmed = Boolean(activePointKey) && !isActive;
     return (
       <g key={`obs-${i}`}>
         <line
@@ -219,28 +256,33 @@ export default function SourceReportChart({
           x2={x}
           y2={y}
           stroke={obsColor}
-          strokeWidth="2"
-          opacity="0.85"
+          strokeWidth={isActive ? "3" : "2"}
+          opacity={dimmed ? "0.35" : "0.9"}
         />
         <circle
           cx={x}
           cy={y}
-          r="4"
+          r={isActive ? "6" : "4"}
           fill={obsColor}
-          stroke="black"
-          strokeWidth="0.5"
-          opacity="0.85"
+          stroke={isActive ? (dark ? "#f8fafc" : "#0f172a") : (dark ? "#0f172a" : "black")}
+          strokeWidth={isActive ? "1.5" : "0.5"}
+          opacity={dimmed ? "0.45" : "0.95"}
           style={{ cursor: "pointer" }}
-          onMouseEnter={() =>
+          onMouseEnter={() => {
             setTooltip({
               x,
               y,
               date: obs.date,
               exp_s: obs.exp_s,
               week: obs.week,
-            })
-          }
-          onMouseLeave={() => setTooltip(null)}
+            });
+            onPointHover?.(primaryKey);
+          }}
+          onMouseLeave={() => {
+            setTooltip(null);
+            onPointHover?.(null);
+          }}
+          onClick={() => onPointClick?.(primaryKey)}
         />
       </g>
     );

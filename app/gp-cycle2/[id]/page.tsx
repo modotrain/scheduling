@@ -209,6 +209,44 @@ function getChanges(original: FieldInput, next: FieldInput): FieldChange[] {
   });
 }
 
+function normalizeDateKey(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  const match = value.match(/\d{4}-\d{2}-\d{2}/);
+  return match?.[0] ?? null;
+}
+
+function normalizeExposureKey(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numeric) ? Math.round(numeric) : null;
+}
+
+function buildScheduleHoverKey(
+  dateValue: string | null | undefined,
+  exposureValue: string | number | null | undefined,
+): string | null {
+  const normalizedDate = normalizeDateKey(dateValue);
+  const normalizedExposure = normalizeExposureKey(exposureValue);
+  if (!normalizedDate || normalizedExposure === null) return null;
+  return `${normalizedDate}|${normalizedExposure}`;
+}
+
+function buildScheduleHoverAliases(row: PlannedObsRow): string[] {
+  const aliases: string[] = [];
+  const week = row.weekId?.trim();
+  if (week) aliases.push(`w:${week}`);
+
+  const dateKey = normalizeDateKey(row.startTime);
+  if (dateKey) aliases.push(`d:${dateKey}`);
+
+  const fullKey = buildScheduleHoverKey(row.startTime, row.totalExposureTime);
+  if (fullKey) aliases.push(`f:${fullKey}`);
+
+  return aliases;
+}
+
 export default function GpCycle2DetailPage() {
   const pathname = usePathname();
   const id = pathname?.split("/").at(-1) ?? "";
@@ -224,6 +262,10 @@ export default function GpCycle2DetailPage() {
   const [plannedList, setPlannedList] = useState<PlannedObsRow[]>([]);
   const [plannedLoading, setPlannedLoading] = useState(true);
   const [plannedSort, setPlannedSort] = useState<PlannedSortConfig>({ col: "weekId", dir: "asc" });
+  const [hoverScheduleKey, setHoverScheduleKey] = useState<string | null>(null);
+  const [lockedScheduleKey, setLockedScheduleKey] = useState<string | null>(null);
+
+  const activeScheduleHoverKey = lockedScheduleKey ?? hoverScheduleKey;
 
   const [row, setRow] = useState<GpCycle2Row | null>(null);
   const [input, setInput] = useState<FieldInput>({} as FieldInput);
@@ -487,7 +529,20 @@ export default function GpCycle2DetailPage() {
 
           {row?.sourceId ? (
             <div className="border-b border-slate-200 dark:border-slate-700">
-              <SourceReportChart sourceId={row.sourceId} embedded />
+              <SourceReportChart
+                sourceId={row.sourceId}
+                embedded
+                activePointKey={activeScheduleHoverKey}
+                onPointHover={(key) => {
+                  if (lockedScheduleKey) return;
+                  setHoverScheduleKey(key);
+                }}
+                onPointClick={(key) => {
+                  if (!key) return;
+                  setLockedScheduleKey((prev) => (prev === key ? null : key));
+                  setHoverScheduleKey(null);
+                }}
+              />
             </div>
           ) : null}
 
@@ -548,10 +603,32 @@ export default function GpCycle2DetailPage() {
                       if (!plannedSort.col) return 0;
                       return comparePlannedValues(plannedSort.col, a, b, plannedSort.dir);
                     })
-                    .map((planned, index) => (
+                    .map((planned, index) => {
+                    const aliases = buildScheduleHoverAliases(planned);
+                    const hoverKey = aliases[0] ?? null;
+                    const isLinkedActive = Boolean(activeScheduleHoverKey && aliases.includes(activeScheduleHoverKey));
+                    const isLocked = Boolean(lockedScheduleKey && aliases.includes(lockedScheduleKey));
+                    return (
                     <tr
                       key={planned.id}
-                      className="border-b border-slate-100 odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/70 dark:border-slate-800 dark:odd:bg-slate-900 dark:even:bg-slate-800/35 dark:hover:bg-slate-800/70"
+                      onMouseEnter={() => {
+                        if (lockedScheduleKey) return;
+                        setHoverScheduleKey(hoverKey);
+                      }}
+                      onMouseLeave={() => {
+                        if (lockedScheduleKey) return;
+                        setHoverScheduleKey(null);
+                      }}
+                      onClick={() => {
+                        if (!hoverKey) return;
+                        setLockedScheduleKey((prev) => (prev === hoverKey ? null : hoverKey));
+                        setHoverScheduleKey(null);
+                      }}
+                      className={`border-b border-slate-100 dark:border-slate-800 transition-colors ${
+                        isLinkedActive
+                          ? "bg-sky-100/80 dark:bg-sky-900/35"
+                          : "odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/70 dark:odd:bg-slate-900 dark:even:bg-slate-800/35 dark:hover:bg-slate-800/70"
+                      } ${isLocked ? "ring-1 ring-inset ring-sky-500/60 dark:ring-sky-400/55" : ""}`}
                     >
                       <td className="whitespace-nowrap px-3 py-2 font-mono text-slate-500 dark:text-slate-400">
                         {index + 1}
@@ -578,7 +655,8 @@ export default function GpCycle2DetailPage() {
                         </Link>
                       </td>
                     </tr>
-                  ))
+                  );
+                  })
                 )}
               </tbody>
             </table>
