@@ -5,6 +5,7 @@ import Link from "next/link";
 
 const GP_CYCLE2_CACHE_KEY = "gp-cycle2:list:v1";
 const GP_CYCLE2_CACHE_TTL_MS = 5 * 60 * 1000;
+const GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX = "gp-cycle2:detail:title:";
 
 type GpCycle2Row = {
   id: number;
@@ -197,6 +198,11 @@ export default function GpCycle2Page() {
     return String(val);
   }
 
+  function cacheDetailSourceName(id: number, sourceName: string | null) {
+    if (!sourceName) return;
+    sessionStorage.setItem(`${GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX}${id}`, sourceName);
+  }
+
   const displayRows = getSortedAndFiltered();
 
   return (
@@ -318,6 +324,7 @@ export default function GpCycle2Page() {
                     <td className="px-2 py-2">
                       <Link
                         href={`/gp-cycle2/${row.id}`}
+                        onClick={() => cacheDetailSourceName(row.id, row.sourceName)}
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >
                         Details

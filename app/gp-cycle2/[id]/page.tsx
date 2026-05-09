@@ -1,8 +1,10 @@
 "use client";
 
-import { SubmitEvent, useCallback, useEffect, useState } from "react";
+import { SubmitEvent, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+const GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX = "gp-cycle2:detail:title:";
 
 type GpCycle2Row = {
   id: number;
@@ -230,6 +232,14 @@ export default function GpCycle2DetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
+  const [prefetchedSourceName, setPrefetchedSourceName] = useState("");
+  const titleSourceName = row?.sourceName || prefetchedSourceName || `Record #${id}`;
+
+  useLayoutEffect(() => {
+    const cachedSourceName =
+      sessionStorage.getItem(`${GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX}${id}`)?.trim() ?? "";
+    setPrefetchedSourceName(cachedSourceName);
+  }, [id]);
 
   useEffect(() => {
     if (!toast) return;
@@ -356,6 +366,12 @@ export default function GpCycle2DetailPage() {
     void loadObsList();
   }, [loadRow, loadPlannedList, loadObsList]);
 
+  useEffect(() => {
+    if (!row?.sourceName) return;
+    sessionStorage.setItem(`${GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX}${id}`, row.sourceName);
+    setPrefetchedSourceName(row.sourceName);
+  }, [id, row?.sourceName]);
+
   async function commitSave() {
     setSaving(true);
     try {
@@ -423,7 +439,7 @@ export default function GpCycle2DetailPage() {
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">GP Cycle 2 — {row?.sourceName ?? `Record #${id}`}</h1>
+            <h1 className="text-2xl font-semibold">GP Cycle 2 — {titleSourceName}</h1>
             {row?.pi ? (
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.pi}</p>
             ) : null}
