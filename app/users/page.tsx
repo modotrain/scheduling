@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { SubmitEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 type User = {
@@ -111,7 +111,7 @@ export default function Home() {
     void loadUsers();
   }, [loadUsers]);
 
-  async function handleCreate(event: FormEvent<HTMLFormElement>) {
+  async function handleCreate(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const errors = validateForm(createForm);
     setCreateErrors(errors);

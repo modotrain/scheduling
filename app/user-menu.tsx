@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { SubmitEvent, useEffect, useRef, useState } from "react";
 
 type UserMenuProps = {
   username: string;
@@ -58,7 +58,7 @@ export default function UserMenu({ username }: UserMenuProps) {
     setConfirmPassword("");
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const oldPwd = currentPassword.trim();

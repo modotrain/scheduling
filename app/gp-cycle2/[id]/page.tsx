@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { SubmitEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -100,9 +100,9 @@ const PLANNED_COLS: { key: Exclude<keyof PlannedObsRow, "id">; label: string }[]
   { key: "endTime", label: "End" },
   { key: "totalExposureTime", label: "Exposure" },
   { key: "visitNumber", label: "Visit" },
-  { key: "fxt1WindowMode", label: "FXT1 Window Mode" },
+  { key: "fxt1WindowMode", label: "FXT1 Window" },
   { key: "fxt1Filter", label: "FXT1 Filter" },
-  { key: "fxt2WindowMode", label: "FXT2 Window Mode" },
+  { key: "fxt2WindowMode", label: "FXT2 Window" },
   { key: "fxt2Filter", label: "FXT2 Filter" },
 ];
 
@@ -383,7 +383,7 @@ export default function GpCycle2DetailPage() {
     }
   }
 
-  function handleSave(event: FormEvent<HTMLFormElement>) {
+  function handleSave(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!row || saving) return;
     const changes = getChanges(rowToInput(row), input);

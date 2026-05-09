@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { SubmitEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 type TooReq = {
@@ -219,7 +219,7 @@ export default function TooReqPage() {
     setMessage("");
   }
 
-  async function handleUpdate(event: FormEvent<HTMLFormElement>) {
+  async function handleUpdate(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!editRow) return;
     setSaving(true);
