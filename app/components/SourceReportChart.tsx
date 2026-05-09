@@ -129,7 +129,7 @@ export default function SourceReportChart({
   );
 
   // Chart dimensions
-  const width = 800;
+  const width = 1100;
   const height = 200;
   const padding = { top: 20, right: 20, bottom: 40, left: 50 };
   const chartWidth = width - padding.left - padding.right;
@@ -312,7 +312,8 @@ export default function SourceReportChart({
           style={{
             backgroundColor: bgColor,
             borderRadius: "0.5rem",
-            minWidth: "100%",
+            display: "block",
+            margin: "0 auto",
           }}
         >
           {/* Visible ranges background */}
