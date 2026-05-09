@@ -3,6 +3,7 @@
 import { SubmitEvent, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "../../cycle2-long-term/detail-title-cache";
 
 const GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX = "gp-cycle2:detail:title:";
 
@@ -71,6 +72,7 @@ type PlannedSortConfig = { col: PlannedSortKey | null; dir: "asc" | "desc" };
 
 type PlannedObsRow = {
   id: number;
+  sourceName: string | null;
   weekId: string | null;
   startTime: string | null;
   endTime: string | null;
@@ -282,6 +284,11 @@ export default function GpCycle2DetailPage() {
     const bothNumeric = aVal !== "" && bVal !== "" && Number.isFinite(aNum) && Number.isFinite(bNum);
     const cmp = bothNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal));
     return dir === "asc" ? cmp : -cmp;
+  }
+
+  function cacheLongTermDetailSourceName(id: number, sourceName: string | null) {
+    if (!sourceName) return;
+    sessionStorage.setItem(`${DETAIL_TITLE_CACHE_KEY_PREFIX}${id}`, sourceName);
   }
 
   const loadObsList = useCallback(async () => {
@@ -557,6 +564,7 @@ export default function GpCycle2DetailPage() {
                       <td className="whitespace-nowrap px-3 py-2">
                         <Link
                           href={`/cycle2-long-term/${planned.id}`}
+                          onClick={() => cacheLongTermDetailSourceName(planned.id, planned.sourceName)}
                           className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-dark"
                         >
                           Details

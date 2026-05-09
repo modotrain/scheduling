@@ -16,6 +16,7 @@ export async function GET(_req: Request, { params }: Params) {
     const result = await db.execute(sql`
       SELECT
         lt.id,
+        lt.source_name AS "sourceName",
         lt.week_id AS "weekId",
         lt.start_time AS "startTime",
         lt.end_time AS "endTime",
