@@ -64,6 +64,21 @@ type ObsListRow = {
 };
 
 type ObsSortConfig = { col: keyof ObsListRow | null; dir: "asc" | "desc" };
+type PlannedSortKey = Exclude<keyof PlannedObsRow, "id">;
+type PlannedSortConfig = { col: PlannedSortKey | null; dir: "asc" | "desc" };
+
+type PlannedObsRow = {
+  id: number;
+  weekId: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  totalExposureTime: string | null;
+  visitNumber: string | null;
+  fxt1WindowMode: string | null;
+  fxt1Filter: string | null;
+  fxt2WindowMode: string | null;
+  fxt2Filter: string | null;
+};
 
 const OBS_COLS: { key: keyof ObsListRow; label: string }[] = [
   { key: "startDate", label: "Start Date" },
@@ -77,6 +92,18 @@ const OBS_COLS: { key: keyof ObsListRow; label: string }[] = [
   { key: "filterB", label: "Filter B" },
   { key: "pointingDurationInOrbits", label: "Obt" },
   { key: "pointingDurationInSeconds", label: "Duration" },
+];
+
+const PLANNED_COLS: { key: Exclude<keyof PlannedObsRow, "id">; label: string }[] = [
+  { key: "weekId", label: "Week" },
+  { key: "startTime", label: "Start" },
+  { key: "endTime", label: "End" },
+  { key: "totalExposureTime", label: "Exposure" },
+  { key: "visitNumber", label: "Visit" },
+  { key: "fxt1WindowMode", label: "FXT1 Window Mode" },
+  { key: "fxt1Filter", label: "FXT1 Filter" },
+  { key: "fxt2WindowMode", label: "FXT2 Window Mode" },
+  { key: "fxt2Filter", label: "FXT2 Filter" },
 ];
 
 type FieldInput = Omit<GpCycle2Row, "id">;
@@ -189,6 +216,9 @@ export default function GpCycle2DetailPage() {
   const [obsLoading, setObsLoading] = useState(true);
   const [onlyNonZero, setOnlyNonZero] = useState<"all" | "nonzero" | "zerosonly">("all");
   const [obsSort, setObsSort] = useState<ObsSortConfig>({ col: null, dir: "asc" });
+  const [plannedList, setPlannedList] = useState<PlannedObsRow[]>([]);
+  const [plannedLoading, setPlannedLoading] = useState(true);
+  const [plannedSort, setPlannedSort] = useState<PlannedSortConfig>({ col: "weekId", dir: "asc" });
 
   const [row, setRow] = useState<GpCycle2Row | null>(null);
   const [input, setInput] = useState<FieldInput>({} as FieldInput);
@@ -210,6 +240,38 @@ export default function GpCycle2DetailPage() {
   function setStatus(msg: string, tone: "success" | "error") {
     setMessage(msg);
     setMessageTone(tone);
+  }
+
+  function parseWeek(value: string | null): number | null {
+    if (!value) return null;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  function comparePlannedValues(
+    col: PlannedSortKey,
+    a: PlannedObsRow,
+    b: PlannedObsRow,
+    dir: "asc" | "desc",
+  ): number {
+    if (col === "weekId") {
+      const aWeek = parseWeek(a.weekId);
+      const bWeek = parseWeek(b.weekId);
+      if (aWeek !== null && bWeek !== null) {
+        const cmp = aWeek - bWeek;
+        return dir === "asc" ? cmp : -cmp;
+      }
+      if (aWeek !== null) return dir === "asc" ? -1 : 1;
+      if (bWeek !== null) return dir === "asc" ? 1 : -1;
+    }
+
+    const aVal = a[col] ?? "";
+    const bVal = b[col] ?? "";
+    const aNum = Number(aVal);
+    const bNum = Number(bVal);
+    const bothNumeric = aVal !== "" && bVal !== "" && Number.isFinite(aNum) && Number.isFinite(bNum);
+    const cmp = bothNumeric ? aNum - bNum : String(aVal).localeCompare(String(bVal));
+    return dir === "asc" ? cmp : -cmp;
   }
 
   const loadObsList = useCallback(async () => {
@@ -254,6 +316,23 @@ export default function GpCycle2DetailPage() {
     }
   }, [id]);
 
+  const loadPlannedList = useCallback(async () => {
+    setPlannedLoading(true);
+    try {
+      const res = await fetch(`/api/gp-cycle2/${id}/planned-list`, { cache: "no-store" });
+      const data = (await res.json()) as {
+        rows?: PlannedObsRow[];
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "Failed to load planned list");
+      setPlannedList(data.rows ?? []);
+    } catch {
+      // silently ignore planned list errors — main record still loads
+    } finally {
+      setPlannedLoading(false);
+    }
+  }, [id]);
+
   const loadRow = useCallback(async () => {
     setLoading(true);
     try {
@@ -273,8 +352,9 @@ export default function GpCycle2DetailPage() {
 
   useEffect(() => {
     void loadRow();
+    void loadPlannedList();
     void loadObsList();
-  }, [loadRow, loadObsList]);
+  }, [loadRow, loadPlannedList, loadObsList]);
 
   async function commitSave() {
     setSaving(true);
@@ -365,6 +445,108 @@ export default function GpCycle2DetailPage() {
             {message}
           </p>
         ) : null}
+
+        {/* ── Planned Observation List ───────────────────────────────── */}
+        <div className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
+            <h2 className="text-base font-semibold">Planned Observation List</h2>
+            <span className="text-sm text-slate-600 dark:text-slate-300">
+              Rows: <span className="font-mono font-medium">{plannedList.length}</span>
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                  <th className="whitespace-nowrap px-3 py-2 font-medium">#</th>
+                  {PLANNED_COLS.map(({ key, label }) => {
+                    const active = plannedSort.col === key;
+                    return (
+                      <th
+                        key={key}
+                        onClick={() =>
+                          setPlannedSort((prev) => ({
+                            col: key,
+                            dir: prev.col === key && prev.dir === "asc" ? "desc" : "asc",
+                          }))
+                        }
+                        className="cursor-pointer whitespace-nowrap px-3 py-2 font-medium select-none hover:bg-slate-200 dark:hover:bg-slate-700"
+                      >
+                        <span className="flex items-center gap-1">
+                          {label}
+                          {active ? (
+                            <span className="text-primary">{plannedSort.dir === "asc" ? "↑" : "↓"}</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600">⇅</span>
+                          )}
+                        </span>
+                      </th>
+                    );
+                  })}
+                  <th className="whitespace-nowrap px-3 py-2 font-medium">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plannedLoading ? (
+                  <tr>
+                    <td colSpan={PLANNED_COLS.length + 2} className="p-0">
+                      {loading ? (
+                        <div className="h-2" />
+                      ) : (
+                        <div className="flex justify-center py-2.5">
+                          <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ) : plannedList.length === 0 ? (
+                  <tr>
+                    <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={PLANNED_COLS.length + 2}>
+                      No planned observations found.
+                    </td>
+                  </tr>
+                ) : (
+                  [...plannedList]
+                    .sort((a, b) => {
+                      if (!plannedSort.col) return 0;
+                      return comparePlannedValues(plannedSort.col, a, b, plannedSort.dir);
+                    })
+                    .map((planned, index) => (
+                    <tr
+                      key={planned.id}
+                      className="border-b border-slate-100 odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/70 dark:border-slate-800 dark:odd:bg-slate-900 dark:even:bg-slate-800/35 dark:hover:bg-slate-800/70"
+                    >
+                      <td className="whitespace-nowrap px-3 py-2 font-mono text-slate-500 dark:text-slate-400">
+                        {index + 1}
+                      </td>
+                      {PLANNED_COLS.map(({ key }) => {
+                        const val = planned[key];
+                        return (
+                          <td key={key} className="whitespace-nowrap px-3 py-2">
+                            {val !== null && val !== undefined && val !== "" ? (
+                              val
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="whitespace-nowrap px-3 py-2">
+                        <Link
+                          href={`/cycle2-long-term/${planned.id}`}
+                          className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-dark"
+                        >
+                          Details
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         {/* ── Scheduled Observation List ─────────────────────────────── */}
         <div className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
