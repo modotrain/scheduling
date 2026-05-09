@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 
 interface ScheduledObs {
   date: string;
@@ -211,7 +211,7 @@ export default function SourceReportChart({
   });
 
   // Render Y-axis grid lines
-  const gridLines = [];
+  const gridLines: ReactNode[] = [];
   for (let i = 0; i <= 5; i++) {
     const y = padding.top + (chartHeight / 5) * i;
     const value = maxY - (maxY / 5) * i;
@@ -288,17 +288,16 @@ export default function SourceReportChart({
     );
   });
 
-  // Render X-axis date labels (every ~3 months)
-  const dateLabels = [];
-  const step = Math.ceil(totalDays / 4);
-  for (let d = 0; d <= totalDays; d += step) {
+  // Render X-axis date labels with explicit start/end labels.
+  const dateLabels: ReactNode[] = [];
+  const pushDateLabel = (dayOffset: number, anchor: "start" | "middle" | "end") => {
     const labelDate = new Date(minDate);
-    labelDate.setDate(labelDate.getDate() + d);
-    const x = padding.left + (d / totalDays) * chartWidth;
+    labelDate.setDate(labelDate.getDate() + dayOffset);
+    const x = padding.left + (dayOffset / totalDays) * chartWidth;
     const dateStr = labelDate.toISOString().split("T")[0];
     dateLabels.push(
       <line
-        key={`tick-${d}`}
+        key={`tick-${dayOffset}-${anchor}`}
         x1={x}
         y1={height - padding.bottom + 5}
         x2={x}
@@ -306,17 +305,53 @@ export default function SourceReportChart({
         stroke={textColor}
       />,
       <text
-        key={`date-label-${d}`}
+        key={`date-label-${dayOffset}-${anchor}`}
         x={x}
         y={height - padding.bottom + 25}
         fontSize="11"
         fill={textColor}
-        textAnchor="middle"
+        textAnchor={anchor}
       >
         {dateStr}
       </text>
     );
+  };
+
+  pushDateLabel(0, "start");
+
+  const step = Math.ceil(totalDays / 4);
+  for (let d = step; d < totalDays; d += step) {
+    pushDateLabel(d, "middle");
   }
+
+  pushDateLabel(totalDays, "end");
+
+  const today = new Date();
+  const todayInRange = today >= minDate && today <= maxDate;
+  const todayMarker = todayInRange ? (() => {
+    const x = padding.left + ((today.getTime() - minDate.getTime()) / (maxDate.getTime() - minDate.getTime())) * chartWidth;
+    const axisY = padding.top + chartHeight;
+    const trianglePoints = `${x},${axisY + 2} ${x - 6},${axisY + 12} ${x + 6},${axisY + 12}`;
+    return (
+      <g>
+        <line
+          x1={x}
+          y1={padding.top}
+          x2={x}
+          y2={axisY}
+          stroke={dark ? "#e2e8f0" : "#475569"}
+          strokeWidth="1"
+          opacity="0.18"
+          strokeDasharray="3 4"
+        />
+        <polygon
+          points={trianglePoints}
+          fill={dark ? "#f8fafc" : "#0f172a"}
+          opacity="0.9"
+        />
+      </g>
+    );
+  })() : null;
 
   return (
     <div className={embedded ? "overflow-hidden" : "mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-900 overflow-hidden"}>
@@ -384,6 +419,7 @@ export default function SourceReportChart({
 
           {/* Date labels and ticks */}
           {dateLabels}
+          {todayMarker}
 
           {/* Y-axis label */}
           <text
