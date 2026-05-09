@@ -1,4 +1,4 @@
-import { pgTable, integer, text, boolean, serial, varchar, unique, timestamp, date, doublePrecision, foreignKey } from "drizzle-orm/pg-core"
+import { pgTable, integer, text, boolean, serial, varchar, unique, timestamp, date, doublePrecision, foreignKey, json } from "drizzle-orm/pg-core"
 // import { sql } from "drizzle-orm"
 
 
@@ -520,7 +520,7 @@ export const tootogpSchedule = pgTable("tootogp_schedule", {
 			name: "tootogp_schedule_approved_too_id_approved_too_id_fk"
 		}),
 	unique("tootogp_schedule_generated_ep_db_object_id_unique").on(table.generatedEpDbObjectId),
-	unique("tootogp_schedule_parent_sequence_unique").on(table.sequenceNo, table.approvedTooId),
+	unique("tootogp_schedule_parent_sequence_unique").on(table.approvedTooId, table.sequenceNo),
 ]);
 
 export const longTermObservationListCycle2 = pgTable("long_term_observation_list_cycle2", {
@@ -575,5 +575,29 @@ export const longTermObservationListCycle2 = pgTable("long_term_observation_list
 	mtDays: varchar("mt_days", { length: 255 }),
 	leftMtDays: varchar("left_mt_days", { length: 255 }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+});
+
+export const gpCycle2SourceReports = pgTable("gp_cycle2_source_reports", {
+	sourceId: integer("source_id").primaryKey().notNull(),
+	sourceName: varchar("source_name", { length: 255 }).notNull(),
+	proposalId: varchar("proposal_id", { length: 255 }),
+	proposalNo: varchar("proposal_no", { length: 255 }),
+	pi: varchar({ length: 255 }),
+	userGroup: varchar("user_group", { length: 255 }),
+	obsType: varchar("obs_type", { length: 255 }),
+	priority: varchar({ length: 50 }),
+	ra: varchar({ length: 255 }),
+	dec: varchar({ length: 255 }),
+	requiredExposureS: integer("required_exposure_s"),
+	requiredVisits: integer("required_visits"),
+	perVisitMinS: integer("per_visit_min_s"),
+	perVisitMaxS: integer("per_visit_max_s"),
+	scheduledExposureS: integer("scheduled_exposure_s"),
+	scheduledVisits: integer("scheduled_visits"),
+	exposureRatio: doublePrecision("exposure_ratio"),
+	chartData: json("chart_data"),
+	summaryText: text("summary_text"),
+	generatedAt: timestamp("generated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 });

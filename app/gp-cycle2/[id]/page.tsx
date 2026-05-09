@@ -4,6 +4,7 @@ import { SubmitEvent, useCallback, useEffect, useLayoutEffect, useState } from "
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "../../cycle2-long-term/detail-title-cache";
+import SourceReportChart from "../../components/SourceReportChart";
 
 const GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX = "gp-cycle2:detail:title:";
 
@@ -483,6 +484,12 @@ export default function GpCycle2DetailPage() {
               Rows: <span className="font-mono font-medium">{plannedList.length}</span>
             </span>
           </div>
+
+          {row?.sourceId ? (
+            <div className="border-b border-slate-200 dark:border-slate-700">
+              <SourceReportChart sourceId={row.sourceId} embedded />
+            </div>
+          ) : null}
 
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-left text-xs">

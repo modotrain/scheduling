@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, varchar, serial, text, timestamp, unique, doublePrecision, date } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, varchar, serial, text, timestamp, unique, doublePrecision, date, json } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -590,4 +590,41 @@ export const longTermObservationListCycle2 = pgTable('long_term_observation_list
   // time stamp
 	createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+// GP Cycle2 Source Reports - for visualization and download
+export const gpCycle2SourceReports = pgTable('gp_cycle2_source_reports', {
+	// Primary key
+	sourceId: integer('source_id').primaryKey().notNull(),
+	
+	// Metadata
+	sourceName: varchar('source_name', { length: 255 }).notNull(),
+	proposalId: varchar('proposal_id', { length: 255 }),
+	proposalNo: varchar('proposal_no', { length: 255 }),
+	pi: varchar('pi', { length: 255 }),
+	userGroup: varchar('user_group', { length: 255 }),
+	obsType: varchar('obs_type', { length: 255 }),
+	priority: varchar('priority', { length: 50 }),
+	ra: varchar('ra', { length: 255 }),
+	dec: varchar('dec', { length: 255 }),
+	
+	// Scheduling Summary
+	requiredExposureS: integer('required_exposure_s'),
+	requiredVisits: integer('required_visits'),
+	perVisitMinS: integer('per_visit_min_s'),
+	perVisitMaxS: integer('per_visit_max_s'),
+	scheduledExposureS: integer('scheduled_exposure_s'),
+	scheduledVisits: integer('scheduled_visits'),
+	exposureRatio: doublePrecision('exposure_ratio'),
+	
+	// Chart Data (JSON)
+	// { visibleRanges: [[startDate, endDate], ...], visibleTotalDays: N, scheduledObs: [{date, exp_s, week}, ...], dateRange: {min, max}, obsType: "..." }
+	chartData: json('chart_data'),
+	
+	// Summary Text (from source_reports/*.txt)
+	summaryText: text('summary_text'),
+	
+	// Metadata
+	generatedAt: timestamp('generated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 });

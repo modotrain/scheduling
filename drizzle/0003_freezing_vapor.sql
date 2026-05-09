@@ -1,0 +1,23 @@
+CREATE TABLE "gp_cycle2_source_reports" (
+	"source_id" integer PRIMARY KEY NOT NULL,
+	"source_name" varchar(255) NOT NULL,
+	"proposal_id" varchar(255),
+	"proposal_no" varchar(255),
+	"pi" varchar(255),
+	"user_group" varchar(255),
+	"obs_type" varchar(255),
+	"priority" varchar(50),
+	"ra" varchar(255),
+	"dec" varchar(255),
+	"required_exposure_s" integer,
+	"required_visits" integer,
+	"per_visit_min_s" integer,
+	"per_visit_max_s" integer,
+	"scheduled_exposure_s" integer,
+	"scheduled_visits" integer,
+	"exposure_ratio" double precision,
+	"chart_data" json,
+	"summary_text" text,
+	"generated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
