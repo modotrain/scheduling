@@ -280,10 +280,14 @@ export default function SourceReportChart({
     <div className={embedded ? "overflow-hidden" : "mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-900 overflow-hidden"}>
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
         <div>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+          <h3
+            className={`text-slate-900 dark:text-slate-100 ${
+              embedded ? "text-sm font-medium" : "text-base font-semibold"
+            }`}
+          >
             Observation Schedule Timeline
           </h3>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+          <p className={`text-slate-600 dark:text-slate-400 mt-1 ${embedded ? "text-[11px]" : "text-xs"}`}>
             Visible windows (grey) and scheduled observations ({chartData.obsType})
           </p>
         </div>
