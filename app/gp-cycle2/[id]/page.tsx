@@ -1,6 +1,6 @@
 "use client";
 
-import { SubmitEvent, useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { SubmitEvent, useCallback, useEffect, useLayoutEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "../../cycle2-long-term/detail-title-cache";
@@ -267,6 +267,29 @@ export default function GpCycle2DetailPage() {
 
   const activeScheduleHoverKey = lockedScheduleKey ?? hoverScheduleKey;
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setLockedScheduleKey(null);
+      setHoverScheduleKey(null);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  function clearScheduleLockIfBlankAreaClick(event: ReactMouseEvent<HTMLDivElement>) {
+    if (!lockedScheduleKey) return;
+    const target = event.target as Element | null;
+    if (!target) return;
+
+    // Keep lock when interacting with linked items or controls.
+    if (target.closest("tr, a, button, circle")) return;
+
+    setLockedScheduleKey(null);
+    setHoverScheduleKey(null);
+  }
+
   const [row, setRow] = useState<GpCycle2Row | null>(null);
   const [input, setInput] = useState<FieldInput>({} as FieldInput);
   const [editing, setEditing] = useState(false);
@@ -519,7 +542,10 @@ export default function GpCycle2DetailPage() {
         ) : null}
 
         {/* ── Planned Observation List ───────────────────────────────── */}
-        <div className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
+        <div
+          className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700"
+          onClick={clearScheduleLockIfBlankAreaClick}
+        >
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
             <h2 className="text-base font-semibold">Planned Observation List</h2>
             <span className="text-sm text-slate-600 dark:text-slate-300">
