@@ -100,10 +100,10 @@ const PLANNED_COLS: { key: Exclude<keyof PlannedObsRow, "id">; label: string }[]
   { key: "endTime", label: "End" },
   { key: "totalExposureTime", label: "Exposure" },
   { key: "visitNumber", label: "Visit" },
-  { key: "fxt1WindowMode", label: "FXT1 Window" },
-  { key: "fxt1Filter", label: "FXT1 Filter" },
-  { key: "fxt2WindowMode", label: "FXT2 Window" },
-  { key: "fxt2Filter", label: "FXT2 Filter" },
+  { key: "fxt1WindowMode", label: "Mode A" },
+  { key: "fxt1Filter", label: "Filter A" },
+  { key: "fxt2WindowMode", label: "Mode B" },
+  { key: "fxt2Filter", label: "Filter B" },
 ];
 
 type FieldInput = Omit<GpCycle2Row, "id">;
@@ -446,6 +446,12 @@ export default function GpCycle2DetailPage() {
           </p>
         ) : null}
 
+        {loading ? (
+          <div className="mt-6 flex justify-center">
+            <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
+          </div>
+        ) : null}
+
         {/* ── Planned Observation List ───────────────────────────────── */}
         <div className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
@@ -635,10 +641,10 @@ export default function GpCycle2DetailPage() {
                         >
                           <div className="h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 cursor-default transition-transform group-hover:scale-125" />
                           {/* Tooltip */}
-                          <div className="pointer-events-none absolute bottom-full left-1/2 mb-2.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1.5 text-[11px] leading-tight text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg dark:bg-slate-700">
+                          <div className="pointer-events-none absolute bottom-full left-1/2 mb-2.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] leading-tight text-slate-900 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100">
                             <div className="font-medium">{r.validSecs.toLocaleString()} secs</div>
-                            <div className="text-slate-400 dark:text-slate-300 mt-0.5">{r.startDate}</div>
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-700" />
+                            <div className="mt-0.5 text-slate-500 dark:text-slate-300">{r.startDate}</div>
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-slate-700" />
                           </div>
                         </div>
                       );
@@ -791,11 +797,7 @@ export default function GpCycle2DetailPage() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="mt-6 flex justify-center">
-            <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
-          </div>
-        ) : !row ? (
+        {!loading ? !row ? (
           <p className="mt-8 text-rose-600">Proposal not found.</p>
         ) : (
           <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
@@ -878,7 +880,7 @@ export default function GpCycle2DetailPage() {
               </div>
             </form>
           </section>
-        )}
+        ) : null}
       </div>
 
       {confirmOpen ? (
