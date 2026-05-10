@@ -60,16 +60,6 @@ function toMollweideLon(ra: number): number {
   return ((ra + 180) % 360) - 180;
 }
 
-function buildRegionPolygon(region: SkyRegion): Array<[number, number]> {
-  return [
-    [toMollweideLon(region.raLo), region.decLo],
-    [toMollweideLon(region.raHi), region.decLo],
-    [toMollweideLon(region.raHi), region.decHi],
-    [toMollweideLon(region.raLo), region.decHi],
-    [toMollweideLon(region.raLo), region.decLo],
-  ];
-}
-
 export default function Cycle2SkyMap() {
   const [data, setData] = useState<SkyPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,15 +109,6 @@ export default function Cycle2SkyMap() {
     const graticule = geoGraticule().step([30, 30])();
     return pathBuilder(graticule) ?? "";
   }, [pathBuilder]);
-
-  const regionPaths = useMemo(
-    () =>
-      data?.regions.map((region) => ({
-        region,
-        d: pathBuilder({ type: "Polygon", coordinates: [buildRegionPolygon(region)] }) ?? "",
-      })) ?? [],
-    [data, pathBuilder],
-  );
 
   const pointMarks = useMemo(
     () =>
@@ -192,22 +173,14 @@ export default function Cycle2SkyMap() {
 
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="h-auto w-full rounded-md bg-slate-50 dark:bg-slate-950"
+        className="h-auto w-full rounded-md bg-white dark:bg-slate-900"
         onMouseLeave={() => setHover(null)}
       >
-        <path d={pathBuilder({ type: "Sphere" }) ?? ""} fill="#f8fafc" stroke="#94a3b8" strokeWidth={1} />
-
-        {regionPaths.map(({ region, d }) => (
-          <path
-            key={`region-${region.iRa}-${region.iDec}`}
-            d={d}
-            fill="#64748b"
-            fillOpacity={region.alpha}
-            stroke="#cbd5e1"
-            strokeOpacity={0.45}
-            strokeWidth={0.6}
-          />
-        ))}
+        <path
+          d={pathBuilder({ type: "Sphere" }) ?? ""}
+          className="fill-white stroke-slate-400 dark:fill-slate-900 dark:stroke-slate-500"
+          strokeWidth={1}
+        />
 
         <path d={graticulePath} fill="none" stroke="#94a3b8" strokeOpacity={0.45} strokeWidth={0.8} />
 
