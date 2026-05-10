@@ -251,7 +251,7 @@ export default function Cycle2LongTermPage() {
           <div>
             <h1 className="text-2xl font-semibold">Cycle 2 Long-Term</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Weekly long-term scheduling records imported from generated CSV plans.
+              Weekly long-term scheduling records.
             </p>
           </div>
           <div className="flex items-center gap-2">
