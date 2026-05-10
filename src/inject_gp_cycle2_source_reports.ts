@@ -16,8 +16,8 @@ dotenv.config();
 import * as fs from "fs";
 import * as path from "path";
 import { parse as parseCSV } from "csv-parse/sync";
-import { db } from "./db/client";
-import { gpCycle2SourceReports } from "./db/schema";
+import { db } from "./db/client.ts";
+import { gpCycle2SourceReports } from "./db/schema.ts";
 
 const LONGTERM_SCH_DIR = path.join(process.cwd(), "longterm_sch");
 const SOURCE_CSV = path.join(LONGTERM_SCH_DIR, "reviewed_cycle2_source_list_GP_visibility_eachday.csv");
@@ -49,7 +49,7 @@ interface SourceRow {
   exposure_per_vist_max: string;
   visible_date_ranges: string;
   visible_total_days: string;
-  [key: string]: any;
+  [key: string]: string | undefined;
 }
 
 interface ScheduleRow {
@@ -58,10 +58,18 @@ interface ScheduleRow {
   week_start_date: string;
   week_index: string;
   exposure_s: string;
-  [key: string]: any;
+  [key: string]: string | undefined;
 }
 
-interface ChartData {
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+interface ChartData extends Record<string, JsonValue> {
   visibleRanges: Array<[string, string]>;
   visibleTotalDays: number;
   scheduledObs: Array<{
@@ -71,7 +79,7 @@ interface ChartData {
   }>;
   dateRange: { min: string; max: string };
   obsType: string;
-  color?: string;
+  color: string;
 }
 
 function parseVisibleRanges(visibleRangesStr: string | null): Array<[string, string]> {
@@ -143,7 +151,7 @@ async function main() {
       minDate = dates[0];
       maxDate = dates[dates.length - 1];
     }
-  } catch (err) {
+  } catch {
     console.warn("[warn] Failed to parse schedule dates, using defaults");
   }
 
@@ -219,13 +227,13 @@ async function main() {
             scheduledExposureS: scheduledExp || null,
             scheduledVisits: scheduled.length || null,
             exposureRatio: exposureRatio || null,
-            chartData: chartData as any,
+            chartData: chartData as JsonValue,
             summaryText,
           })
           .onConflictDoUpdate({
             target: gpCycle2SourceReports.sourceId,
             set: {
-              chartData: chartData as any,
+              chartData: chartData as JsonValue,
               summaryText,
               scheduledExposureS: scheduledExp || null,
               scheduledVisits: scheduled.length || null,
