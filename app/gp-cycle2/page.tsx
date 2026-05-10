@@ -63,6 +63,7 @@ type GpCycle2Cache = {
 const TABLE_COLS: (keyof GpCycle2Row)[] = [
   "id",
   "sourceName",
+  "sourceId",
   "proposalNo",
   "pi",
   "stp",
@@ -84,6 +85,7 @@ const TABLE_COLS: (keyof GpCycle2Row)[] = [
 const COL_LABELS: Partial<Record<keyof GpCycle2Row, string>> = {
   id: "ID",
   sourceName: "Source",
+  sourceId: "Src ID",
   proposalNo: "Proposal No",
   pi: "PI",
   obsType: "Obs Type",
