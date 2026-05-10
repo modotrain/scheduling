@@ -336,7 +336,7 @@ export default function Cycle2SkyMap() {
           <div className="relative ml-1 w-[28rem] py-1">
             <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-slate-300 dark:bg-slate-700" />
             <div
-              className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-sky-500/80 dark:bg-sky-400/80"
+              className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#0b4f8a] dark:bg-sky-300"
               style={{
                 left: `${startPercent}%`,
                 width: `${Math.max(0, endPercent - startPercent)}%`,
@@ -358,7 +358,7 @@ export default function Cycle2SkyMap() {
                 setFilterMode("range");
                 setWeekRangeStart(nextStart);
               }}
-              className="pointer-events-none absolute inset-0 z-20 h-7 w-full appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-[-5px] [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-sky-700 [&::-webkit-slider-thumb]:bg-sky-500 [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-1 [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-sky-700 [&::-moz-range-thumb]:bg-sky-500"
+                className="pointer-events-none absolute inset-0 z-20 h-7 w-full appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-[-6.5px] [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-[#0b4f8a] [&::-webkit-slider-thumb]:bg-[#0b4f8a] [&::-webkit-slider-thumb]:shadow-sm dark:[&::-webkit-slider-thumb]:border-sky-300 dark:[&::-webkit-slider-thumb]:bg-sky-300 [&::-moz-range-track]:h-1 [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-[#0b4f8a] [&::-moz-range-thumb]:bg-[#0b4f8a] dark:[&::-moz-range-thumb]:border-sky-300 dark:[&::-moz-range-thumb]:bg-sky-300"
             />
             <input
               type="range"
@@ -376,7 +376,7 @@ export default function Cycle2SkyMap() {
                 setFilterMode("range");
                 setWeekRangeEnd(nextEnd);
               }}
-              className="pointer-events-none absolute inset-0 z-30 h-7 w-full appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-[-5px] [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-sky-700 [&::-webkit-slider-thumb]:bg-sky-500 [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-1 [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-sky-700 [&::-moz-range-thumb]:bg-sky-500"
+                className="pointer-events-none absolute inset-0 z-30 h-7 w-full appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-[-6.5px] [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-[#0b4f8a] [&::-webkit-slider-thumb]:bg-[#0b4f8a] [&::-webkit-slider-thumb]:shadow-sm dark:[&::-webkit-slider-thumb]:border-sky-300 dark:[&::-webkit-slider-thumb]:bg-sky-300 [&::-moz-range-track]:h-1 [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-[#0b4f8a] [&::-moz-range-thumb]:bg-[#0b4f8a] dark:[&::-moz-range-thumb]:border-sky-300 dark:[&::-moz-range-thumb]:bg-sky-300"
             />
 
             {activeHandle === "start" ? (
@@ -507,7 +507,12 @@ export default function Cycle2SkyMap() {
             <div className="flex items-center gap-1">
               {isPopupLocked ? (
                 <>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-end gap-1 min-w-[3.6rem]">
+                    {copiedToken === "popup" ? (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Copied</span>
+                    ) : (
+                      <span className="invisible text-[10px]">Copied</span>
+                    )}
                     <button
                       type="button"
                       className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -519,7 +524,6 @@ export default function Cycle2SkyMap() {
                         <rect x="2" y="6" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
                       </svg>
                     </button>
-                    {copiedToken === "popup" ? <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Copied</span> : null}
                   </div>
                   <button
                     type="button"
