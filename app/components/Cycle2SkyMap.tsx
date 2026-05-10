@@ -67,7 +67,7 @@ function buildPopupText(point: SkyPoint): string {
   const scheduledDateEnd = point.scheduledDateEnd ?? "-";
   return [
     `Source: ${point.sourceName ?? "Unknown Source"}`,
-    `sid: ${point.sourceId}`,
+    `Source ID: ${point.sourceId}`,
     `Proposal: ${point.proposalNo ?? "-"}`,
     `PI: ${point.pi ?? "-"}`,
     `Obs Type: ${point.obsType ?? "-"}`,
@@ -347,7 +347,7 @@ export default function Cycle2SkyMap() {
             </div>
           </div>
           <p className="mt-1 text-slate-700 dark:text-slate-200">
-            sid: {isPopupLocked ? (
+            Source ID: {isPopupLocked ? (
               <span className="inline-flex items-center gap-1">
                 <button
                   type="button"

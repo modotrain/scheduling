@@ -261,7 +261,7 @@ export default function Cycle2LongTermPage() {
               rel="noopener noreferrer"
               className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark"
             >
-              Sky Map
+              Sky Map View
             </Link>
             <Link
               href="/gp-cycle2"
