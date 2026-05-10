@@ -191,6 +191,8 @@ export default function Cycle2LongTermPage() {
       return filtered;
     }
 
+    const NUMERIC_COLS: (keyof LongTermRow)[] = ["weekId", "totalExposureTime", "visitNumber"];
+
     return [...filtered].sort((a, b) => {
       if (sortConfig.col === "weekId") {
         const aWeek = parseWeekId(a.weekId);
@@ -212,6 +214,19 @@ export default function Cycle2LongTermPage() {
 
       const aVal = a[sortConfig.col!] ?? "";
       const bVal = b[sortConfig.col!] ?? "";
+
+      if (NUMERIC_COLS.includes(sortConfig.col!)) {
+        const aNum = aVal !== "" ? Number(aVal) : NaN;
+        const bNum = bVal !== "" ? Number(bVal) : NaN;
+        const aValid = Number.isFinite(aNum);
+        const bValid = Number.isFinite(bNum);
+        if (aValid && bValid) {
+          return sortConfig.dir === "asc" ? aNum - bNum : bNum - aNum;
+        }
+        if (aValid) return sortConfig.dir === "asc" ? -1 : 1;
+        if (bValid) return sortConfig.dir === "asc" ? 1 : -1;
+      }
+
       const cmp =
         typeof aVal === "number" && typeof bVal === "number"
           ? aVal - bVal
