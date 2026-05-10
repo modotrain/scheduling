@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
-import { cycle2SkymapSchedule, cycle2SkymapSources } from "@/src/db/schema";
+import { cycle2SkymapSchedule, cycle2SkymapSources, longTermObservationListCycle2 } from "@/src/db/schema";
 
 type SourceRow = {
   sourceId: number;
@@ -20,6 +20,17 @@ type ScheduleAggRow = {
   nScheduled: number;
   minWeek: number | null;
   maxWeek: number | null;
+};
+
+type LongTermRangeRow = {
+  sourceId: string | null;
+  startTime: string | null;
+  endTime: string | null;
+};
+
+type SourceDateRange = {
+  minStartDate: string | null;
+  maxEndDate: string | null;
 };
 
 type RegionStat = {
@@ -44,9 +55,15 @@ function normalizeRa(ra: number): number {
   return mod === 360 ? 0 : mod;
 }
 
+function extractIsoDate(value: string | null): string | null {
+  if (!value) return null;
+  const match = value.match(/\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : null;
+}
+
 export async function GET() {
   try {
-    const [sourcesRaw, scheduleAggRaw] = await Promise.all([
+    const [sourcesRaw, scheduleAggRaw, dateRangeRaw] = await Promise.all([
       db.select().from(cycle2SkymapSources),
       db
         .select({
@@ -56,6 +73,13 @@ export async function GET() {
           maxWeek: cycle2SkymapSchedule.weekIndex,
         })
         .from(cycle2SkymapSchedule),
+      db
+        .select({
+          sourceId: longTermObservationListCycle2.sourceId,
+          startTime: longTermObservationListCycle2.startTime,
+          endTime: longTermObservationListCycle2.endTime,
+        })
+        .from(longTermObservationListCycle2),
     ]);
 
     const sources = sourcesRaw as SourceRow[];
@@ -82,12 +106,39 @@ export async function GET() {
       }
     }
 
+    const sourceDateRangeMap = new Map<number, SourceDateRange>();
+    for (const row of dateRangeRaw as LongTermRangeRow[]) {
+      const sourceId = Number.parseInt(row.sourceId ?? "", 10);
+      if (!Number.isFinite(sourceId)) continue;
+
+      const startDate = extractIsoDate(row.startTime);
+      const endDate = extractIsoDate(row.endTime);
+      const existing = sourceDateRangeMap.get(sourceId);
+
+      if (!existing) {
+        sourceDateRangeMap.set(sourceId, {
+          minStartDate: startDate,
+          maxEndDate: endDate,
+        });
+        continue;
+      }
+
+      if (startDate) {
+        existing.minStartDate = existing.minStartDate ? (startDate < existing.minStartDate ? startDate : existing.minStartDate) : startDate;
+      }
+
+      if (endDate) {
+        existing.maxEndDate = existing.maxEndDate ? (endDate > existing.maxEndDate ? endDate : existing.maxEndDate) : endDate;
+      }
+    }
+
     const points = sources
       .filter((row) => row.ra !== null && row.dec !== null)
       .map((row) => {
         const exposureS = row.totalExposureTimeAll ?? 0;
         const exposureClipped = Math.max(exposureS, 1);
         const scheduleAgg = scheduleMap.get(row.sourceId);
+        const sourceDateRange = sourceDateRangeMap.get(row.sourceId);
         return {
           sourceId: row.sourceId,
           sourceName: row.sourceName,
@@ -103,6 +154,8 @@ export async function GET() {
           nScheduled: scheduleAgg?.nScheduled ?? 0,
           minWeek: scheduleAgg?.minWeek ?? null,
           maxWeek: scheduleAgg?.maxWeek ?? null,
+          scheduledDateStart: sourceDateRange?.minStartDate ?? null,
+          scheduledDateEnd: sourceDateRange?.maxEndDate ?? null,
         };
       });
 

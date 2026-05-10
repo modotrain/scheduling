@@ -2,7 +2,7 @@
 
 import { geoGraticule, geoPath } from "d3-geo";
 import { geoMollweide } from "d3-geo-projection";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type SkyPoint = {
   sourceId: number;
@@ -19,6 +19,8 @@ type SkyPoint = {
   nScheduled: number;
   minWeek: number | null;
   maxWeek: number | null;
+  scheduledDateStart: string | null;
+  scheduledDateEnd: string | null;
 };
 
 type SkyRegion = {
@@ -60,11 +62,31 @@ function toMollweideLon(ra: number): number {
   return ((ra + 180) % 360) - 180;
 }
 
+function buildPopupText(point: SkyPoint): string {
+  const scheduledDateStart = point.scheduledDateStart ?? "-";
+  const scheduledDateEnd = point.scheduledDateEnd ?? "-";
+  return [
+    `Source: ${point.sourceName ?? "Unknown Source"}`,
+    `sid: ${point.sourceId}`,
+    `Proposal: ${point.proposalNo ?? "-"}`,
+    `PI: ${point.pi ?? "-"}`,
+    `Obs Type: ${point.obsType ?? "-"}`,
+    `Priority: ${point.sourcePriority ?? "-"}`,
+    `RA/Dec: ${point.ra.toFixed(4)} / ${point.dec.toFixed(4)}`,
+    `Exposure: ${point.totalExposureTimeAll.toLocaleString()} s`,
+    `Scheduled Visits: ${point.nScheduled}`,
+    `Scheduled Week Range: ${point.minWeek ?? "-"} to ${point.maxWeek ?? "-"}`,
+    `Scheduled Date Range: ${scheduledDateStart} to ${scheduledDateEnd}`,
+  ].join("\n");
+}
+
 export default function Cycle2SkyMap() {
   const [data, setData] = useState<SkyPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<HoverState | null>(null);
+  const [lockedHover, setLockedHover] = useState<HoverState | null>(null);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   const width = 1300;
   const height = 740;
@@ -139,6 +161,29 @@ export default function Cycle2SkyMap() {
     [projection],
   );
 
+  const activePopup = lockedHover ?? hover;
+  const isPopupLocked = lockedHover !== null;
+
+  const copyText = useCallback(async (text: string, token: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedToken(token);
+    } catch {
+      setCopiedToken(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!copiedToken) return;
+    const timeoutId = window.setTimeout(() => setCopiedToken(null), 1300);
+    return () => window.clearTimeout(timeoutId);
+  }, [copiedToken]);
+
+  const clearPopupLock = useCallback(() => {
+    setLockedHover(null);
+    setHover(null);
+  }, []);
+
   if (loading) {
     return (
       <div className="rounded-lg ring-1 ring-slate-200 bg-white p-6 dark:ring-slate-700 dark:bg-slate-900">
@@ -158,7 +203,14 @@ export default function Cycle2SkyMap() {
   }
 
   return (
-    <div className="relative rounded-lg ring-1 ring-slate-200 bg-white p-4 dark:ring-slate-700 dark:bg-slate-900">
+    <div
+      className="relative rounded-lg ring-1 ring-slate-200 bg-white p-4 dark:ring-slate-700 dark:bg-slate-900"
+      onClick={() => {
+        if (isPopupLocked) {
+          clearPopupLock();
+        }
+      }}
+    >
       <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600 dark:text-slate-300">
         <span>
           Sources: <span className="font-mono font-semibold">{data.summary.totalSources}</span>
@@ -174,7 +226,11 @@ export default function Cycle2SkyMap() {
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="h-auto w-full rounded-md bg-white dark:bg-slate-900"
-        onMouseLeave={() => setHover(null)}
+        onMouseLeave={() => {
+          if (!isPopupLocked) {
+            setHover(null);
+          }
+        }}
       >
         <path
           d={pathBuilder({ type: "Sphere" }) ?? ""}
@@ -194,8 +250,22 @@ export default function Cycle2SkyMap() {
               fillOpacity={0.62}
               stroke="#111827"
               strokeWidth={0.45}
-              onPointerEnter={() => setHover({ point, x, y })}
-              onPointerLeave={() => setHover((current) => (current?.point.sourceId === point.sourceId ? null : current))}
+              onPointerEnter={() => {
+                if (!isPopupLocked) {
+                  setHover({ point, x, y });
+                }
+              }}
+              onPointerLeave={() => {
+                if (!isPopupLocked) {
+                  setHover((current) => (current?.point.sourceId === point.sourceId ? null : current));
+                }
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                const nextHover = { point, x, y };
+                setHover(nextHover);
+                setLockedHover(nextHover);
+              }}
             />
             {point.totalExposureKs > 0 ? (
               <text
@@ -233,28 +303,146 @@ export default function Cycle2SkyMap() {
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#2ca02c]" />Priority C</span>
       </div>
 
-      {hover ? (
+      {activePopup ? (
         <div
-          className="pointer-events-none absolute z-20 max-w-sm rounded-md border border-slate-200 bg-white/95 px-3 py-2 text-xs shadow-xl dark:border-slate-700 dark:bg-slate-900/95"
+          className="absolute z-20 max-w-sm rounded-md border border-slate-200 bg-white/95 px-3 py-2 text-xs shadow-xl dark:border-slate-700 dark:bg-slate-900/95"
           style={{
-            left: `${Math.min((hover.x / width) * 100 + 2, 74)}%`,
-            top: `${Math.min((hover.y / height) * 100 + 2, 78)}%`,
+            left: `${Math.min((activePopup.x / width) * 100 + 2, 74)}%`,
+            top: `${Math.min((activePopup.y / height) * 100 + 2, 78)}%`,
           }}
+          onClick={(event) => event.stopPropagation()}
         >
-          <p className="font-semibold text-slate-900 dark:text-slate-100">
-            {hover.point.sourceName ?? "Unknown Source"} (sid={hover.point.sourceId})
+          <div className="mb-1 flex items-start justify-between gap-2">
+            <p className="pr-2 font-semibold text-slate-900 dark:text-slate-100">
+              {activePopup.point.sourceName ?? "Unknown Source"}
+            </p>
+            <div className="flex items-center gap-1">
+              {isPopupLocked ? (
+                <>
+                  <button
+                    type="button"
+                    className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    title="Copy popup"
+                    onClick={() => void copyText(buildPopupText(activePopup.point), "popup")}
+                  >
+                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                      <rect x="5" y="3" width="8" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                      <rect x="2" y="6" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    title="Close popup"
+                    onClick={clearPopupLock}
+                  >
+                    x
+                  </button>
+                </>
+              ) : (
+                <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300">
+                  Click to lock
+                </span>
+              )}
+            </div>
+          </div>
+          <p className="mt-1 text-slate-700 dark:text-slate-200">
+            sid: {isPopupLocked ? (
+              <span className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded border border-dashed border-slate-400 px-1 font-mono hover:bg-slate-100 dark:border-slate-500 dark:hover:bg-slate-800"
+                  onClick={() => void copyText(String(activePopup.point.sourceId), "sid")}
+                >
+                  {activePopup.point.sourceId}
+                </button>
+                {copiedToken === "sid" ? <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Copied</span> : null}
+              </span>
+            ) : activePopup.point.sourceId}
           </p>
-          <p className="mt-1 text-slate-700 dark:text-slate-200">Proposal: {hover.point.proposalNo ?? "-"}</p>
-          <p className="text-slate-700 dark:text-slate-200">PI: {hover.point.pi ?? "-"}</p>
-          <p className="text-slate-700 dark:text-slate-200">Obs Type: {hover.point.obsType ?? "-"}</p>
-          <p className="text-slate-700 dark:text-slate-200">Priority: {hover.point.sourcePriority ?? "-"}</p>
           <p className="text-slate-700 dark:text-slate-200">
-            RA/Dec: {hover.point.ra.toFixed(4)} / {hover.point.dec.toFixed(4)}
+            Proposal: {isPopupLocked ? (
+              <span className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded border border-dashed border-slate-400 px-1 hover:bg-slate-100 dark:border-slate-500 dark:hover:bg-slate-800"
+                  onClick={() => void copyText(activePopup.point.proposalNo ?? "-", "proposal")}
+                >
+                  {activePopup.point.proposalNo ?? "-"}
+                </button>
+                {copiedToken === "proposal" ? <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Copied</span> : null}
+              </span>
+            ) : activePopup.point.proposalNo ?? "-"}
           </p>
-          <p className="text-slate-700 dark:text-slate-200">Exposure: {hover.point.totalExposureTimeAll.toLocaleString()} s</p>
-          <p className="text-slate-700 dark:text-slate-200">Scheduled Visits: {hover.point.nScheduled}</p>
           <p className="text-slate-700 dark:text-slate-200">
-            Scheduled Week Range: {hover.point.minWeek ?? "-"} to {hover.point.maxWeek ?? "-"}
+            PI: {isPopupLocked ? (
+              <span className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded border border-dashed border-slate-400 px-1 hover:bg-slate-100 dark:border-slate-500 dark:hover:bg-slate-800"
+                  onClick={() => void copyText(activePopup.point.pi ?? "-", "pi")}
+                >
+                  {activePopup.point.pi ?? "-"}
+                </button>
+                {copiedToken === "pi" ? <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Copied</span> : null}
+              </span>
+            ) : activePopup.point.pi ?? "-"}
+          </p>
+          <p className="text-slate-700 dark:text-slate-200">Obs Type: {activePopup.point.obsType ?? "-"}</p>
+          <p className="text-slate-700 dark:text-slate-200">Priority: {activePopup.point.sourcePriority ?? "-"}</p>
+          <p className="text-slate-700 dark:text-slate-200">
+            RA/Dec: {isPopupLocked ? (
+              <span className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded border border-dashed border-slate-400 px-1 font-mono hover:bg-slate-100 dark:border-slate-500 dark:hover:bg-slate-800"
+                  onClick={() => void copyText(activePopup.point.ra.toFixed(4), "ra")}
+                >
+                  {activePopup.point.ra.toFixed(4)}
+                </button>
+                <span>/</span>
+                <button
+                  type="button"
+                  className="rounded border border-dashed border-slate-400 px-1 font-mono hover:bg-slate-100 dark:border-slate-500 dark:hover:bg-slate-800"
+                  onClick={() => void copyText(activePopup.point.dec.toFixed(4), "dec")}
+                >
+                  {activePopup.point.dec.toFixed(4)}
+                </button>
+                {copiedToken === "ra" || copiedToken === "dec" ? <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Copied</span> : null}
+              </span>
+            ) : (
+              <span>{activePopup.point.ra.toFixed(4)} / {activePopup.point.dec.toFixed(4)}</span>
+            )}
+          </p>
+          <p className="text-slate-700 dark:text-slate-200">Exposure: {activePopup.point.totalExposureTimeAll.toLocaleString()} s</p>
+          <p className="text-slate-700 dark:text-slate-200">Scheduled Visits: {activePopup.point.nScheduled}</p>
+          <p className="text-slate-700 dark:text-slate-200">
+            Scheduled Week Range: {activePopup.point.minWeek ?? "-"} - {activePopup.point.maxWeek ?? "-"}
+          </p>
+          <p className="text-slate-700 dark:text-slate-200">
+            Scheduled Date Range: {isPopupLocked ? (
+              <span className="inline-flex items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded border border-dashed border-slate-400 px-1 font-mono hover:bg-slate-100 dark:border-slate-500 dark:hover:bg-slate-800"
+                  onClick={() => void copyText(activePopup.point.scheduledDateStart ?? "-", "date-start")}
+                >
+                  {activePopup.point.scheduledDateStart ?? "-"}
+                </button>
+                {copiedToken === "date-start" ? <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Copied</span> : null}
+                <span>to</span>
+                <button
+                  type="button"
+                  className="rounded border border-dashed border-slate-400 px-1 font-mono hover:bg-slate-100 dark:border-slate-500 dark:hover:bg-slate-800"
+                  onClick={() => void copyText(activePopup.point.scheduledDateEnd ?? "-", "date-end")}
+                >
+                  {activePopup.point.scheduledDateEnd ?? "-"}
+                </button>
+                {copiedToken === "date-end" ? <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Copied</span> : null}
+              </span>
+            ) : (
+              <span>{activePopup.point.scheduledDateStart ?? "-"} - {activePopup.point.scheduledDateEnd ?? "-"}</span>
+            )}
           </p>
         </div>
       ) : null}
