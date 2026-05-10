@@ -62,8 +62,7 @@ type ObsListRow = {
   filterB: string | null;
   startDate: string | null;
   endDate: string | null;
-  pointingDurationInOrbits: string | null;
-  pointingDurationInSeconds: string | null;
+  requestedObsDurationInSeconds: string | null;
   validSecs: number;
 };
 
@@ -95,8 +94,7 @@ const OBS_COLS: { key: keyof ObsListRow; label: string }[] = [
   { key: "filterA", label: "Filter A" },
   { key: "observationModeB", label: "Mode B" },
   { key: "filterB", label: "Filter B" },
-  { key: "pointingDurationInOrbits", label: "Obt" },
-  { key: "pointingDurationInSeconds", label: "Duration" },
+  { key: "requestedObsDurationInSeconds", label: "Req. Dur." },
 ];
 
 const PLANNED_COLS: { key: Exclude<keyof PlannedObsRow, "id">; label: string }[] = [

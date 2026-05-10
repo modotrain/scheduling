@@ -24,8 +24,7 @@ export async function GET(_req: Request, { params }: Params) {
         obs_wp.filter_b,
         obs_wp.start_date,
         obs_wp.end_date,
-        obs_wp.pointing_duration_in_orbits,
-        obs_wp.pointing_duration_in_seconds,
+        obs_wp.requested_obs_duration_in_seconds,
         COALESCE(obslogtest.valid_secs, 0) AS valid_secs
       FROM gp_cycle2 g
       JOIN obs_wp
