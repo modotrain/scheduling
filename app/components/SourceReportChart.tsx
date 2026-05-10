@@ -364,9 +364,9 @@ export default function SourceReportChart({
           >
             Observation Schedule Timeline
           </h3>
-          <p className={`text-slate-600 dark:text-slate-400 mt-1 ${embedded ? "text-[11px]" : "text-xs"}`}>
+          {/* <p className={`text-slate-600 dark:text-slate-400 mt-1 ${embedded ? "text-[11px]" : "text-xs"}`}>
             Visible windows (grey) and scheduled observations ({chartData.obsType})
-          </p>
+          </p> */}
         </div>
         <a
           href={`/api/gp-cycle2/source-reports/download?sourceId=${sourceId}`}
