@@ -350,12 +350,26 @@ export default function Cycle2SkyMap() {
             }}
             className="w-16 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-right font-mono text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
           />
-          <span
-            aria-hidden={filterMode !== "range"}
-            className={`rounded border border-sky-300 bg-sky-100 px-1 py-0.5 text-[10px] text-sky-700 dark:border-sky-700 dark:bg-sky-950/50 dark:text-sky-300 ${filterMode === "range" ? "visible" : "invisible"}`}
-          >
-            manual range
-          </span>
+          <div className="min-w-[6.25rem]">
+            {filterMode === "range" ? (
+              <span className="inline-flex h-5 items-center rounded-md border border-sky-300 bg-sky-100 px-2 text-[11px] font-medium text-sky-700 dark:border-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
+                manual range
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="inline-flex h-5 items-center rounded-md border border-sky-400 bg-sky-50 px-2 text-[11px] font-semibold text-sky-800 transition-colors hover:bg-sky-100 active:bg-sky-200 dark:border-sky-600 dark:bg-sky-950/30 dark:text-sky-200 dark:hover:bg-sky-900/40 dark:active:bg-sky-900/60"
+                onClick={() => {
+                  setFilterMode("single");
+                  setSelectedWeek(null);
+                  setWeekRangeStart(weekMin);
+                  setWeekRangeEnd(weekMax);
+                }}
+              >
+                show all
+              </button>
+            )}
+          </div>
 
           <div className="relative ml-1 w-[28rem] py-1.5">
             <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-slate-200 dark:bg-slate-700/90" />
