@@ -215,6 +215,24 @@ export default function Cycle2SkyMap() {
       });
   }, [pointMarks, filterMode, selectedWeek, computeExposureSInActiveRange]);
 
+  const activeSummary = useMemo(() => {
+    const priorities = { A: 0, B: 0, C: 0 };
+    let totalExposureS = 0;
+
+    for (const item of displayedPoints) {
+      totalExposureS += item.activeExposureS;
+      if (item.point.sourcePriority === "A") priorities.A += 1;
+      else if (item.point.sourcePriority === "B") priorities.B += 1;
+      else if (item.point.sourcePriority === "C") priorities.C += 1;
+    }
+
+    return {
+      totalSources: displayedPoints.length,
+      totalExposureMillionS: totalExposureS / 1_000_000,
+      priorities,
+    };
+  }, [displayedPoints]);
+
   const raTickMarks = useMemo(
     () =>
       [-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150]
@@ -294,13 +312,13 @@ export default function Cycle2SkyMap() {
       <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600 dark:text-slate-300">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <span>
-            Sources: <span className="font-mono font-semibold">{data.summary.totalSources}</span>
+            Sources: <span className="font-mono font-semibold">{activeSummary.totalSources}</span>
           </span>
           <span>
-            Exposure: <span className="font-mono font-semibold">{data.summary.totalExposureMillionS.toFixed(2)}M s</span>
+            Exposure: <span className="font-mono font-semibold">{activeSummary.totalExposureMillionS.toFixed(2)}M s</span>
           </span>
           <span>
-            Priority A/B/C: <span className="font-mono font-semibold">{data.summary.priorities.A}/{data.summary.priorities.B}/{data.summary.priorities.C}</span>
+            Priority A/B/C: <span className="font-mono font-semibold">{activeSummary.priorities.A}/{activeSummary.priorities.B}/{activeSummary.priorities.C}</span>
           </span>
         </div>
 
