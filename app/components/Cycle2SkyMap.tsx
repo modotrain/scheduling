@@ -223,7 +223,7 @@ export default function Cycle2SkyMap() {
         ))}
 
         <text x={width / 2} y={28} textAnchor="middle" fontSize={15} fill="#0f172a" fontWeight={600}>
-          All Sources Sky Distribution (Mollweide)
+          All Sources Sky Distribution
         </text>
       </svg>
 
