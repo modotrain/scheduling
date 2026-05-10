@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, varchar, serial, text, timestamp, unique, doublePrecision, date, json } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, varchar, serial, text, timestamp, unique, doublePrecision, date, json, index } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -628,3 +628,39 @@ export const gpCycle2SourceReports = pgTable('gp_cycle2_source_reports', {
 	generatedAt: timestamp('generated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 });
+
+// Raw inputs for cycle2 sky map rendering
+export const cycle2SkymapSources = pgTable("cycle2_skymap_sources", {
+	id: serial("id").primaryKey().notNull(),
+	sourceId: integer("source_id").notNull(),
+	sourceName: varchar("source_name", { length: 255 }),
+	proposalNo: varchar("proposal_no", { length: 255 }),
+	pi: varchar("pi", { length: 255 }),
+	obsType: varchar("obs_type", { length: 255 }),
+	sourcePriority: varchar("source_priority", { length: 32 }),
+	ra: doublePrecision("ra"),
+	dec: doublePrecision("dec"),
+	totalExposureTimeAll: integer("total_exposure_time_all"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+}, (table) => [
+	unique("cycle2_skymap_sources_source_id_unique").on(table.sourceId),
+	index("cycle2_skymap_sources_source_id_idx").on(table.sourceId),
+	index("cycle2_skymap_sources_priority_idx").on(table.sourcePriority),
+]);
+
+export const cycle2SkymapSchedule = pgTable("cycle2_skymap_schedule", {
+	id: serial("id").primaryKey().notNull(),
+	sourceId: integer("source_id").notNull(),
+	visitIndex: integer("visit_index"),
+	nVisits: integer("n_visits"),
+	exposureS: integer("exposure_s"),
+	scheduledDate: date("scheduled_date"),
+	weekIndex: integer("week_index"),
+	note: text("note"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+}, (table) => [
+	index("cycle2_skymap_schedule_source_id_idx").on(table.sourceId),
+	index("cycle2_skymap_schedule_week_index_idx").on(table.weekIndex),
+]);

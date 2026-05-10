@@ -29,6 +29,13 @@
       "when": 1778310151739,
       "tag": "0003_freezing_vapor",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778378589577,
+      "tag": "0004_cycle2_skymap_tables",
+      "breakpoints": true
     }
   ]
 }
