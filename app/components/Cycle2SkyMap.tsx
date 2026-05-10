@@ -21,6 +21,7 @@ type SkyPoint = {
   maxWeek: number | null;
   scheduledDateStart: string | null;
   scheduledDateEnd: string | null;
+  weeklyExposure: Array<{ weekIndex: number; exposureS: number }>;
 };
 
 type SkyRegion = {
@@ -38,6 +39,7 @@ type SkyRegion = {
 type SkyPayload = {
   points: SkyPoint[];
   regions: SkyRegion[];
+  weekBounds: Array<{ weekIndex: number; startDate: string | null; endDate: string | null }>;
   summary: {
     totalSources: number;
     totalExposureS: number;
@@ -87,6 +89,11 @@ export default function Cycle2SkyMap() {
   const [hover, setHover] = useState<HoverState | null>(null);
   const [lockedHover, setLockedHover] = useState<HoverState | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<'single' | 'range'>('single');
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [weekRangeStart, setWeekRangeStart] = useState(1);
+  const [weekRangeEnd, setWeekRangeEnd] = useState(52);
+  const [activeHandle, setActiveHandle] = useState<"start" | "end" | null>(null);
 
   const width = 1300;
   const height = 740;
@@ -140,12 +147,73 @@ export default function Cycle2SkyMap() {
           if (!projected) return null;
           const [x, y] = projected;
           const color = PRIORITY_COLORS[point.sourcePriority ?? ""] ?? "#111827";
-          const radius = Math.max(2.75, Math.min(12.5, Math.sqrt(point.pointSize) * 0.6));
-          return { point, x, y, color, radius };
+          return { point, x, y, color };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null) ?? [],
     [data, projection],
   );
+
+  const weekMin = useMemo(() => {
+    if (!data?.weekBounds?.length) return 1;
+    return Math.min(...data.weekBounds.map((item) => item.weekIndex));
+  }, [data]);
+
+  const weekMax = useMemo(() => {
+    if (!data?.weekBounds?.length) return 52;
+    return Math.max(...data.weekBounds.map((item) => item.weekIndex));
+  }, [data]);
+
+  const weekSpan = Math.max(1, weekMax - weekMin);
+
+  const weekBoundMap = useMemo(() => {
+    return new Map((data?.weekBounds ?? []).map((item) => [item.weekIndex, item]));
+  }, [data]);
+
+  useEffect(() => {
+    setWeekRangeStart(weekMin);
+    setWeekRangeEnd(weekMax);
+  }, [weekMin, weekMax]);
+
+  const computeExposureSInActiveRange = useCallback((point: SkyPoint): number => {
+    if (filterMode === "single" && selectedWeek !== null) {
+      return point.weeklyExposure
+        .filter((item) => item.weekIndex === selectedWeek)
+        .reduce((sum, item) => sum + item.exposureS, 0);
+    }
+
+    if (filterMode === "range") {
+      return point.weeklyExposure
+        .filter((item) => item.weekIndex >= weekRangeStart && item.weekIndex <= weekRangeEnd)
+        .reduce((sum, item) => sum + item.exposureS, 0);
+    }
+
+    return point.totalExposureTimeAll;
+  }, [filterMode, selectedWeek, weekRangeStart, weekRangeEnd]);
+
+  const displayedPoints = useMemo(() => {
+    return pointMarks
+      .map((item) => {
+        const activeExposureS = computeExposureSInActiveRange(item.point);
+        const exposureClipped = Math.max(activeExposureS, 1);
+        const scaledPointSize = 20 + Math.sqrt(exposureClipped) * 1.5;
+        const radius = Math.max(2.75, Math.min(12.5, Math.sqrt(scaledPointSize) * 0.6));
+        return {
+          ...item,
+          radius,
+          activeExposureKs: activeExposureS / 1000,
+          activeExposureS,
+        };
+      })
+      .filter((item) => {
+        if (filterMode === "single" && selectedWeek !== null) {
+          return item.activeExposureS > 0;
+        }
+        if (filterMode === "range") {
+          return item.activeExposureS > 0;
+        }
+        return true;
+      });
+  }, [pointMarks, filterMode, selectedWeek, computeExposureSInActiveRange]);
 
   const raTickMarks = useMemo(
     () =>
@@ -184,6 +252,15 @@ export default function Cycle2SkyMap() {
     setHover(null);
   }, []);
 
+  const startPercent = ((weekRangeStart - weekMin) / weekSpan) * 100;
+  const endPercent = ((weekRangeEnd - weekMin) / weekSpan) * 100;
+
+  const startWeekDateText = weekBoundMap.get(weekRangeStart)?.startDate ?? "-";
+  const endWeekDateText = weekBoundMap.get(weekRangeEnd)?.endDate ?? "-";
+
+  const startBubbleLeftPercent = Math.min(92, Math.max(8, startPercent));
+  const endBubbleLeftPercent = Math.min(92, Math.max(8, endPercent));
+
   if (loading) {
     return (
       <div className="rounded-lg ring-1 ring-slate-200 bg-white p-6 dark:ring-slate-700 dark:bg-slate-900">
@@ -211,16 +288,126 @@ export default function Cycle2SkyMap() {
         }
       }}
     >
-      <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600 dark:text-slate-300">
-        <span>
-          Sources: <span className="font-mono font-semibold">{data.summary.totalSources}</span>
-        </span>
-        <span>
-          Exposure: <span className="font-mono font-semibold">{data.summary.totalExposureMillionS.toFixed(2)}M s</span>
-        </span>
-        <span>
-          Priority A/B/C: <span className="font-mono font-semibold">{data.summary.priorities.A}/{data.summary.priorities.B}/{data.summary.priorities.C}</span>
-        </span>
+      <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600 dark:text-slate-300">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <span>
+            Sources: <span className="font-mono font-semibold">{data.summary.totalSources}</span>
+          </span>
+          <span>
+            Exposure: <span className="font-mono font-semibold">{data.summary.totalExposureMillionS.toFixed(2)}M s</span>
+          </span>
+          <span>
+            Priority A/B/C: <span className="font-mono font-semibold">{data.summary.priorities.A}/{data.summary.priorities.B}/{data.summary.priorities.C}</span>
+          </span>
+        </div>
+
+        <div className="ml-auto flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-800/60">
+          <label htmlFor="week-filter" className="text-xs font-medium text-slate-700 dark:text-slate-200">
+            Week
+          </label>
+          <input
+            id="week-filter"
+            type="number"
+            min={weekMin}
+            max={weekMax}
+            placeholder={filterMode === "range" ? "manual" : "week"}
+            value={selectedWeek ?? ""}
+            onChange={(e) => {
+              const rawValue = e.target.value;
+              if (!rawValue) {
+                setFilterMode("single");
+                setSelectedWeek(null);
+                return;
+              }
+              const parsed = Number.parseInt(rawValue, 10);
+              if (!Number.isFinite(parsed)) return;
+              const clamped = Math.max(weekMin, Math.min(weekMax, parsed));
+              setFilterMode("single");
+              setSelectedWeek(clamped);
+            }}
+            className="w-16 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-right font-mono text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+          />
+          {filterMode === "range" ? (
+            <span className="rounded border border-sky-300 bg-sky-100 px-1 py-0.5 text-[10px] text-sky-700 dark:border-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
+              manual range
+            </span>
+          ) : null}
+
+          <div className="relative ml-1 w-[28rem] py-1">
+            <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-slate-300 dark:bg-slate-700" />
+            <div
+              className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-sky-500/80 dark:bg-sky-400/80"
+              style={{
+                left: `${startPercent}%`,
+                width: `${Math.max(0, endPercent - startPercent)}%`,
+              }}
+            />
+            <input
+              type="range"
+              min={weekMin}
+              max={weekMax}
+              value={weekRangeStart}
+              onPointerDown={() => setActiveHandle("start")}
+              onPointerUp={() => setActiveHandle(null)}
+              onMouseDown={() => setActiveHandle("start")}
+              onTouchStart={() => setActiveHandle("start")}
+              onMouseUp={() => setActiveHandle(null)}
+              onTouchEnd={() => setActiveHandle(null)}
+              onChange={(e) => {
+                const nextStart = Math.min(Number.parseInt(e.target.value, 10), weekRangeEnd);
+                setFilterMode("range");
+                setWeekRangeStart(nextStart);
+              }}
+              className="pointer-events-none absolute inset-0 z-20 h-7 w-full appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-[-5px] [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-sky-700 [&::-webkit-slider-thumb]:bg-sky-500 [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-1 [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-sky-700 [&::-moz-range-thumb]:bg-sky-500"
+            />
+            <input
+              type="range"
+              min={weekMin}
+              max={weekMax}
+              value={weekRangeEnd}
+              onPointerDown={() => setActiveHandle("end")}
+              onPointerUp={() => setActiveHandle(null)}
+              onMouseDown={() => setActiveHandle("end")}
+              onTouchStart={() => setActiveHandle("end")}
+              onMouseUp={() => setActiveHandle(null)}
+              onTouchEnd={() => setActiveHandle(null)}
+              onChange={(e) => {
+                const nextEnd = Math.max(Number.parseInt(e.target.value, 10), weekRangeStart);
+                setFilterMode("range");
+                setWeekRangeEnd(nextEnd);
+              }}
+              className="pointer-events-none absolute inset-0 z-30 h-7 w-full appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-[-5px] [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-sky-700 [&::-webkit-slider-thumb]:bg-sky-500 [&::-webkit-slider-thumb]:shadow-sm [&::-moz-range-track]:h-1 [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-sky-700 [&::-moz-range-thumb]:bg-sky-500"
+            />
+
+            {activeHandle === "start" ? (
+              <div
+                className="pointer-events-none absolute -top-6 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-700 shadow-sm whitespace-nowrap dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                style={{
+                  left: `${startBubbleLeftPercent}%`,
+                  transform: "translateX(-50%)",
+                }}
+              >
+                W{weekRangeStart}: {startWeekDateText}
+              </div>
+            ) : null}
+
+            {activeHandle === "end" ? (
+              <div
+                className="pointer-events-none absolute -top-6 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-700 shadow-sm whitespace-nowrap dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                style={{
+                  left: `${endBubbleLeftPercent}%`,
+                  transform: endPercent > 90 ? "translateX(-100%)" : "translateX(-50%)",
+                }}
+              >
+                W{weekRangeEnd}: {endWeekDateText}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="ml-1 min-w-[9rem] text-right font-mono text-[10px] text-slate-600 dark:text-slate-300">
+            {startWeekDateText} ~ {endWeekDateText}
+          </div>
+        </div>
       </div>
 
       <svg
@@ -240,7 +427,7 @@ export default function Cycle2SkyMap() {
 
         <path d={graticulePath} fill="none" stroke="#94a3b8" strokeOpacity={0.45} strokeWidth={0.8} />
 
-        {pointMarks.map(({ point, x, y, color, radius }) => (
+        {displayedPoints.map(({ point, x, y, color, radius, activeExposureKs }) => (
           <g key={`${point.sourceId}-${point.ra}-${point.dec}`}>
             <circle
               cx={x}
@@ -267,17 +454,18 @@ export default function Cycle2SkyMap() {
                 setLockedHover(nextHover);
               }}
             />
-            {point.totalExposureKs > 0 ? (
+            {activeExposureKs > 0 ? (
               <text
                 x={x}
                 y={y + 1.5}
                 fontSize={6}
                 textAnchor="middle"
-                fill="#0f172a"
+                fill="currentColor"
                 fillOpacity={0.72}
+                className="text-slate-800 dark:text-slate-200"
                 pointerEvents="none"
               >
-                {Math.round(point.totalExposureKs)}
+                {Math.round(activeExposureKs)}
               </text>
             ) : null}
           </g>
@@ -285,14 +473,14 @@ export default function Cycle2SkyMap() {
 
         {raTickMarks.map(({ lon, x, y, raLabel }) => (
           <g key={`tick-${lon}`}>
-            <line x1={x} y1={y - 4} x2={x} y2={y + 4} stroke="#334155" strokeOpacity={0.5} strokeWidth={0.8} />
-            <text x={x} y={y + 16} fontSize={10} textAnchor="middle" fill="#334155">
+            <line x1={x} y1={y - 4} x2={x} y2={y + 4} className="stroke-slate-600 dark:stroke-slate-300" strokeOpacity={0.5} strokeWidth={0.8} />
+            <text x={x} y={y + 16} fontSize={10} textAnchor="middle" className="fill-slate-700 dark:fill-slate-300">
               {raLabel} deg
             </text>
           </g>
         ))}
 
-        <text x={width / 2} y={28} textAnchor="middle" fontSize={15} fill="#0f172a" fontWeight={600}>
+        <text x={width / 2} y={28} textAnchor="middle" fontSize={15} className="fill-slate-800 dark:fill-slate-200" fontWeight={600}>
           All Sources Sky Distribution
         </text>
       </svg>
@@ -319,17 +507,20 @@ export default function Cycle2SkyMap() {
             <div className="flex items-center gap-1">
               {isPopupLocked ? (
                 <>
-                  <button
-                    type="button"
-                    className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                    title="Copy popup"
-                    onClick={() => void copyText(buildPopupText(activePopup.point), "popup")}
-                  >
-                    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
-                      <rect x="5" y="3" width="8" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" />
-                      <rect x="2" y="6" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                      title="Copy popup"
+                      onClick={() => void copyText(buildPopupText(activePopup.point), "popup")}
+                    >
+                      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+                        <rect x="5" y="3" width="8" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                        <rect x="2" y="6" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                      </svg>
+                    </button>
+                    {copiedToken === "popup" ? <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Copied</span> : null}
+                  </div>
                   <button
                     type="button"
                     className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"

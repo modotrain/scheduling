@@ -22,6 +22,17 @@ type ScheduleAggRow = {
   maxWeek: number | null;
 };
 
+type WeeklyExposure = {
+  weekIndex: number;
+  exposureS: number;
+};
+
+type WeekBound = {
+  weekIndex: number;
+  startDate: string | null;
+  endDate: string | null;
+};
+
 type LongTermRangeRow = {
   sourceId: string | null;
   startTime: string | null;
@@ -45,6 +56,13 @@ type RegionStat = {
   nSources: number;
 };
 
+type ScheduleRow = {
+  sourceId: number;
+  weekIndex: number | null;
+  exposureS: number | null;
+  scheduledDate: string | null;
+};
+
 const N_RA = 6;
 const N_DEC = 2;
 const RA_EDGES = Array.from({ length: N_RA + 1 }, (_v, i) => (360 / N_RA) * i);
@@ -63,14 +81,14 @@ function extractIsoDate(value: string | null): string | null {
 
 export async function GET() {
   try {
-    const [sourcesRaw, scheduleAggRaw, dateRangeRaw] = await Promise.all([
+    const [sourcesRaw, scheduleRowsRaw, dateRangeRaw] = await Promise.all([
       db.select().from(cycle2SkymapSources),
       db
         .select({
           sourceId: cycle2SkymapSchedule.sourceId,
-          nScheduled: cycle2SkymapSchedule.id,
-          minWeek: cycle2SkymapSchedule.weekIndex,
-          maxWeek: cycle2SkymapSchedule.weekIndex,
+          weekIndex: cycle2SkymapSchedule.weekIndex,
+          exposureS: cycle2SkymapSchedule.exposureS,
+          scheduledDate: cycle2SkymapSchedule.scheduledDate,
         })
         .from(cycle2SkymapSchedule),
       db
@@ -83,28 +101,60 @@ export async function GET() {
     ]);
 
     const sources = sourcesRaw as SourceRow[];
+    const scheduleRows = scheduleRowsRaw as ScheduleRow[];
 
     const scheduleMap = new Map<number, ScheduleAggRow>();
-    for (const row of scheduleAggRaw) {
+    const sourceWeeklyExposureMap = new Map<number, Map<number, number>>();
+    const weekDateMap = new Map<number, { startDate: string | null; endDate: string | null }>();
+
+    for (const row of scheduleRows) {
       const sourceId = row.sourceId;
       const existing = scheduleMap.get(sourceId);
       if (!existing) {
         scheduleMap.set(sourceId, {
           sourceId,
           nScheduled: 1,
-          minWeek: row.minWeek ?? null,
-          maxWeek: row.maxWeek ?? null,
+          minWeek: row.weekIndex ?? null,
+          maxWeek: row.weekIndex ?? null,
         });
-        continue;
+      } else {
+        existing.nScheduled += 1;
+        if (row.weekIndex !== null && row.weekIndex !== undefined) {
+          existing.minWeek = existing.minWeek === null ? row.weekIndex : Math.min(existing.minWeek, row.weekIndex);
+          existing.maxWeek = existing.maxWeek === null ? row.weekIndex : Math.max(existing.maxWeek, row.weekIndex);
+        }
       }
-      existing.nScheduled += 1;
-      if (row.minWeek !== null && row.minWeek !== undefined) {
-        existing.minWeek = existing.minWeek === null ? row.minWeek : Math.min(existing.minWeek, row.minWeek);
+
+      if (row.weekIndex !== null && row.weekIndex !== undefined) {
+        const weekExposure = sourceWeeklyExposureMap.get(sourceId) ?? new Map<number, number>();
+        weekExposure.set(row.weekIndex, (weekExposure.get(row.weekIndex) ?? 0) + (row.exposureS ?? 0));
+        sourceWeeklyExposureMap.set(sourceId, weekExposure);
       }
-      if (row.maxWeek !== null && row.maxWeek !== undefined) {
-        existing.maxWeek = existing.maxWeek === null ? row.maxWeek : Math.max(existing.maxWeek, row.maxWeek);
+
+      if (row.weekIndex !== null && row.weekIndex !== undefined && row.scheduledDate) {
+        const weekDate = extractIsoDate(row.scheduledDate);
+        if (!weekDate) continue;
+        const existingWeekDate = weekDateMap.get(row.weekIndex);
+        if (!existingWeekDate) {
+          weekDateMap.set(row.weekIndex, { startDate: weekDate, endDate: weekDate });
+          continue;
+        }
+        existingWeekDate.startDate = existingWeekDate.startDate && existingWeekDate.startDate < weekDate
+          ? existingWeekDate.startDate
+          : weekDate;
+        existingWeekDate.endDate = existingWeekDate.endDate && existingWeekDate.endDate > weekDate
+          ? existingWeekDate.endDate
+          : weekDate;
       }
     }
+
+    const weekBounds: WeekBound[] = Array.from(weekDateMap.entries())
+      .map(([weekIndex, value]) => ({
+        weekIndex,
+        startDate: value.startDate,
+        endDate: value.endDate,
+      }))
+      .sort((a, b) => a.weekIndex - b.weekIndex);
 
     const sourceDateRangeMap = new Map<number, SourceDateRange>();
     for (const row of dateRangeRaw as LongTermRangeRow[]) {
@@ -139,6 +189,9 @@ export async function GET() {
         const exposureClipped = Math.max(exposureS, 1);
         const scheduleAgg = scheduleMap.get(row.sourceId);
         const sourceDateRange = sourceDateRangeMap.get(row.sourceId);
+        const weeklyExposure = Array.from(sourceWeeklyExposureMap.get(row.sourceId)?.entries() ?? [])
+          .map(([weekIndex, weekExposureS]) => ({ weekIndex, exposureS: weekExposureS }))
+          .sort((a, b) => a.weekIndex - b.weekIndex) as WeeklyExposure[];
         return {
           sourceId: row.sourceId,
           sourceName: row.sourceName,
@@ -156,6 +209,7 @@ export async function GET() {
           maxWeek: scheduleAgg?.maxWeek ?? null,
           scheduledDateStart: sourceDateRange?.minStartDate ?? null,
           scheduledDateEnd: sourceDateRange?.maxEndDate ?? null,
+          weeklyExposure,
         };
       });
 
@@ -213,6 +267,7 @@ export async function GET() {
     return NextResponse.json({
       points,
       regions,
+      weekBounds,
       projection: {
         type: "mollweide",
         raEdges: RA_EDGES,
