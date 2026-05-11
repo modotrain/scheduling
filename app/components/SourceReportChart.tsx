@@ -463,6 +463,30 @@ export default function SourceReportChart({
     );
   })() : null;
 
+  const tooltipWidth = 120;
+  const tooltipHeight = 45;
+  const tooltipOffset = 10;
+
+  const tooltipBox = tooltip
+    ? (() => {
+        const preferredX = tooltip.x + tooltipOffset;
+        const fallbackX = tooltip.x - tooltipOffset - tooltipWidth;
+        const leftBound = padding.left + 4;
+        const rightBound = width - padding.right - tooltipWidth - 4;
+        const x = Math.max(
+          leftBound,
+          Math.min(preferredX <= rightBound ? preferredX : fallbackX, rightBound),
+        );
+
+        const preferredY = tooltip.y - 50;
+        const topBound = padding.top + 4;
+        const bottomBound = padding.top + chartHeight - tooltipHeight - 4;
+        const y = Math.max(topBound, Math.min(preferredY, bottomBound));
+
+        return { x, y };
+      })()
+    : null;
+
   return (
     <div className={embedded ? "overflow-visible" : "mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-900 overflow-visible"}>
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
@@ -581,21 +605,21 @@ export default function SourceReportChart({
           {obsLines}
 
           {/* Tooltip */}
-          {tooltip && (
+          {tooltip && tooltipBox && (
             <g>
               <rect
-                x={tooltip.x + 10}
-                y={tooltip.y - 50}
-                width="120"
-                height="45"
+                x={tooltipBox.x}
+                y={tooltipBox.y}
+                width={tooltipWidth}
+                height={tooltipHeight}
                 fill={dark ? "#0f172a" : "#ffffff"}
                 stroke={textColor}
                 strokeWidth="1"
                 rx="4"
               />
               <text
-                x={tooltip.x + 15}
-                y={tooltip.y - 35}
+                x={tooltipBox.x + 5}
+                y={tooltipBox.y + 15}
                 fontSize="12"
                 fill={textColor}
                 fontWeight="500"
@@ -603,8 +627,8 @@ export default function SourceReportChart({
                 {tooltip.date}
               </text>
               <text
-                x={tooltip.x + 15}
-                y={tooltip.y - 20}
+                x={tooltipBox.x + 5}
+                y={tooltipBox.y + 30}
                 fontSize="11"
                 fill={textColor}
               >
@@ -612,8 +636,8 @@ export default function SourceReportChart({
               </text>
               {tooltip.week !== null && (
                 <text
-                  x={tooltip.x + 15}
-                  y={tooltip.y - 7}
+                  x={tooltipBox.x + 5}
+                  y={tooltipBox.y + 43}
                   fontSize="11"
                   fill={textColor}
                 >
