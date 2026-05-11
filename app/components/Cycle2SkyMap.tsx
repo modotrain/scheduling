@@ -355,7 +355,7 @@ export default function Cycle2SkyMap() {
             max={weekMax}
             value={selectedWeek}
             onChange={handleWeekInputChange}
-            className="w-16"
+            className="week-filter-input-number w-16"
           />
           <div className="min-w-[6.25rem]">
             {filterMode === "range" ? (
