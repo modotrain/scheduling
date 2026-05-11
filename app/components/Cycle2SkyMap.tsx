@@ -2,6 +2,9 @@
 
 import { geoGraticule, geoPath } from "d3-geo";
 import { geoMollweide } from "d3-geo-projection";
+import { InputNumber } from "antd";
+import { Slider } from "antd";
+import type { InputNumberProps } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type SkyPoint = {
@@ -93,7 +96,6 @@ export default function Cycle2SkyMap() {
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [weekRangeStart, setWeekRangeStart] = useState(1);
   const [weekRangeEnd, setWeekRangeEnd] = useState(52);
-  const [activeHandle, setActiveHandle] = useState<"start" | "end" | null>(null);
 
   const width = 1300;
   const height = 740;
@@ -162,8 +164,6 @@ export default function Cycle2SkyMap() {
     if (!data?.weekBounds?.length) return 52;
     return Math.max(...data.weekBounds.map((item) => item.weekIndex));
   }, [data]);
-
-  const weekSpan = Math.max(1, weekMax - weekMin);
 
   const weekBoundMap = useMemo(() => {
     return new Map((data?.weekBounds ?? []).map((item) => [item.weekIndex, item]));
@@ -270,17 +270,39 @@ export default function Cycle2SkyMap() {
     setHover(null);
   }, []);
 
-  const startPercent = ((weekRangeStart - weekMin) / weekSpan) * 100;
-  const endPercent = ((weekRangeEnd - weekMin) / weekSpan) * 100;
+  const handleWeekInputChange = useCallback<NonNullable<InputNumberProps<number>["onChange"]>>((value) => {
+    if (value === null) {
+      setFilterMode("single");
+      setSelectedWeek(null);
+      return;
+    }
+
+    const clamped = Math.max(weekMin, Math.min(weekMax, value));
+    setFilterMode("single");
+    setSelectedWeek(clamped);
+    setWeekRangeStart(clamped);
+    setWeekRangeEnd(clamped);
+  }, [weekMin, weekMax]);
+
+  const handleWeekRangeChange = useCallback((value: number[]) => {
+    if (value.length < 2) return;
+    const [nextStartRaw, nextEndRaw] = value;
+    const nextStart = Math.max(weekMin, Math.min(weekMax, nextStartRaw));
+    const nextEnd = Math.max(nextStart, Math.min(weekMax, nextEndRaw));
+    setFilterMode("range");
+    setWeekRangeStart(nextStart);
+    setWeekRangeEnd(nextEnd);
+  }, [weekMin, weekMax]);
+
+  const formatWeekTooltip = useCallback((value?: number) => {
+    if (!Number.isFinite(value)) return null;
+    const weekIndex = value as number;
+    const weekStart = weekBoundMap.get(weekIndex)?.startDate ?? "-";
+    return `W${weekIndex}: ${weekStart}`;
+  }, [weekBoundMap]);
 
   const startWeekDateText = weekBoundMap.get(weekRangeStart)?.startDate ?? "-";
   const endWeekDateText = weekBoundMap.get(weekRangeEnd)?.endDate ?? "-";
-
-  const startBubbleLeftPercent = Math.min(92, Math.max(8, startPercent));
-  const endBubbleLeftPercent = Math.min(92, Math.max(8, endPercent));
-  const handlesOverlapped = weekRangeStart === weekRangeEnd;
-  const preferStartHandleTop = handlesOverlapped && weekRangeStart === weekMax;
-  const preferEndHandleTop = handlesOverlapped && weekRangeStart === weekMin;
 
   if (loading) {
     return (
@@ -326,29 +348,14 @@ export default function Cycle2SkyMap() {
           <label htmlFor="week-filter" className="text-xs font-medium text-slate-700 dark:text-slate-200">
             Week
           </label>
-          <input
+          <InputNumber
             id="week-filter"
-            type="number"
+            size="small"
             min={weekMin}
             max={weekMax}
-            placeholder={filterMode === "range" ? "week" : "week"}
-            value={selectedWeek ?? ""}
-            onChange={(e) => {
-              const rawValue = e.target.value;
-              if (!rawValue) {
-                setFilterMode("single");
-                setSelectedWeek(null);
-                return;
-              }
-              const parsed = Number.parseInt(rawValue, 10);
-              if (!Number.isFinite(parsed)) return;
-              const clamped = Math.max(weekMin, Math.min(weekMax, parsed));
-              setFilterMode("single");
-              setSelectedWeek(clamped);
-              setWeekRangeStart(clamped);
-              setWeekRangeEnd(clamped);
-            }}
-            className="w-16 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-right font-mono text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
+            value={selectedWeek}
+            onChange={handleWeekInputChange}
+            className="w-16"
           />
           <div className="min-w-[6.25rem]">
             {filterMode === "range" ? (
@@ -372,78 +379,28 @@ export default function Cycle2SkyMap() {
           </div>
 
           <div className="relative ml-1 w-[28rem] py-1.5">
-            <div className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-slate-200 dark:bg-slate-700/90" />
-            <div
-              className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-[#0b4f8a] dark:bg-sky-300"
-              style={{
-                left: `${startPercent}%`,
-                width: `${Math.max(0, endPercent - startPercent)}%`,
-              }}
-            />
-            <input
-              type="range"
+            <Slider
               min={weekMin}
               max={weekMax}
-              value={weekRangeStart}
-              onPointerDown={() => setActiveHandle("start")}
-              onPointerUp={() => setActiveHandle(null)}
-              onMouseDown={() => setActiveHandle("start")}
-              onTouchStart={() => setActiveHandle("start")}
-              onMouseUp={() => setActiveHandle(null)}
-              onTouchEnd={() => setActiveHandle(null)}
-              onFocus={() => setActiveHandle("start")}
-              onBlur={() => setActiveHandle(null)}
-              onChange={(e) => {
-                const nextStart = Math.min(Number.parseInt(e.target.value, 10), weekRangeEnd);
-                setFilterMode("range");
-                setWeekRangeStart(nextStart);
+              value={[weekRangeStart, weekRangeEnd]}
+              range={{ draggableTrack: true }}
+              onChange={handleWeekRangeChange}
+              className="week-range-slider"
+              styles={{
+                rail: { backgroundColor: "var(--week-slider-rail)", height: 4 },
+                track: { backgroundColor: "var(--week-slider-track)", height: 4 },
+                handle: {
+                  borderColor: "var(--week-slider-track)",
+                  backgroundColor: "var(--week-slider-handle-bg)",
+                  boxShadow: "none",
+                },
               }}
-              className={`pointer-events-none absolute inset-0 h-7 w-full appearance-none bg-transparent ${activeHandle === "start" ? "z-40" : preferStartHandleTop ? "z-[35]" : "z-20"} [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-[-12px] [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:box-border [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#0b4f8a] [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:transition-shadow [&::-webkit-slider-thumb]:duration-150 hover:[&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(11,79,138,0.16)] dark:hover:[&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(125,211,252,0.22)] dark:[&::-webkit-slider-thumb]:border-sky-300 dark:[&::-webkit-slider-thumb]:bg-slate-900 [&::-moz-range-track]:h-1 [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:box-border [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[#0b4f8a] [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-sm [&::-moz-range-thumb]:transition-shadow [&::-moz-range-thumb]:duration-150 hover:[&::-moz-range-thumb]:shadow-[0_0_0_4px_rgba(11,79,138,0.16)] dark:hover:[&::-moz-range-thumb]:shadow-[0_0_0_4px_rgba(125,211,252,0.22)] dark:[&::-moz-range-thumb]:border-sky-300 dark:[&::-moz-range-thumb]:bg-slate-900 ${activeHandle === "start" ? "[&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(11,79,138,0.24)] dark:[&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(125,211,252,0.3)] [&::-moz-range-thumb]:shadow-[0_0_0_4px_rgba(11,79,138,0.24)] dark:[&::-moz-range-thumb]:shadow-[0_0_0_4px_rgba(125,211,252,0.3)]" : ""}`}
-            />
-            <input
-              type="range"
-              min={weekMin}
-              max={weekMax}
-              value={weekRangeEnd}
-              onPointerDown={() => setActiveHandle("end")}
-              onPointerUp={() => setActiveHandle(null)}
-              onMouseDown={() => setActiveHandle("end")}
-              onTouchStart={() => setActiveHandle("end")}
-              onMouseUp={() => setActiveHandle(null)}
-              onTouchEnd={() => setActiveHandle(null)}
-              onFocus={() => setActiveHandle("end")}
-              onBlur={() => setActiveHandle(null)}
-              onChange={(e) => {
-                const nextEnd = Math.max(Number.parseInt(e.target.value, 10), weekRangeStart);
-                setFilterMode("range");
-                setWeekRangeEnd(nextEnd);
+              tooltip={{
+                formatter: formatWeekTooltip,
+                className: "week-range-slider-tooltip",
+                placement: "top",
               }}
-              className={`pointer-events-none absolute inset-0 h-7 w-full appearance-none bg-transparent ${activeHandle === "end" ? "z-40" : preferEndHandleTop ? "z-[35]" : "z-30"} [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-[-12px] [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:box-border [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#0b4f8a] [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:transition-shadow [&::-webkit-slider-thumb]:duration-150 hover:[&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(11,79,138,0.16)] dark:hover:[&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(125,211,252,0.22)] dark:[&::-webkit-slider-thumb]:border-sky-300 dark:[&::-webkit-slider-thumb]:bg-slate-900 [&::-moz-range-track]:h-1 [&::-moz-range-track]:bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:box-border [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-[#0b4f8a] [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow-sm [&::-moz-range-thumb]:transition-shadow [&::-moz-range-thumb]:duration-150 hover:[&::-moz-range-thumb]:shadow-[0_0_0_4px_rgba(11,79,138,0.16)] dark:hover:[&::-moz-range-thumb]:shadow-[0_0_0_4px_rgba(125,211,252,0.22)] dark:[&::-moz-range-thumb]:border-sky-300 dark:[&::-moz-range-thumb]:bg-slate-900 ${activeHandle === "end" ? "[&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(11,79,138,0.24)] dark:[&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(125,211,252,0.3)] [&::-moz-range-thumb]:shadow-[0_0_0_4px_rgba(11,79,138,0.24)] dark:[&::-moz-range-thumb]:shadow-[0_0_0_4px_rgba(125,211,252,0.3)]" : ""}`}
             />
-
-            {activeHandle === "start" ? (
-              <div
-                className="pointer-events-none absolute -top-6 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-700 shadow-sm whitespace-nowrap dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                style={{
-                  left: `${startBubbleLeftPercent}%`,
-                  transform: "translateX(-50%)",
-                }}
-              >
-                W{weekRangeStart}: {startWeekDateText}
-              </div>
-            ) : null}
-
-            {activeHandle === "end" ? (
-              <div
-                className="pointer-events-none absolute -top-6 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-700 shadow-sm whitespace-nowrap dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                style={{
-                  left: `${endBubbleLeftPercent}%`,
-                  transform: endPercent > 90 ? "translateX(-100%)" : "translateX(-50%)",
-                }}
-              >
-                W{weekRangeEnd}: {endWeekDateText}
-              </div>
-            ) : null}
           </div>
 
           <div className="ml-1 min-w-[9rem] text-right font-mono text-[10px] text-slate-600 dark:text-slate-300">
