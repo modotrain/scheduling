@@ -8,6 +8,19 @@ import SourceReportChart from "../../components/SourceReportChart";
 
 const GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX = "gp-cycle2:detail:title:";
 
+const SCHEDULED_STATUS_COLOR_CLASSES = {
+  good: {
+    timelineDot: "bg-emerald-500",
+    tableText: "text-emerald-700 dark:text-emerald-400",
+  },
+  partial: {
+    // timelineDot: "bg-amber-500",
+    // tableText: "text-amber-700 dark:text-amber-400",
+    timelineDot: "bg-emerald-500",
+    tableText: "text-emerald-700 dark:text-emerald-400",
+  },
+} as const;
+
 type GpCycle2Row = {
   id: number;
   tdicId: string | null;
@@ -245,6 +258,38 @@ function buildScheduleHoverAliases(row: PlannedObsRow): string[] {
   return aliases;
 }
 
+function buildObsScheduleHoverAliases(row: ObsListRow): string[] {
+  const aliases: string[] = [];
+
+  // Zero-duration rows need strict one-to-one linkage between the table row and
+  // the timeline point, so use only a unique row alias instead of shared date/0 keys.
+  if (row.validSecs === 0) {
+    aliases.push(`z:${row.id}`);
+    return aliases;
+  }
+
+  const fullKey = buildScheduleHoverKey(row.startDate, row.validSecs);
+  if (fullKey) aliases.push(`f:${fullKey}`);
+
+  const dateKey = normalizeDateKey(row.startDate);
+  if (dateKey) aliases.push(`d:${dateKey}`);
+
+  return aliases;
+}
+
+function parseRequestedSeconds(value: string | null): number | null {
+  if (!value) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function getScheduledCompletionTone(row: ObsListRow): "zero" | "good" | "partial" {
+  if (row.validSecs <= 0) return "zero";
+  const requested = parseRequestedSeconds(row.requestedObsDurationInSeconds);
+  const ratio = requested && requested > 0 ? row.validSecs / requested : 0;
+  return ratio >= 0.8 ? "good" : "partial";
+}
+
 export default function GpCycle2DetailPage() {
   const pathname = usePathname();
   const id = pathname?.split("/").at(-1) ?? "";
@@ -260,32 +305,48 @@ export default function GpCycle2DetailPage() {
   const [plannedList, setPlannedList] = useState<PlannedObsRow[]>([]);
   const [plannedLoading, setPlannedLoading] = useState(true);
   const [plannedSort, setPlannedSort] = useState<PlannedSortConfig>({ col: "weekId", dir: "asc" });
-  const [hoverScheduleKey, setHoverScheduleKey] = useState<string | null>(null);
-  const [lockedScheduleKey, setLockedScheduleKey] = useState<string | null>(null);
+  const [hoverPlannedScheduleKey, setHoverPlannedScheduleKey] = useState<string | null>(null);
+  const [lockedPlannedScheduleKey, setLockedPlannedScheduleKey] = useState<string | null>(null);
+  const [hoverScheduledObsKey, setHoverScheduledObsKey] = useState<string | null>(null);
+  const [lockedScheduledObsKey, setLockedScheduledObsKey] = useState<string | null>(null);
 
-  const activeScheduleHoverKey = lockedScheduleKey ?? hoverScheduleKey;
+  const activePlannedScheduleHoverKey = lockedPlannedScheduleKey ?? hoverPlannedScheduleKey;
+  const activeScheduledObsHoverKey = lockedScheduledObsKey ?? hoverScheduledObsKey;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      setLockedScheduleKey(null);
-      setHoverScheduleKey(null);
+      setLockedPlannedScheduleKey(null);
+      setHoverPlannedScheduleKey(null);
+      setLockedScheduledObsKey(null);
+      setHoverScheduledObsKey(null);
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  function clearScheduleLockIfBlankAreaClick(event: ReactMouseEvent<HTMLDivElement>) {
-    if (!lockedScheduleKey) return;
+  function clearLockIfBlankAreaClick(
+    event: ReactMouseEvent<HTMLDivElement>,
+    scope: "planned" | "scheduled",
+  ) {
+    const hasLockedKey =
+      scope === "planned" ? Boolean(lockedPlannedScheduleKey) : Boolean(lockedScheduledObsKey);
+    if (!hasLockedKey) return;
     const target = event.target as Element | null;
     if (!target) return;
 
     // Keep lock when interacting with linked items or controls.
-    if (target.closest("tr, a, button, circle")) return;
+    if (target.closest("tr, a, button, circle, [data-schedule-link='true']")) return;
 
-    setLockedScheduleKey(null);
-    setHoverScheduleKey(null);
+    if (scope === "planned") {
+      setLockedPlannedScheduleKey(null);
+      setHoverPlannedScheduleKey(null);
+      return;
+    }
+
+    setLockedScheduledObsKey(null);
+    setHoverScheduledObsKey(null);
   }
 
   const [row, setRow] = useState<GpCycle2Row | null>(null);
@@ -323,6 +384,12 @@ export default function GpCycle2DetailPage() {
     const parsed = Number.parseInt(value, 10);
     return Number.isNaN(parsed) ? null : parsed;
   }
+
+  const scheduledFiltered = obsList.filter((r) => {
+    if (onlyNonZero === "nonzero") return r.validSecs > 0;
+    if (onlyNonZero === "zerosonly") return r.validSecs === 0;
+    return true;
+  });
 
   function comparePlannedValues(
     col: PlannedSortKey,
@@ -542,7 +609,7 @@ export default function GpCycle2DetailPage() {
         {/* ── Planned Observation List ───────────────────────────────── */}
         <div
           className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700"
-          onClick={clearScheduleLockIfBlankAreaClick}
+          onClick={(event) => clearLockIfBlankAreaClick(event, "planned")}
         >
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
             <h2 className="text-base font-semibold">Planned Observation List</h2>
@@ -556,15 +623,15 @@ export default function GpCycle2DetailPage() {
               <SourceReportChart
                 sourceId={row.sourceId}
                 embedded
-                activePointKey={activeScheduleHoverKey}
+                activePointKey={activePlannedScheduleHoverKey}
                 onPointHover={(key) => {
-                  if (lockedScheduleKey) return;
-                  setHoverScheduleKey(key);
+                  if (lockedPlannedScheduleKey) return;
+                  setHoverPlannedScheduleKey(key);
                 }}
                 onPointClick={(key) => {
                   if (!key) return;
-                  setLockedScheduleKey((prev) => (prev === key ? null : key));
-                  setHoverScheduleKey(null);
+                  setLockedPlannedScheduleKey((prev) => (prev === key ? null : key));
+                  setHoverPlannedScheduleKey(null);
                 }}
               />
             </div>
@@ -630,23 +697,23 @@ export default function GpCycle2DetailPage() {
                     .map((planned, index) => {
                     const aliases = buildScheduleHoverAliases(planned);
                     const hoverKey = aliases[0] ?? null;
-                    const isLinkedActive = Boolean(activeScheduleHoverKey && aliases.includes(activeScheduleHoverKey));
-                    const isLocked = Boolean(lockedScheduleKey && aliases.includes(lockedScheduleKey));
+                    const isLinkedActive = Boolean(activePlannedScheduleHoverKey && aliases.includes(activePlannedScheduleHoverKey));
+                    const isLocked = Boolean(lockedPlannedScheduleKey && aliases.includes(lockedPlannedScheduleKey));
                     return (
                     <tr
                       key={planned.id}
                       onMouseEnter={() => {
-                        if (lockedScheduleKey) return;
-                        setHoverScheduleKey(hoverKey);
+                        if (lockedPlannedScheduleKey) return;
+                        setHoverPlannedScheduleKey(hoverKey);
                       }}
                       onMouseLeave={() => {
-                        if (lockedScheduleKey) return;
-                        setHoverScheduleKey(null);
+                        if (lockedPlannedScheduleKey) return;
+                        setHoverPlannedScheduleKey(null);
                       }}
                       onClick={() => {
                         if (!hoverKey) return;
-                        setLockedScheduleKey((prev) => (prev === hoverKey ? null : hoverKey));
-                        setHoverScheduleKey(null);
+                        setLockedPlannedScheduleKey((prev) => (prev === hoverKey ? null : hoverKey));
+                        setHoverPlannedScheduleKey(null);
                       }}
                       className={`border-b border-slate-100 dark:border-slate-800 transition-colors ${
                         isLinkedActive
@@ -688,7 +755,10 @@ export default function GpCycle2DetailPage() {
         </div>
 
         {/* ── Scheduled Observation List ─────────────────────────────── */}
-        <div className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
+        <div
+          className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700"
+          onClick={(event) => clearLockIfBlankAreaClick(event, "scheduled")}
+        >
           {/* Header row 1: stats */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50 rounded-t-lg">
             <h2 className="text-base font-semibold mr-auto">Scheduled Observation List</h2>
@@ -734,8 +804,8 @@ export default function GpCycle2DetailPage() {
 
           {/* ── Timeline ─────────────────────────────────────────────── */}
           {(() => {
-            const withStart = obsList.filter((r) => r.startDate);
-            const withEnd = obsList.filter((r) => r.endDate);
+            const withStart = scheduledFiltered.filter((r) => r.startDate);
+            const withEnd = scheduledFiltered.filter((r) => r.endDate);
             if (withStart.length === 0) return null;
             const minTime = Math.min(...withStart.map((r) => new Date(r.startDate!).getTime()));
             const maxTime = Math.max(
@@ -745,7 +815,7 @@ export default function GpCycle2DetailPage() {
             );
             const range = maxTime - minTime;
             if (range <= 0) return null;
-            const nodes = obsList.filter((r) => r.validSecs > 0 && r.startDate);
+            const nodes = withStart;
             const fmt = (ts: number) => {
               const d = new Date(ts);
               const y = d.getFullYear();
@@ -764,15 +834,46 @@ export default function GpCycle2DetailPage() {
                 <div className="relative mx-3 sm:mx-4">
                   {/* Track */}
                   <div className="relative h-1.5 rounded-full bg-slate-200 dark:bg-slate-700">
-                    {nodes.map((r, i) => {
+                    {nodes.map((r) => {
                       const pct = ((new Date(r.startDate!).getTime() - minTime) / range) * 100;
+                      const aliases = buildObsScheduleHoverAliases(r);
+                      const hoverKey = aliases[0] ?? null;
+                      const isLinkedActive = Boolean(
+                        activeScheduledObsHoverKey && aliases.includes(activeScheduledObsHoverKey),
+                      );
+                      const isLocked = Boolean(lockedScheduledObsKey && aliases.includes(lockedScheduledObsKey));
+                      const tone = getScheduledCompletionTone(r);
                       return (
                         <div
-                          key={i}
+                          key={r.id}
+                          data-schedule-link="true"
+                          onMouseEnter={() => {
+                            if (lockedScheduledObsKey) return;
+                            setHoverScheduledObsKey(hoverKey);
+                          }}
+                          onMouseLeave={() => {
+                            if (lockedScheduledObsKey) return;
+                            setHoverScheduledObsKey(null);
+                          }}
+                          onClick={() => {
+                            if (!hoverKey) return;
+                            setLockedScheduledObsKey((prev) => (prev === hoverKey ? null : hoverKey));
+                            setHoverScheduledObsKey(null);
+                          }}
                           className="group absolute top-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
                           style={{ left: `${pct}%` }}
                         >
-                          <div className="h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 cursor-default transition-transform group-hover:scale-125" />
+                          <div
+                            className={`cursor-pointer rounded-full ring-2 ring-white transition-transform group-hover:scale-125 dark:ring-slate-900 ${
+                              tone === "zero"
+                                ? "h-2.5 w-2.5 border border-slate-400 bg-transparent dark:border-slate-500"
+                                : tone === "good"
+                                  ? `h-3.5 w-3.5 ${SCHEDULED_STATUS_COLOR_CLASSES.good.timelineDot}`
+                                  : `h-3.5 w-3.5 ${SCHEDULED_STATUS_COLOR_CLASSES.partial.timelineDot}`
+                            } ${isLinkedActive ? "scale-125" : ""} ${
+                              isLocked ? "ring-sky-500/70 dark:ring-sky-400/70" : ""
+                            }`}
+                          />
                           {/* Tooltip */}
                           <div className="pointer-events-none absolute bottom-full left-1/2 mb-2.5 -translate-x-1/2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] leading-tight text-slate-900 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100">
                             <div className="font-medium">{r.validSecs.toLocaleString()} secs</div>
@@ -862,13 +963,8 @@ export default function GpCycle2DetailPage() {
                     </td>
                   </tr>
                 ) : (() => {
-                  const filtered = obsList.filter((r) => {
-                    if (onlyNonZero === "nonzero") return r.validSecs > 0;
-                    if (onlyNonZero === "zerosonly") return r.validSecs === 0;
-                    return true;
-                  });
                   const sorted = obsSort.col
-                    ? [...filtered].sort((a, b) => {
+                    ? [...scheduledFiltered].sort((a, b) => {
                         const aVal = a[obsSort.col!] ?? "";
                         const bVal = b[obsSort.col!] ?? "";
                         const cmp =
@@ -877,7 +973,7 @@ export default function GpCycle2DetailPage() {
                             : String(aVal).localeCompare(String(bVal));
                         return obsSort.dir === "asc" ? cmp : -cmp;
                       })
-                    : filtered;
+                    : scheduledFiltered;
 
                   if (sorted.length === 0) {
                     return (
@@ -889,10 +985,34 @@ export default function GpCycle2DetailPage() {
                     );
                   }
 
-                  return sorted.map((r, i) => (
+                  return sorted.map((r, i) => {
+                    const aliases = buildObsScheduleHoverAliases(r);
+                    const hoverKey = aliases[0] ?? null;
+                    const isLinkedActive = Boolean(activeScheduledObsHoverKey && aliases.includes(activeScheduledObsHoverKey));
+                    const isLocked = Boolean(lockedScheduledObsKey && aliases.includes(lockedScheduledObsKey));
+                    const tone = getScheduledCompletionTone(r);
+                    return (
                     <tr
-                      key={i}
-                      className="border-b border-slate-100 odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/70 dark:border-slate-800 dark:odd:bg-slate-900 dark:even:bg-slate-800/35 dark:hover:bg-slate-800/70"
+                      key={`${r.id}-${i}`}
+                      data-schedule-link="true"
+                      onMouseEnter={() => {
+                        if (lockedScheduledObsKey) return;
+                        setHoverScheduledObsKey(hoverKey);
+                      }}
+                      onMouseLeave={() => {
+                        if (lockedScheduledObsKey) return;
+                        setHoverScheduledObsKey(null);
+                      }}
+                      onClick={() => {
+                        if (!hoverKey) return;
+                        setLockedScheduledObsKey((prev) => (prev === hoverKey ? null : hoverKey));
+                        setHoverScheduledObsKey(null);
+                      }}
+                      className={`border-b border-slate-100 dark:border-slate-800 transition-colors ${
+                        isLinkedActive
+                          ? "bg-sky-100/80 dark:bg-sky-900/35"
+                          : "odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/70 dark:odd:bg-slate-900 dark:even:bg-slate-800/35 dark:hover:bg-slate-800/70"
+                      } ${isLocked ? "ring-1 ring-inset ring-sky-500/60 dark:ring-sky-400/55" : ""}`}
                     >
                       <td className="whitespace-nowrap px-3 py-2 font-mono text-slate-500 dark:text-slate-400">
                         {i + 1}
@@ -902,7 +1022,13 @@ export default function GpCycle2DetailPage() {
                           return (
                             <td key={key} className="whitespace-nowrap px-3 py-2 font-mono">
                               {r.validSecs > 0 ? (
-                                <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                                <span
+                                  className={`font-medium ${
+                                    tone === "good"
+                                      ? SCHEDULED_STATUS_COLOR_CLASSES.good.tableText
+                                      : SCHEDULED_STATUS_COLOR_CLASSES.partial.tableText
+                                  }`}
+                                >
                                   {r.validSecs.toLocaleString()}
                                 </span>
                               ) : (
@@ -923,7 +1049,8 @@ export default function GpCycle2DetailPage() {
                         );
                       })}
                     </tr>
-                  ));
+                  );
+                  });
                 })()}
               </tbody>
             </table>
