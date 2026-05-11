@@ -48,7 +48,7 @@ export default async function HomePage() {
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                   Cycle-2 Planning
                 </p>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
                   <Link
                     href="/gp-cycle2"
                     className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
@@ -72,6 +72,19 @@ export default async function HomePage() {
                     <h2 className="text-lg font-semibold">Cycle-2 Long-Term Schedule</h2>
                     <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                       Browse weekly-based long-term scheduling plans and inspect every scheduling detail.
+                    </p>
+                  </Link>
+
+                  <Link
+                    href="/gp-cal"
+                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                      Calibration Workspace
+                    </div>
+                    <h2 className="text-lg font-semibold">Cycle-2 Calibration Sources</h2>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                      Browse GP-CAL calibration observations and filter by FXT or WXT instrument.
                     </p>
                   </Link>
                 </div>

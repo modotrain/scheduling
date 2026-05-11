@@ -20,7 +20,7 @@ import { db } from "./db/client.ts";
 import { gpCycle2SourceReports } from "./db/schema.ts";
 
 const LONGTERM_SCH_DIR = path.join(process.cwd(), "longterm_sch");
-const SOURCE_CSV = path.join(LONGTERM_SCH_DIR, "reviewed_cycle2_source_list_GP_visibility_eachday.csv");
+const SOURCE_CSV = path.join(LONGTERM_SCH_DIR, "cc2.csv");
 const SCHEDULE_CSV = path.join(LONGTERM_SCH_DIR, "schedule_result.csv");
 const REPORT_DIR = path.join(LONGTERM_SCH_DIR, "source_reports");
 
@@ -30,6 +30,7 @@ const OBS_COLORS: Record<string, string> = {
   "GP-PPT-LT": "#2563eb", // blue
   "GP-PPT-ST": "#16a34a", // green
   "GP-PPT-TT": "#ea580c", // orange
+  "GP-CAL": "#7eb117", // default green
 };
 
 interface SourceRow {
@@ -200,7 +201,7 @@ async function main() {
             })),
           dateRange: { min: minDate, max: maxDate },
           obsType,
-          color: OBS_COLORS[obsType] || "#000000",
+          color: OBS_COLORS[obsType] || "#7eb117",
         };
 
         // Read summary text

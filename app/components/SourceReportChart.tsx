@@ -150,7 +150,7 @@ export default function SourceReportChart({
   const bgColor = dark ? "#0b1220" : "#f8fafc";
   const textColor = dark ? "#cbd5e1" : "#1e293b";
   const gridColor = dark ? "#334155" : "#cbd5e1";
-  const obsColor = chartData.color || "#000000";
+  const obsColor = chartData.color || "#30ae17";
 
   // Helper functions
   const dateToX = (dateStr: string): number => {
@@ -502,7 +502,7 @@ export default function SourceReportChart({
             className="w-2 h-2 rounded-full border border-black"
             style={{ backgroundColor: obsColor, opacity: 0.85 }}
           />
-          <span className="text-slate-600 dark:text-slate-400">{chartData.obsType} obs</span>
+          <span className="text-slate-600 dark:text-slate-400">{chartData.obsType}</span>
         </div>
       </div>
     </div>
