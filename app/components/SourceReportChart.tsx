@@ -48,6 +48,13 @@ export default function SourceReportChart({
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [dark, setDark] = useState(isDarkMode);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewText, setPreviewText] = useState<string>("");
+  const [previewPlacement, setPreviewPlacement] = useState<"top" | "bottom">("top");
+  const previewWrapRef = useRef<HTMLDivElement>(null);
+  const previewBubbleRef = useRef<HTMLDivElement>(null);
 
   // Detect app theme (dark class) with system fallback.
   useEffect(() => {
@@ -72,6 +79,67 @@ export default function SourceReportChart({
       observer.disconnect();
     };
   }, [isDarkMode]);
+
+  // Close preview bubble when clicking outside.
+  useEffect(() => {
+    if (!previewOpen) return;
+
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (previewWrapRef.current?.contains(target)) return;
+      setPreviewOpen(false);
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [previewOpen]);
+
+  // Keep preview bubble inside viewport by flipping top/bottom placement when needed.
+  useEffect(() => {
+    if (!previewOpen) return;
+
+    const updatePlacement = () => {
+      const wrapEl = previewWrapRef.current;
+      const bubbleEl = previewBubbleRef.current;
+      if (!wrapEl || !bubbleEl) return;
+
+      const viewportMargin = 8;
+      const gap = 8;
+      const wrapRect = wrapEl.getBoundingClientRect();
+      const bubbleRect = bubbleEl.getBoundingClientRect();
+      const bubbleHeight = bubbleRect.height;
+      const viewportHeight = window.innerHeight;
+
+      const canPlaceTop = wrapRect.top - gap - bubbleHeight >= viewportMargin;
+      const canPlaceBottom = wrapRect.bottom + gap + bubbleHeight <= viewportHeight - viewportMargin;
+
+      if (!canPlaceTop && canPlaceBottom) {
+        setPreviewPlacement("bottom");
+        return;
+      }
+
+      if (!canPlaceBottom && canPlaceTop) {
+        setPreviewPlacement("top");
+        return;
+      }
+
+      // Fallback: choose side with more room.
+      const topSpace = wrapRect.top - viewportMargin;
+      const bottomSpace = viewportHeight - wrapRect.bottom - viewportMargin;
+      setPreviewPlacement(topSpace >= bottomSpace ? "top" : "bottom");
+    };
+
+    const raf = window.requestAnimationFrame(updatePlacement);
+    window.addEventListener("resize", updatePlacement);
+    window.addEventListener("scroll", updatePlacement, true);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", updatePlacement);
+      window.removeEventListener("scroll", updatePlacement, true);
+    };
+  }, [previewOpen, previewLoading, previewError, previewText]);
 
   // Fetch chart data
   useEffect(() => {
@@ -102,6 +170,48 @@ export default function SourceReportChart({
 
     fetchData();
   }, [sourceId]);
+
+  // Preload schedule preview text as soon as sourceId is available.
+  useEffect(() => {
+    if (!sourceId) {
+      setPreviewText("");
+      setPreviewError(null);
+      setPreviewLoading(false);
+      setPreviewOpen(false);
+      return;
+    }
+
+    let disposed = false;
+
+    const fetchPreview = async () => {
+      try {
+        setPreviewLoading(true);
+        setPreviewError(null);
+        setPreviewText("");
+        const res = await fetch(`/api/gp-cycle2/source-reports/download?sourceId=${sourceId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        if (disposed) return;
+        setPreviewText(text);
+      } catch (err) {
+        if (disposed) return;
+        console.error("Failed to preload schedule preview:", err);
+        setPreviewError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        if (!disposed) setPreviewLoading(false);
+      }
+    };
+
+    void fetchPreview();
+
+    return () => {
+      disposed = true;
+    };
+  }, [sourceId]);
+
+  const handlePreviewClick = () => {
+    setPreviewOpen((prev) => !prev);
+  };
 
   if (!sourceId) {
     return null;
@@ -354,7 +464,7 @@ export default function SourceReportChart({
   })() : null;
 
   return (
-    <div className={embedded ? "overflow-hidden" : "mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-900 overflow-hidden"}>
+    <div className={embedded ? "overflow-visible" : "mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700 bg-white dark:bg-slate-900 overflow-visible"}>
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
         <div>
           <h3
@@ -368,16 +478,50 @@ export default function SourceReportChart({
             Visible windows (grey) and scheduled observations ({chartData.obsType})
           </p> */}
         </div>
-        <a
-          href={`/api/gp-cycle2/source-reports/download?sourceId=${sourceId}`}
-          download
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-dark transition-colors"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          Download Schedule
-        </a>
+        <div ref={previewWrapRef} className="relative inline-flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePreviewClick}
+            className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-2 py-1.5 text-slate-700 hover:bg-slate-50 transition-colors dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            aria-label="Preview schedule text"
+            title="Preview schedule text"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+          </button>
+
+          <a
+            href={`/api/gp-cycle2/source-reports/download?sourceId=${sourceId}`}
+            download
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-dark transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download Schedule
+          </a>
+
+          {previewOpen ? (
+            <div
+              ref={previewBubbleRef}
+              className={`absolute right-0 z-[120] rounded-md border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900 ${
+                previewPlacement === "top" ? "bottom-full mb-2" : "top-full mt-2"
+              }`}
+            >
+              {previewLoading ? (
+                <div className="text-xs text-slate-500 dark:text-slate-400">Loading preview...</div>
+              ) : previewError ? (
+                <div className="text-xs text-rose-600 dark:text-rose-300">Failed to load preview: {previewError}</div>
+              ) : (
+                <pre className="m-0 whitespace-pre font-mono text-[11px] leading-5 text-slate-800 dark:text-slate-100">
+                  {previewText}
+                </pre>
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="overflow-x-auto p-4 bg-slate-50/50 dark:bg-slate-900/60">

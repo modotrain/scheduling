@@ -54,7 +54,7 @@ export default async function HomePage() {
                     className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
                   >
                     <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                      Planning Workspace
+                      FSTO
                     </div>
                     <h2 className="text-lg font-semibold">Cycle-2 Sources & Status</h2>
                     <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
@@ -67,7 +67,7 @@ export default async function HomePage() {
                     className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
                   >
                     <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                      Weekly Plan Workspace
+                      Weekly Orgnized Plan
                     </div>
                     <h2 className="text-lg font-semibold">Cycle-2 Long-Term Schedule</h2>
                     <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
