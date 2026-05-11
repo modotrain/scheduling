@@ -8,6 +8,7 @@ type ApprovedTooRow = {
   sourceName: string | null;
   proposalNo: string | null;
   pi: string | null;
+  groupName: string | null;
   stp: string | null;
   requestUrgencyOfObservation: string | null;
   reviewedUrgencyOfObservation: string | null;
@@ -29,6 +30,7 @@ const TABLE_COLS: (keyof ApprovedTooRow)[] = [
   "sourceName",
   "proposalNo",
   "pi",
+  "groupName",
   "stp",
   "receivedTime",
   // "requestUrgencyOfObservation",
@@ -49,6 +51,7 @@ const COL_LABELS: Partial<Record<keyof ApprovedTooRow, string>> = {
   sourceName: "Source",
   proposalNo: "Proposal No",
   pi: "PI",
+  groupName: "Group",
   stp: "STP",
   receivedTime: "Received",
   requestUrgencyOfObservation: "Req. Urgency",
@@ -79,6 +82,11 @@ function formatCadence(row: ApprovedTooRow) {
 
 function formatReceivedDate(value: string | null) {
   return value?.split(" ")[0] ?? "";
+}
+
+function formatGroupName(value: string | null) {
+  if (!value) return "";
+  return value.replace(/\s*team\s*$/i, "").trim();
 }
 
 function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"] }) {
@@ -310,6 +318,8 @@ export default function TooManagementPage() {
                       const cellValue =
                         col === "reviewedCadence"
                           ? formatCadence(row)
+                          : col === "groupName"
+                            ? formatGroupName(row.groupName)
                           : col === "receivedTime"
                             ? formatReceivedDate(row.receivedTime)
                             : row[col];

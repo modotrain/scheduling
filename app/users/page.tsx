@@ -540,7 +540,7 @@ export default function Home() {
                               onClick={() => handleVipToggle(user)}
                               className={`rounded-md px-3 py-1 text-white disabled:opacity-60 ${user.vip ? "bg-slate-700" : "bg-indigo-600"}`}
                             >
-                              {user.vip ? "This is not VIP" : "This is VIP"}
+                              {user.vip ? "Remove admin" : "Grant admin"}
                             </button>
                             <button
                               type="button"
