@@ -67,18 +67,18 @@ const TABLE_COLS: (keyof GpCycle2Row)[] = [
   "proposalNo",
   "pi",
   "stp",
+  "sourcePriority",
   "obsType",
 //   "ra",
 //   "dec",
   "totalExposureTime",
 //   "lastValidNomRatio",
-
   "visitNumber",
   "cadence",
   "validTimeRatio",
 
 //   "exposureTimeUnit",
-//   "sourcePriority",
+
 //   "anticipatedToo",
 ];
 
@@ -91,9 +91,9 @@ const COL_LABELS: Partial<Record<keyof GpCycle2Row, string>> = {
   obsType: "Obs Type",
   ra: "RA",
   dec: "Dec",
-  totalExposureTime: "Request Exp.",
+  totalExposureTime: "Req. Exp.",
   lastValidNomRatio: "Last Obs Compl.",
-  validTimeRatio: "Completeness",
+  validTimeRatio: "Compl",
   stp: "STP",
   cadence: "Cadence",
   visitNumber: "Visits",
@@ -169,13 +169,22 @@ export default function GpCycle2Page() {
 
     if (!sortConfig.col) return filtered;
 
+    const numericCols = new Set<keyof GpCycle2Row>(['totalExposureTime', 'visitNumber', 'cadence']);
+
     return [...filtered].sort((a, b) => {
       const aVal = a[sortConfig.col!] ?? "";
       const bVal = b[sortConfig.col!] ?? "";
-      const cmp =
-        typeof aVal === "number" && typeof bVal === "number"
-          ? aVal - bVal
-          : String(aVal).localeCompare(String(bVal));
+      
+      let cmp: number;
+      if (numericCols.has(sortConfig.col!)) {
+        const aNum = Number(aVal) || 0;
+        const bNum = Number(bVal) || 0;
+        cmp = aNum - bNum;
+      } else if (typeof aVal === "number" && typeof bVal === "number") {
+        cmp = aVal - bVal;
+      } else {
+        cmp = String(aVal).localeCompare(String(bVal));
+      }
       return sortConfig.dir === "asc" ? cmp : -cmp;
     });
   }
