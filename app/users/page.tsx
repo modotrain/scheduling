@@ -7,7 +7,6 @@ type User = {
   id: number;
   name: string;
   username: string;
-  age: number;
   email: string;
   vip: boolean;
 };
@@ -15,7 +14,6 @@ type User = {
 type UserInput = {
   name: string;
   username: string;
-  age: string;
   email: string;
   password: string;
   vip: boolean;
@@ -26,7 +24,6 @@ type FormErrors = Partial<Record<keyof UserInput, string>>;
 const initialForm: UserInput = {
   name: "",
   username: "",
-  age: "",
   email: "",
   password: "",
   vip: false,
@@ -45,7 +42,7 @@ export default function Home() {
   const [message, setMessage] = useState<string>("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
 
-  function validateForm(values: UserInput): FormErrors {
+  function validateForm(values: UserInput, requirePassword = true): FormErrors {
     const errors: FormErrors = {};
 
     if (!values.name.trim()) {
@@ -60,21 +57,14 @@ export default function Home() {
       errors.username = "Username is required";
     }
 
-    if (!values.password.trim()) {
-      errors.password = "Password is required";
-    } else if (values.password.trim().length < 8) {
-      errors.password = "Password must be at least 8 characters";
-    }
-
-    if (!values.age.trim()) {
-      errors.age = "Age is required";
-    } else {
-      const age = Number(values.age);
-      if (Number.isNaN(age)) {
-        errors.age = "Age must be numeric";
-      } else if (age < 0) {
-        errors.age = "Age must be zero or greater";
+    if (requirePassword) {
+      if (!values.password.trim()) {
+        errors.password = "Password is required";
+      } else if (values.password.trim().length < 8) {
+        errors.password = "Password must be at least 8 characters";
       }
+    } else if (values.password.trim() && values.password.trim().length < 8) {
+      errors.password = "Password must be at least 8 characters";
     }
 
     return errors;
@@ -113,7 +103,7 @@ export default function Home() {
 
   async function handleCreate(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const errors = validateForm(createForm);
+    const errors = validateForm(createForm, true);
     setCreateErrors(errors);
 
     if (hasErrors(errors)) {
@@ -129,7 +119,6 @@ export default function Home() {
         body: JSON.stringify({
           name: createForm.name.trim(),
           username: createForm.username.trim(),
-          age: Number(createForm.age),
           email: createForm.email.trim(),
           password: createForm.password,
           vip: createForm.vip,
@@ -158,7 +147,6 @@ export default function Home() {
     setEditForm({
       name: user.name,
       username: user.username,
-      age: String(user.age),
       email: user.email,
       password: "",
       vip: user.vip,
@@ -168,13 +156,7 @@ export default function Home() {
   }
 
   async function handleUpdate(id: number) {
-    const errors = validateForm({
-      ...editForm,
-      password: editForm.password ? editForm.password : "temporary-pass",
-    });
-    if (!editForm.password) {
-      delete errors.password;
-    }
+    const errors = validateForm(editForm, false);
     setEditErrors(errors);
 
     if (hasErrors(errors)) {
@@ -189,7 +171,6 @@ export default function Home() {
         body: JSON.stringify({
           name: editForm.name.trim(),
           username: editForm.username.trim(),
-          age: Number(editForm.age),
           email: editForm.email.trim(),
           password: editForm.password.trim() || undefined,
           vip: editForm.vip,
@@ -233,7 +214,7 @@ export default function Home() {
         setEditForm((previous) => ({ ...previous, vip: !user.vip }));
       }
 
-      setStatus(user.vip ? "User removed from VIP" : "User marked as VIP", "success");
+      setStatus(user.vip ? "User removed from admin" : "User marked as admin", "success");
       await loadUsers();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to update vip status", "error");
@@ -289,7 +270,7 @@ export default function Home() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Users</h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Create, edit, delete, and toggle VIP status directly from the page.</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Manage user accounts and admin access.</p>
           </div>
           <div className="flex items-center gap-2">
             <Link
@@ -301,7 +282,7 @@ export default function Home() {
           </div>
         </div>
 
-        <form onSubmit={handleCreate} className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-slate-800/40 dark:ring-slate-700 md:grid-cols-[1.1fr_1fr_0.7fr_1.3fr_1.1fr_auto_auto] md:items-start">
+        <form onSubmit={handleCreate} className="mt-6 grid gap-3 rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-slate-800/40 dark:ring-slate-700 md:grid-cols-[1.1fr_1fr_1.3fr_1.1fr_auto_auto] md:items-start">
           <div>
             <input
               required
@@ -321,18 +302,6 @@ export default function Home() {
               className="w-full rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
             {renderFieldError(createErrors.username)}
-          </div>
-          <div>
-            <input
-              required
-              type="number"
-              min={0}
-              placeholder="Age"
-              value={createForm.age}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, age: event.target.value }))}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-            />
-            {renderFieldError(createErrors.age)}
           </div>
           <div>
             <input
@@ -362,12 +331,12 @@ export default function Home() {
               checked={createForm.vip}
               onChange={(event) => setCreateForm((prev) => ({ ...prev, vip: event.target.checked }))}
             />
-            VIP
+            Admin
           </label>
           <button
             type="submit"
             disabled={saving}
-            className="rounded-md bg-slate-900 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md bg-primary px-4 py-2 font-medium text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
           >
             Add User
           </button>
@@ -386,33 +355,34 @@ export default function Home() {
                 <th className="px-3 py-2">ID</th>
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Username</th>
-                <th className="px-3 py-2">Age</th>
                 <th className="px-3 py-2">Email</th>
                 <th className="px-3 py-2">Password</th>
-                <th className="px-3 py-2">VIP</th>
+                <th className="px-3 py-2">Role</th>
                 <th className="px-3 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={8}>
-                    Loading...
+                  <td className="px-3 py-4" colSpan={7}>
+                    <div className="flex justify-center">
+                      <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
+                    </div>
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500 dark:text-slate-400" colSpan={8}>
+                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={7}>
                     No users yet.
                   </td>
                 </tr>
               ) : (
-                users.map((user) => {
+                users.map((user, index) => {
                   const isEditing = editingId === user.id;
 
                   return (
-                    <tr key={user.id} className="border-b border-slate-100 dark:border-slate-800">
-                      <td className="px-3 py-2">{user.id}</td>
+                    <tr key={user.id} className="border-b border-slate-100 odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/70 dark:border-slate-800 dark:odd:bg-slate-900 dark:even:bg-slate-800/35 dark:hover:bg-slate-800/70">
+                      <td className="px-3 py-2 font-mono text-slate-500 dark:text-slate-400">{index + 1}</td>
                       <td className="px-3 py-2">
                         {isEditing ? (
                           <div>
@@ -439,22 +409,6 @@ export default function Home() {
                           </div>
                         ) : (
                           user.username
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        {isEditing ? (
-                          <div>
-                            <input
-                              type="number"
-                              min={0}
-                              value={editForm.age}
-                              onChange={(event) => setEditForm((prev) => ({ ...prev, age: event.target.value }))}
-                              className="w-full rounded-md border border-slate-300 px-2 py-1 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                            />
-                            {renderFieldError(editErrors.age)}
-                          </div>
-                        ) : (
-                          user.age
                         )}
                       </td>
                       <td className="px-3 py-2">
@@ -489,8 +443,8 @@ export default function Home() {
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${user.vip ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200"}`}>
-                          {user.vip ? "VIP" : "Standard"}
+                        <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium uppercase tracking-wide ${user.vip ? "bg-primary/10 text-primary dark:bg-sky-300/20 dark:text-sky-200" : "bg-slate-200/60 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300"}`}>
+                          {user.vip ? "Admin" : "Standard"}
                         </span>
                       </td>
                       <td className="px-3 py-2">
@@ -502,13 +456,13 @@ export default function Home() {
                                 checked={editForm.vip}
                                 onChange={(event) => setEditForm((prev) => ({ ...prev, vip: event.target.checked }))}
                               />
-                              VIP
+                              Admin
                             </label>
                             <button
                               type="button"
                               disabled={saving}
                               onClick={() => handleUpdate(user.id)}
-                              className="rounded-md bg-emerald-600 px-3 py-1 text-white disabled:opacity-60"
+                              className="rounded-md bg-primary px-3 py-1 text-white hover:bg-brand-dark disabled:opacity-60"
                             >
                               Save
                             </button>
@@ -519,7 +473,7 @@ export default function Home() {
                                 setEditForm(initialForm);
                                 setEditErrors({});
                               }}
-                              className="rounded-md border border-slate-300 px-3 py-1 dark:border-slate-600 dark:text-slate-200"
+                              className="rounded-md border border-slate-300 px-3 py-1 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                             >
                               Cancel
                             </button>
@@ -530,7 +484,7 @@ export default function Home() {
                               type="button"
                               disabled={saving}
                               onClick={() => startEdit(user)}
-                              className="rounded-md bg-amber-500 px-3 py-1 text-white disabled:opacity-60"
+                              className="rounded-md bg-primary px-3 py-1 text-white hover:bg-brand-dark disabled:opacity-60"
                             >
                               Edit
                             </button>
@@ -538,7 +492,7 @@ export default function Home() {
                               type="button"
                               disabled={saving}
                               onClick={() => handleVipToggle(user)}
-                              className={`rounded-md px-3 py-1 text-white disabled:opacity-60 ${user.vip ? "bg-slate-700" : "bg-indigo-600"}`}
+                              className="rounded-md border border-slate-300 px-3 py-1 text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                             >
                               {user.vip ? "Remove admin" : "Grant admin"}
                             </button>
@@ -546,7 +500,7 @@ export default function Home() {
                               type="button"
                               disabled={saving}
                               onClick={() => setDeleteCandidate(user)}
-                              className="rounded-md bg-rose-600 px-3 py-1 text-white disabled:opacity-60"
+                              className="rounded-md bg-rose-600 px-3 py-1 text-white hover:bg-rose-700 disabled:opacity-60"
                             >
                               Delete
                             </button>

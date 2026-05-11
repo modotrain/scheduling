@@ -32,9 +32,10 @@ function validateUserPayload(payload: UserPayload): UserValidationResult {
   const username = payload.username?.trim();
   const email = payload.email?.trim();
   const password = payload.password?.trim();
+  const age = typeof payload.age === "number" && !Number.isNaN(payload.age) ? payload.age : 0;
 
-  if (!name || !username || !email || typeof payload.age !== "number" || Number.isNaN(payload.age)) {
-    return { error: "name, username, email, and numeric age are required" };
+  if (!name || !username || !email) {
+    return { error: "name, username, and email are required" };
   }
 
   if (!password) {
@@ -45,7 +46,7 @@ function validateUserPayload(payload: UserPayload): UserValidationResult {
     return { error: "password must be at least 8 characters" };
   }
 
-  if (payload.age < 0) {
+  if (age < 0) {
     return { error: "age must be zero or greater" };
   }
 
@@ -53,7 +54,7 @@ function validateUserPayload(payload: UserPayload): UserValidationResult {
     data: {
       name,
       username,
-      age: payload.age,
+      age,
       email,
       password,
       vip: payload.vip ?? false,

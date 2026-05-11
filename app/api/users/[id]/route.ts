@@ -47,16 +47,17 @@ function validateFullUserPayload(payload: UserPayload): UserValidationResult {
   const username = payload.username?.trim();
   const email = payload.email?.trim();
   const password = payload.password?.trim();
+  const hasAge = typeof payload.age === "number" && !Number.isNaN(payload.age);
 
-  if (!name || !username || !email || typeof payload.age !== "number" || Number.isNaN(payload.age)) {
-    return { error: "name, username, email, and numeric age are required" };
+  if (!name || !username || !email) {
+    return { error: "name, username, and email are required" };
   }
 
   if (password && password.length < 8) {
     return { error: "password must be at least 8 characters" };
   }
 
-  if (payload.age < 0) {
+  if (hasAge && (payload.age as number) < 0) {
     return { error: "age must be zero or greater" };
   }
 
@@ -64,7 +65,7 @@ function validateFullUserPayload(payload: UserPayload): UserValidationResult {
     data: {
       name,
       username,
-      age: payload.age,
+      age: hasAge ? (payload.age as number) : 0,
       email,
       password,
       vip: payload.vip ?? false,
@@ -108,17 +109,20 @@ export async function PUT(request: Request, context: RouteContext) {
     const values: {
       name: string;
       username: string;
-      age: number;
+      age?: number;
       email: string;
       vip: boolean;
       passwordHash?: string;
     } = {
       name: validation.data.name,
       username: validation.data.username,
-      age: validation.data.age,
       email: validation.data.email,
       vip: validation.data.vip,
     };
+
+    if (typeof body.age === "number" && !Number.isNaN(body.age)) {
+      values.age = validation.data.age;
+    }
 
     if (validation.data.password) {
       values.passwordHash = await hashPassword(validation.data.password);
