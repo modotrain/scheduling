@@ -400,7 +400,7 @@ export default function Cycle2SkyMap() {
                 className: "week-range-slider-tooltip",
                 rootClassName: "week-range-slider-tooltip",
                 placement: "top",
-                overlayInnerStyle: {
+                style: {
                   background: "var(--week-slider-tooltip-bg)",
                   color: "var(--week-slider-tooltip-text)",
                   border: "1px solid var(--week-slider-tooltip-border)",
