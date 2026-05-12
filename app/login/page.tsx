@@ -216,7 +216,7 @@ export default function LoginPage() {
         {/* Card */}
         <div className="w-full rounded-2xl border border-white/75 bg-white/72 p-6 shadow-[0_22px_60px_rgba(0,93,151,0.16)] backdrop-blur-xl dark:border-[#21415a] dark:bg-[#0d1f2f]/76 dark:shadow-[0_22px_60px_rgba(0,0,0,0.34)]">
           <p className="mb-5 text-sm text-slate-600 dark:text-slate-300">
-            Sign in to access GP Cycle / ToO planning.
+            Sign in to access the Einstein Probe Scheduling System.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
