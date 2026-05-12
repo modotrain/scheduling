@@ -65,17 +65,17 @@ type Cycle2GfCache = {
 const TABLE_COLS: (keyof Cycle2GfRow)[] = [
   "id",
   "sourceName",
-  "sourceId",
+//   "sourceId",
   "proposalNo",
   "pi",
-  "stp",
+//   "stp",
   "sourcePriority",
   "obsType",
   "totalExposureTime",
 //   "completeness",
-  "visitNumber",
-  "cadence",
-  "validTimeRatio",
+//   "visitNumber",
+//   "cadence",
+//   "validTimeRatio",
 ];
 
 const COL_LABELS: Partial<Record<keyof Cycle2GfRow, string>> = {
@@ -337,23 +337,48 @@ export default function Cycle2GfPage() {
           <p>
             {loading ? "" : `${displayRows.length} of ${rows.length} rows`} {loading ? "" : `(page ${currentPage}/${totalPages})`}
           </p>
-          <label className="flex items-center gap-2">
-            Rows per page
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-            >
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex items-center gap-3">
+            {displayRows.length > 0 ? (
+              <div className="flex items-center gap-2 text-sm">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="rounded border border-slate-300 px-3 py-1 text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-slate-200"
+                >
+                  Prev
+                </button>
+                <span className="min-w-24 text-center text-xs text-slate-500 dark:text-slate-400">
+                  Page {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="rounded border border-slate-300 px-3 py-1 text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-slate-200"
+                >
+                  Next
+                </button>
+              </div>
+            ) : null}
+            <label className="flex items-center gap-2">
+              Rows per page
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         <div className="mt-4 overflow-x-auto">
