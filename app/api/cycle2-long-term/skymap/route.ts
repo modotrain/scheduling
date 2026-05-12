@@ -37,11 +37,13 @@ type LongTermRangeRow = {
   sourceId: string | null;
   startTime: string | null;
   endTime: string | null;
+  visibleDateRanges: string | null;
 };
 
 type SourceDateRange = {
   minStartDate: string | null;
   maxEndDate: string | null;
+  visibleDateRanges: string | null;
 };
 
 type RegionStat = {
@@ -96,6 +98,7 @@ export async function GET() {
           sourceId: longTermObservationListCycle2.sourceId,
           startTime: longTermObservationListCycle2.startTime,
           endTime: longTermObservationListCycle2.endTime,
+          visibleDateRanges: longTermObservationListCycle2.visibleDateRanges,
         })
         .from(longTermObservationListCycle2),
     ]);
@@ -169,6 +172,7 @@ export async function GET() {
         sourceDateRangeMap.set(sourceId, {
           minStartDate: startDate,
           maxEndDate: endDate,
+          visibleDateRanges: row.visibleDateRanges ?? null,
         });
         continue;
       }
@@ -179,6 +183,10 @@ export async function GET() {
 
       if (endDate) {
         existing.maxEndDate = existing.maxEndDate ? (endDate > existing.maxEndDate ? endDate : existing.maxEndDate) : endDate;
+      }
+
+      if (!existing.visibleDateRanges && row.visibleDateRanges) {
+        existing.visibleDateRanges = row.visibleDateRanges;
       }
     }
 
@@ -209,6 +217,7 @@ export async function GET() {
           maxWeek: scheduleAgg?.maxWeek ?? null,
           scheduledDateStart: sourceDateRange?.minStartDate ?? null,
           scheduledDateEnd: sourceDateRange?.maxEndDate ?? null,
+          visibleDateRanges: sourceDateRange?.visibleDateRanges ?? null,
           weeklyExposure,
         };
       });

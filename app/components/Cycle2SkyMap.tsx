@@ -6,6 +6,7 @@ import { InputNumber } from "antd";
 import { Slider } from "antd";
 import type { InputNumberProps } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Cycle2GanttChart from "./Cycle2GanttChart";
 
 type SkyPoint = {
   sourceId: number;
@@ -25,6 +26,7 @@ type SkyPoint = {
   scheduledDateStart: string | null;
   scheduledDateEnd: string | null;
   weeklyExposure: Array<{ weekIndex: number; exposureS: number }>;
+  visibleDateRanges: string | null;
 };
 
 type SkyRegion = {
@@ -646,6 +648,15 @@ export default function Cycle2SkyMap() {
           </p>
         </div>
       ) : null}
+
+      <Cycle2GanttChart
+        points={data.points}
+        weekBounds={data.weekBounds}
+        filterMode={filterMode}
+        selectedWeek={selectedWeek}
+        weekRangeStart={weekRangeStart}
+        weekRangeEnd={weekRangeEnd}
+      />
     </div>
   );
 }
