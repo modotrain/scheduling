@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const CYCLE2_GF_CACHE_KEY = "cycle2-gf:list:v1";
 const CYCLE2_GF_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -99,6 +100,10 @@ const COL_LABELS: Partial<Record<keyof Cycle2GfRow, string>> = {
 };
 
 export default function Cycle2GfPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [rows, setRows] = useState<Cycle2GfRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -107,6 +112,60 @@ export default function Cycle2GfPage() {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
   const [pageSize, setPageSize] = useState<number>(100);
   const [currentPage, setCurrentPage] = useState(1);
+  const [urlStateHydrated, setUrlStateHydrated] = useState(false);
+
+  useEffect(() => {
+    const q = searchParams.get("q") ?? "";
+    const pageParam = Number(searchParams.get("page") ?? "1");
+    const sizeParam = Number(searchParams.get("pageSize") ?? "100");
+    const sortColParam = searchParams.get("sortCol");
+    const sortDirParam = searchParams.get("sortDir");
+    const parsedPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
+    const parsedPageSize = PAGE_SIZE_OPTIONS.includes(sizeParam as (typeof PAGE_SIZE_OPTIONS)[number])
+      ? sizeParam
+      : 100;
+    const parsedSortCol =
+      sortColParam && TABLE_COLS.includes(sortColParam as keyof Cycle2GfRow)
+        ? (sortColParam as keyof Cycle2GfRow)
+        : null;
+    const parsedSortDir: "asc" | "desc" = sortDirParam === "desc" ? "desc" : "asc";
+
+    setSearchText(q);
+    setCurrentPage(parsedPage);
+    setPageSize(parsedPageSize);
+    setSortConfig({ col: parsedSortCol, dir: parsedSortDir });
+    setUrlStateHydrated(true);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!urlStateHydrated) return;
+
+    const next = new URLSearchParams(searchParams.toString());
+    const nextQ = searchText.trim();
+
+    if (nextQ) next.set("q", nextQ);
+    else next.delete("q");
+
+    if (currentPage > 1) next.set("page", String(currentPage));
+    else next.delete("page");
+
+    if (pageSize !== 100) next.set("pageSize", String(pageSize));
+    else next.delete("pageSize");
+
+    if (sortConfig.col) {
+      next.set("sortCol", String(sortConfig.col));
+      next.set("sortDir", sortConfig.dir);
+    } else {
+      next.delete("sortCol");
+      next.delete("sortDir");
+    }
+
+    const currentQuery = searchParams.toString();
+    const nextQuery = next.toString();
+    if (currentQuery !== nextQuery) {
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    }
+  }, [urlStateHydrated, searchText, currentPage, pageSize, sortConfig, pathname, router, searchParams]);
 
   const loadRows = useCallback(async () => {
     setLoading(true);
