@@ -30,7 +30,7 @@ type ScheduleCsvRow = {
 
 const ROOT_DIR = process.cwd();
 const LONGTERM_DIR = path.join(ROOT_DIR, "longterm_sch");
-const SOURCE_CSV_PATH = path.join(LONGTERM_DIR, "reviewed_cycle2_source_list_GP_visibility_eachday.csv");
+const SOURCE_CSV_PATH = path.join(LONGTERM_DIR, "cc2.csv");
 const SCHEDULE_CSV_PATH = path.join(LONGTERM_DIR, "schedule_result.csv");
 const BATCH_SIZE = 500;
 
