@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type SkyPoint = {
   sourceId: number;
@@ -32,7 +32,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   C: "#2ca02c",
 };
 
-const SVG_W = 900;
+const DEFAULT_W = 900; // initial / fallback SVG width
 const LEFT = 180;      // label column width
 const RIGHT = 20;      // right padding
 const TOP = 38;        // top padding for x-axis labels
@@ -42,8 +42,6 @@ const VIS_H = 8;       // height of visibility window band
 const BOTTOM = 28;     // space below last row
 const BAR_COLOR = "#9b59b6";
 const VIS_COLOR = "#cbd5e1";
-
-const CHART_W = SVG_W - LEFT - RIGHT;
 
 function parseDate(s: string): number {
   return new Date(s).getTime();
@@ -87,6 +85,25 @@ export default function Cycle2GanttChart({
   weekRangeStart,
   weekRangeEnd,
 }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(DEFAULT_W);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        if (w > 0) setContainerWidth(w);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const svgW = Math.max(containerWidth, LEFT + RIGHT + 100);
+  const chartW = svgW - LEFT - RIGHT;
+
   const weekBoundMap = useMemo(
     () => new Map(weekBounds.map((wb) => [wb.weekIndex, wb])),
     [weekBounds],
@@ -144,8 +161,8 @@ export default function Cycle2GanttChart({
     if (!dateRange) return LEFT;
     const { lo, hi } = dateRange;
     const span = hi - lo || 1;
-    return LEFT + ((t - lo) / span) * CHART_W;
-  }, [dateRange]);
+    return LEFT + ((t - lo) / span) * chartW;
+  }, [dateRange, chartW]);
 
   const monthTicks = useMemo(() => {
     if (!dateRange) return [];
@@ -173,12 +190,15 @@ export default function Cycle2GanttChart({
         Scheduling Coverage Timeline
       </h2>
 
-      <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 600 }}>
+      <div
+        ref={containerRef}
+        className="overflow-x-hidden overflow-y-auto rounded-md [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-slate-100 dark:[&::-webkit-scrollbar-track]:bg-slate-800 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-600"
+        style={{ maxHeight: 600, scrollbarGutter: "stable" }}
+      >
         <svg
-          width={SVG_W}
+          width={svgW}
           height={svgH}
           className="block"
-          style={{ minWidth: SVG_W }}
         >
           {/* ─── Month gridlines + labels ─── */}
           {monthTicks.map(({ x, label }) => (
@@ -210,7 +230,7 @@ export default function Cycle2GanttChart({
 
           {/* ─── Bottom axis ─── */}
           <line
-            x1={LEFT} y1={svgH - BOTTOM} x2={SVG_W - RIGHT} y2={svgH - BOTTOM}
+            x1={LEFT} y1={svgH - BOTTOM} x2={svgW - RIGHT} y2={svgH - BOTTOM}
             stroke="#94a3b8" strokeWidth={1} strokeOpacity={0.5}
           />
 
@@ -232,7 +252,7 @@ export default function Cycle2GanttChart({
               <g key={row.sourceId}>
                 {/* Alternating row background stripe */}
                 <rect
-                  x={0} y={cy} width={SVG_W} height={ROW_H}
+                  x={0} y={cy} width={svgW} height={ROW_H}
                   fill={i % 2 === 0 ? "transparent" : "currentColor"}
                   className={i % 2 === 0 ? "" : "fill-slate-50 dark:fill-slate-800/40"}
                   fillOpacity={1}
@@ -259,13 +279,13 @@ export default function Cycle2GanttChart({
                       const x0 = dateToX(a);
                       const x1 = dateToX(b);
                       const w = Math.max(1, x1 - x0);
-                      if (x1 < LEFT || x0 > SVG_W - RIGHT) return null;
+                      if (x1 < LEFT || x0 > svgW - RIGHT) return null;
                       return (
                         <rect
                           key={`vis-${vi}`}
                           x={Math.max(LEFT, x0)}
                           y={visCy}
-                          width={Math.min(w, SVG_W - RIGHT - Math.max(LEFT, x0))}
+                          width={Math.min(w, svgW - RIGHT - Math.max(LEFT, x0))}
                           height={VIS_H}
                           fill={VIS_COLOR}
                           fillOpacity={0.5}
@@ -284,9 +304,9 @@ export default function Cycle2GanttChart({
                   const x0 = dateToX(t0);
                   const x1 = dateToX(t1);
                   const w = Math.max(4, x1 - x0);
-                  if (x0 > SVG_W - RIGHT || x1 < LEFT) return null;
+                  if (x0 > svgW - RIGHT || x1 < LEFT) return null;
                   const expKs = we.exposureS / 1000;
-                  const labelX = Math.min(x0 + w + 2, SVG_W - RIGHT - 18);
+                  const labelX = Math.min(x0 + w + 2, svgW - RIGHT - 18);
                   return (
                     <g key={`bar-${we.weekIndex}`}>
                       <rect
