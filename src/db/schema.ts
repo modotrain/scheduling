@@ -719,3 +719,11 @@ export const cycle2SkymapSchedule = pgTable("cycle2_skymap_schedule", {
 	index("cycle2_skymap_schedule_source_id_idx").on(table.sourceId),
 	index("cycle2_skymap_schedule_week_index_idx").on(table.weekIndex),
 ]);
+export const loginLog = pgTable("login_log", {
+	id: serial().primaryKey().notNull(),
+	userId: integer("user_id"),
+	username: varchar("username", { length: 255 }).notNull(),
+	loggedInAt: timestamp("logged_in_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+	ipAddress: varchar("ip_address", { length: 64 }),
+	userAgent: varchar("user_agent", { length: 512 }),
+});

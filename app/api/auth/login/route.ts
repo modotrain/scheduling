@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 
 import { shouldUseSecureAuthCookie } from "@/src/auth/cookies";
 import { db } from "@/src/db/client";
+import { loginLog } from "@/src/db/schema";
 import { AUTH_COOKIE_NAME, createSessionToken } from "@/src/auth/session";
 
 type LoginPayload = {
@@ -64,6 +65,23 @@ export async function POST(request: Request) {
       path: "/",
       maxAge: 7 * 24 * 60 * 60,
     });
+
+    // Record login — best-effort, must not block the login response
+    try {
+      const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+        request.headers.get("x-real-ip") ??
+        null;
+      const ua = request.headers.get("user-agent");
+      await db.insert(loginLog).values({
+        userId: Number(user.id),
+        username: user.username,
+        ipAddress: ip,
+        userAgent: ua ? ua.slice(0, 512) : null,
+      });
+    } catch {
+      // silently ignore log errors
+    }
 
     return response;
   } catch (error) {
