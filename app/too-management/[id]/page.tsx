@@ -391,7 +391,7 @@ function getUpcomingTuesdayWindows(count: number): PlanningWindowOption[] {
 
     return {
       value: `${start}:${end}`,
-      label: `${formatDateDisplay(start)} - ${formatDateDisplay(end)}`,
+      label: `${getISOWeekLabel(start)} · ${formatDateDisplay(start)} – ${formatDateDisplay(end)}`,
       start,
       end,
     };
@@ -451,6 +451,15 @@ export default function TooManagementDetailPage() {
   const planningValidationErrors = useMemo(() => {
     const errors: string[] = [];
 
+    // Date range checks
+    const earliestWeekStart = planningWindowOptions[0]?.start ?? null;
+    if (plannedStartInput && earliestWeekStart && plannedStartInput < earliestWeekStart) {
+      errors.push(`Start date must be on or after the earliest schedulable week (${formatDateDisplay(earliestWeekStart)}).`);
+    }
+    if (plannedStartInput && plannedEndInput && plannedEndInput <= plannedStartInput) {
+      errors.push("End date must be after start date.");
+    }
+
     if (cadenceNumeric !== null) {
       if (Number.isNaN(cadenceNumeric) || cadenceNumeric < 0) {
         errors.push("Cadence must be greater than or equal to 0.");
@@ -474,7 +483,7 @@ export default function TooManagementDetailPage() {
     }
 
     return errors;
-  }, [cadenceNumeric, planningCadenceUnit, singleExposureNumeric, planningNumberOfVisitsNumeric, row]);
+  }, [planningWindowOptions, plannedStartInput, plannedEndInput, cadenceNumeric, planningCadenceUnit, singleExposureNumeric, planningNumberOfVisitsNumeric, row]);
 
   const visitPreviews = useMemo(() => {
     if (
@@ -1249,14 +1258,21 @@ export default function TooManagementDetailPage() {
             </div>
 
             <div className="max-h-[70vh] overflow-auto px-6 py-4">
-              <p className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
-                The default preset starts from the first Tuesday after three days from today and spans to the following Tuesday.
-              </p>
+              {/* ── First Visit Range ── */}
+              <div className="mt-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  First Visit Range
+                </p>
 
-              <div className="grid gap-3 lg:grid-cols-[1.1fr_1fr_1fr] lg:items-end">
-                <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Full Week
+                {/* Row 1: Full Week quick-fill */}
+                <div className="mb-3">
+                  <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">
+                    Quick-fill by full week
+                    {matchedWindowPreset ? (
+                      <span className="ml-2 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                        matched
+                      </span>
+                    ) : null}
                   </label>
                   <select
                     value={planningWindowPreset}
@@ -1273,39 +1289,64 @@ export default function TooManagementDetailPage() {
                         {option.label}
                       </option>
                     ))}
-                    <option value="custom">Custom dates</option>
+                    <option value="custom">Manual range (edit dates below)</option>
                   </select>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    First GP Visit Start
-                  </label>
-                  <input
-                    type="date"
-                    value={plannedStartInput}
-                    onChange={(event) => {
-                      setPlanningWindowPreset("custom");
-                      setPlannedStartInput(event.target.value);
-                    }}
-                    disabled={planningSubmitting || loading || !row}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                  />
+
+                {/* Row 2: Start / End date pickers + duration badge */}
+                <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Start Date</label>
+                    <input
+                      type="date"
+                      value={plannedStartInput}
+                      onChange={(event) => {
+                        setPlanningWindowPreset("custom");
+                        setPlannedStartInput(event.target.value);
+                      }}
+                      disabled={planningSubmitting || loading || !row}
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">
+                      End Date{" "}
+                      <span className="font-normal text-slate-400 dark:text-slate-500">(exclusive)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={plannedEndInput}
+                      onChange={(event) => {
+                        setPlanningWindowPreset("custom");
+                        setPlannedEndInput(event.target.value);
+                      }}
+                      disabled={planningSubmitting || loading || !row}
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  {/* Duration badge */}
+                  <div className="pb-[2px] text-right">
+                    {(() => {
+                      if (!plannedStartInput || !plannedEndInput) return null;
+                      const ms =
+                        new Date(`${plannedEndInput}T00:00:00Z`).getTime() -
+                        new Date(`${plannedStartInput}T00:00:00Z`).getTime();
+                      const days = Math.round(ms / 86_400_000);
+                      if (days <= 0) return null;
+                      return (
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          {days} day{days !== 1 ? "s" : ""}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    First GP Visit End
-                  </label>
-                  <input
-                    type="date"
-                    value={plannedEndInput}
-                    onChange={(event) => {
-                      setPlanningWindowPreset("custom");
-                      setPlannedEndInput(event.target.value);
-                    }}
-                    disabled={planningSubmitting || loading || !row}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                  />
-                </div>
+
+                {/* Disambiguation note */}
+                <p className="mt-2 text-[11px] leading-snug text-slate-400 dark:text-slate-500">
+                  The window opens at 00:00 on the start date and closes at 00:00 on the end date
+                  (end-exclusive). For example, May 5 – May 6 means May 5 00:00 to May 6 00:00 (UTC).
+                </p>
               </div>
 
               {/* ── Add mode: read-only params + prominent visit count ── */}
