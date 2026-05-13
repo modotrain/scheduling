@@ -1420,7 +1420,7 @@ export default function TooManagementDetailPage() {
                 {editingPlanningId ? "Edit GP Plan" : "Add GP Plan"}
               </h3>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                Define the schedulable date window and planning parameters for this GP visit.
+                Define the schedulable date window and planning GP visits for this source.
               </p>
             </div>
 
