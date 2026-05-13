@@ -707,8 +707,8 @@ export default function GpCalDetailPage() {
             <div className="flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-600 text-xs">
               {([
                 { value: "all", label: "All" },
-                { value: "nonzero", label: "Non-zero only" },
-                { value: "zerosonly", label: "Zero only" },
+                { value: "nonzero", label: "Performed" },
+                { value: "zerosonly", label: "Cancelled" },
               ] as const).map(({ value, label }, idx) => (
                 <button
                   key={value}
