@@ -1308,99 +1308,134 @@ export default function TooManagementDetailPage() {
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Cadence
-                  </label>
-                  <div className="relative">
+              {/* ── Add mode: read-only params + prominent visit count ── */}
+              {!editingPlanningId ? (
+                <>
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      Reviewed Parameters (read-only)
+                    </p>
+                    <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+                      <div>
+                        <span className="mr-1.5 text-xs text-slate-500 dark:text-slate-400">Cadence:</span>
+                        <span className="font-medium text-slate-800 dark:text-slate-200">
+                          {planningCadenceValue && planningCadenceValue !== "0"
+                            ? `${planningCadenceValue}${planningCadenceUnit ? ` ${planningCadenceUnit}` : ""}`
+                            : "—"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="mr-1.5 text-xs text-slate-500 dark:text-slate-400">Single Exp. Time:</span>
+                        <span className="font-medium text-slate-800 dark:text-slate-200">
+                          {planningSingleExposureTime ? `${Number(planningSingleExposureTime).toLocaleString()} s` : "—"}
+                        </span>
+                      </div>
+                      {computedTotalExposureTime !== null ? (
+                        <div>
+                          <span className="mr-1.5 text-xs text-slate-500 dark:text-slate-400">Total Exp. Time:</span>
+                          <span className="font-medium text-slate-800 dark:text-slate-200">
+                            {computedTotalExposureTime.toLocaleString()} s
+                            {planningNumberOfVisitsNumeric && planningNumberOfVisitsNumeric > 1
+                              ? ` (${planningSingleExposureTime} × ${planningNumberOfVisitsNumeric})`
+                              : ""}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-xl border-2 border-primary/40 bg-primary/5 px-5 py-4 dark:border-primary/30 dark:bg-primary/10">
+                    <label className="mb-1 block text-sm font-semibold text-primary dark:text-sky-300">
+                      Number of GP Visits
+                    </label>
+                    <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                      Reviewed: <span className="font-semibold text-slate-700 dark:text-slate-200">{row?.reviewedNumberOfVisits ?? "—"}</span>
+                    </p>
                     <input
                       type="number"
-                      value={planningCadenceValue}
-                      min={0}
+                      min={1}
+                      max={Number(row?.reviewedNumberOfVisits ?? "999") || 999}
                       step={1}
-                      placeholder="0"
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        if (nextValue === "") {
-                          setPlanningCadenceValue("");
-                          setPlanningCadenceUnit("");
-                          return;
-                        }
-                        const parsed = Number(nextValue);
-                        if (!Number.isNaN(parsed) && parsed >= 0) {
-                          setPlanningCadenceValue(nextValue);
-                          if (parsed === 0) {
-                            setPlanningCadenceUnit("");
-                          }
-                        }
-                      }}
+                      value={planningNumberOfVisits}
+                      onChange={(event) => setPlanningNumberOfVisits(event.target.value)}
                       disabled={planningSubmitting || loading || !row}
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                      className="w-full max-w-[160px] rounded-lg border-2 border-primary/50 bg-white px-4 py-2.5 text-lg font-semibold text-primary shadow-sm focus:border-primary focus:outline-none dark:border-primary/40 dark:bg-slate-900 dark:text-sky-300"
                     />
-                    {cadenceNumeric === 0 ? (
-                      <span className="pointer-events-none absolute inset-y-0 left-8 flex items-center text-xs text-slate-500 dark:text-slate-400">
-                        (one-time visit)
-                      </span>
-                    ) : null}
                   </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Cadence Unit
-                  </label>
-                  <select
-                    value={planningCadenceUnit}
-                    onChange={(event) => setPlanningCadenceUnit(event.target.value)}
-                    disabled={planningSubmitting || loading || !row || cadenceNumeric === null || cadenceNumeric <= 0}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                  >
-                    <option value="">—</option>
-                    <option value="day">day</option>
-                    <option value="orbit">orbit</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Single Exposure Time
-                  </label>
-                  <input
-                    type="number"
-                    min={1000}
-                    step={1000}
-                    value={planningSingleExposureTime}
-                    onChange={(event) => setPlanningSingleExposureTime(event.target.value)}
-                    disabled={planningSubmitting || loading || !row}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  {!editingPlanningId ? (
-                    <div>
-                      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        Number of GP Visits
-                      </label>
-                      <p className="mb-1 text-[11px] text-slate-400 dark:text-slate-500">
-                        Reviewed: {row?.reviewedNumberOfVisits ?? "—"}
-                      </p>
+                </>
+              ) : (
+                /* ── Edit mode: all fields editable ── */
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Cadence
+                    </label>
+                    <div className="relative">
                       <input
                         type="number"
-                        min={1}
-                        max={Number(row?.reviewedNumberOfVisits ?? "999") || 999}
+                        value={planningCadenceValue}
+                        min={0}
                         step={1}
-                        value={planningNumberOfVisits}
-                        onChange={(event) => setPlanningNumberOfVisits(event.target.value)}
+                        placeholder="0"
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          if (nextValue === "") {
+                            setPlanningCadenceValue("");
+                            setPlanningCadenceUnit("");
+                            return;
+                          }
+                          const parsed = Number(nextValue);
+                          if (!Number.isNaN(parsed) && parsed >= 0) {
+                            setPlanningCadenceValue(nextValue);
+                            if (parsed === 0) {
+                              setPlanningCadenceUnit("");
+                            }
+                          }
+                        }}
                         disabled={planningSubmitting || loading || !row}
                         className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                       />
+                      {cadenceNumeric === 0 ? (
+                        <span className="pointer-events-none absolute inset-y-0 left-8 flex items-center text-xs text-slate-500 dark:text-slate-400">
+                          (one-time visit)
+                        </span>
+                      ) : null}
                     </div>
-                  ) : (
-                    <div />
-                  )}
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Cadence Unit
+                    </label>
+                    <select
+                      value={planningCadenceUnit}
+                      onChange={(event) => setPlanningCadenceUnit(event.target.value)}
+                      disabled={planningSubmitting || loading || !row || cadenceNumeric === null || cadenceNumeric <= 0}
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    >
+                      <option value="">—</option>
+                      <option value="day">day</option>
+                      <option value="orbit">orbit</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Single Exposure Time
+                    </label>
+                    <input
+                      type="number"
+                      min={1000}
+                      step={1000}
+                      value={planningSingleExposureTime}
+                      onChange={(event) => setPlanningSingleExposureTime(event.target.value)}
+                      disabled={planningSubmitting || loading || !row}
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    />
+                  </div>
+                  <div />
                 </div>
-              </div>
+              )}
 
-              {computedTotalExposureTime !== null ? (
+              {editingPlanningId && computedTotalExposureTime !== null ? (
                 <div className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
                   Total Exposure Time:{" "}
                   <span className="font-mono font-semibold">{computedTotalExposureTime.toLocaleString()} s</span>

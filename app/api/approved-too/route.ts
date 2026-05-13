@@ -19,17 +19,40 @@ export async function GET() {
             ) THEN 1 ELSE 0 END) AS scheduled_plans
           FROM tootogp_schedule tg
           GROUP BY tg.approved_too_id
+        ),
+        schedule_match AS (
+          SELECT DISTINCT a.id AS approved_too_id
+          FROM approved_too a
+          WHERE EXISTS (
+            SELECT 1 FROM obs_wp o
+            WHERE a.source_id IS NOT NULL
+              AND a.source_id <> ''
+              AND o.source_id IS NOT NULL
+              AND o.source_id = a.source_id
+          )
         )
         SELECT
           a.id,
           CASE
-            WHEN gs.total_plans IS NULL OR gs.total_plans = 0 THEN 'new'
+            WHEN (gs.total_plans IS NULL OR gs.total_plans = 0)
+              AND sm.approved_too_id IS NULL
+              THEN 'no_schedule'
+            WHEN (gs.total_plans IS NULL OR gs.total_plans = 0)
+              AND sm.approved_too_id IS NOT NULL
+              AND (NULLIF(TRIM(a.reviewed_number_of_visits), '') IS NULL
+                   OR NULLIF(TRIM(a.reviewed_number_of_visits), '')::int <= 1)
+              THEN 'scheduled'
+            WHEN (gs.total_plans IS NULL OR gs.total_plans = 0)
+              AND sm.approved_too_id IS NOT NULL
+              AND NULLIF(TRIM(a.reviewed_number_of_visits), '')::int > 1
+              THEN 'pending_gp'
             WHEN gs.scheduled_plans = 0 THEN 'planned'
             WHEN gs.scheduled_plans < gs.total_plans THEN 'in_progress'
             ELSE 'done'
           END AS scheduled_status
         FROM approved_too a
         LEFT JOIN gp_stats gs ON gs.approved_too_id = a.id
+        LEFT JOIN schedule_match sm ON sm.approved_too_id = a.id
       `),
     ]);
 
@@ -37,14 +60,14 @@ export async function GET() {
     const statusMap = new Map(
       (Array.isArray(statusResult) ? statusResult : statusResult.rows).map((row) => [
         Number((row as StatusRow).id),
-        (row as StatusRow).scheduled_status as "new" | "planned" | "in_progress" | "done",
+        (row as StatusRow).scheduled_status as "no_schedule" | "scheduled" | "pending_gp" | "planned" | "in_progress" | "done",
       ]),
     );
 
     return NextResponse.json({
       rows: rows.map((row) => ({
         ...row,
-        scheduledStatus: statusMap.get(row.id) ?? "new",
+        scheduledStatus: statusMap.get(row.id) ?? "no_schedule",
       })),
     });
   } catch (err) {

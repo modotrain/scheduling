@@ -20,7 +20,7 @@ type ApprovedTooRow = {
   reviewedCadence: string | null;
   reviewedCadenceUnit: string | null;
   type: string | null;
-  scheduledStatus: "new" | "planned" | "in_progress" | "done";
+  scheduledStatus: "no_schedule" | "scheduled" | "pending_gp" | "planned" | "in_progress" | "done";
 };
 
 type SortConfig = { col: keyof ApprovedTooRow | null; dir: "asc" | "desc" };
@@ -91,13 +91,17 @@ function formatGroupName(value: string | null) {
 
 function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"] }) {
   const styles: Record<ApprovedTooRow["scheduledStatus"], string> = {
-    new: "bg-slate-200/60 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300",
+    no_schedule: "bg-slate-200/60 text-slate-500 dark:bg-slate-700/40 dark:text-slate-400",
+    scheduled: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+    pending_gp: "bg-orange-500/10 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
     planned: "bg-sky-500/10 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
     in_progress: "bg-amber-500/10 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    done: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+    done: "bg-teal-500/10 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
   };
   const labels: Record<ApprovedTooRow["scheduledStatus"], string> = {
-    new: "New",
+    no_schedule: "No Schedule",
+    scheduled: "Scheduled",
+    pending_gp: "Pending GP",
     planned: "Planned",
     in_progress: "In Progress",
     done: "Done",
@@ -111,6 +115,8 @@ function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"]
 
 const TOO_MANAGEMENT_CACHE_KEY = "too-management-list-cache-v1";
 const TOO_MANAGEMENT_CACHE_TTL_MS = 10 * 60 * 1000;
+const TOO_MANAGEMENT_VIEW_KEY = "too-management-view-v1";
+const NEED_ACTION_STATUSES: ApprovedTooRow["scheduledStatus"][] = ["no_schedule", "pending_gp"];
 
 type TooManagementCachePayload = {
   ts: number;
@@ -125,6 +131,10 @@ export default function TooManagementPage() {
   const [searchText, setSearchText] = useState("");
   const [stpFilter, setStpFilter] = useState<StpFilter>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
+  const [viewMode, setViewMode] = useState<"all" | "need_action">(() => {
+    if (typeof window === "undefined") return "need_action";
+    return (localStorage.getItem(TOO_MANAGEMENT_VIEW_KEY) as "all" | "need_action") ?? "need_action";
+  });
 
   const loadRows = useCallback(async () => {
     setLoading(true);
@@ -167,10 +177,16 @@ export default function TooManagementPage() {
     }));
   }
 
+  function handleViewModeChange(next: "all" | "need_action") {
+    setViewMode(next);
+    localStorage.setItem(TOO_MANAGEMENT_VIEW_KEY, next);
+  }
+
   function getSortedAndFilteredRows() {
     const query = searchText.toLowerCase().trim();
     const filtered = rows.filter((row) => {
       if (stpFilter !== null && row.stp !== stpFilter) return false;
+      if (viewMode === "need_action" && !NEED_ACTION_STATUSES.includes(row.scheduledStatus)) return false;
       if (query && !Object.values(row).some(
         (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(query),
       )) return false;
@@ -239,13 +255,37 @@ export default function TooManagementPage() {
           </p>
         ) : null}
 
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-600 text-xs shrink-0">
+            <button
+              type="button"
+              onClick={() => handleViewModeChange("need_action")}
+              className={`px-4 py-1.5 font-medium transition-colors ${
+                viewMode === "need_action"
+                  ? "bg-primary text-white"
+                  : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+            >
+              Need Action
+            </button>
+            <button
+              type="button"
+              onClick={() => handleViewModeChange("all")}
+              className={`border-l border-slate-300 px-4 py-1.5 font-medium transition-colors dark:border-slate-600 ${
+                viewMode === "all"
+                  ? "bg-primary text-white"
+                  : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+            >
+              All
+            </button>
+          </div>
           <input
             type="text"
             placeholder="Search all columns..."
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
-            className="flex-1 rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            className="flex-1 min-w-[160px] rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
           />
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-xs text-slate-500 dark:text-slate-400">STP</span>
