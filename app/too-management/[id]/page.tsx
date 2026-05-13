@@ -679,6 +679,7 @@ export default function TooManagementDetailPage() {
 
       await loadPlanning();
       await loadSchedule();
+      sessionStorage.removeItem(TOO_MANAGEMENT_CACHE_KEY);
       setEditing(false);
       setStatus("Saved successfully", "success");
     } catch (error) {
@@ -742,6 +743,7 @@ export default function TooManagementDetailPage() {
       }
 
       await loadPlanning();
+      sessionStorage.removeItem(TOO_MANAGEMENT_CACHE_KEY);
       resetPlanningForm();
       setStatus(`${data.rows?.length ?? 1} GP planning record(s) ${editingPlanningId ? "updated" : "created"}`, "success");
     } catch (error) {
@@ -814,6 +816,7 @@ export default function TooManagementDetailPage() {
         resetPlanningForm();
       }
       await loadPlanning();
+      sessionStorage.removeItem(TOO_MANAGEMENT_CACHE_KEY);
       setStatus("GP planning record deleted", "success");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to delete GP planning record", "error");
