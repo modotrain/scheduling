@@ -75,7 +75,15 @@ function getDefaultTuesdayWindow(): { start: string; end: string } {
 }
 
 function buildGeneratedId(epDbObjectId: string, seqNo: number): string {
-  const base = epDbObjectId.trim().replace(/^EP_ToO_Season/, "Cycle2");
+  const normalized = epDbObjectId.trim();
+  const match = normalized.match(/^EP_ToO_Season-\d+-([^-]+)-([^-]+)$/i);
+
+  if (match) {
+    const [, secondPart, thirdPart] = match;
+    return `cycle2-${secondPart}_${thirdPart}_${seqNo}_ToO`;
+  }
+
+  const base = normalized.replace(/^EP_ToO_Season/i, "cycle2");
   return `${base}_${seqNo}_ToO`;
 }
 
@@ -185,6 +193,15 @@ export async function POST(request: Request, { params }: Params) {
     const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
     const session = token ? await verifySessionToken(token) : null;
 
+    const explicitStart = toDateOnly(body.plannedStartTime);
+    const explicitEnd = toDateOnly(body.plannedEndTime);
+    if (body.plannedStartTime && !explicitStart) {
+      return NextResponse.json({ error: "Invalid planned start date" }, { status: 400 });
+    }
+    if (body.plannedEndTime && !explicitEnd) {
+      return NextResponse.json({ error: "Invalid planned end date" }, { status: 400 });
+    }
+
     const [parent] = await db.select().from(approvedToO).where(eq(approvedToO.id, numId));
     if (!parent) {
       return NextResponse.json({ error: "Approved ToO not found" }, { status: 404 });
@@ -201,18 +218,7 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
-    const [latestPlan] = await db
-      .select({
-        sequenceNo: tooToGpSchedule.sequenceNo,
-        plannedStartTime: tooToGpSchedule.plannedStartTime,
-        plannedEndTime: tooToGpSchedule.plannedEndTime,
-      })
-      .from(tooToGpSchedule)
-      .where(eq(tooToGpSchedule.approvedTooId, numId))
-      .orderBy(desc(tooToGpSchedule.sequenceNo), desc(tooToGpSchedule.id))
-      .limit(1);
-
-    const sequenceNoBase = (latestPlan?.sequenceNo ?? 0) + 1;
+    const parentEpDbObjectId = parent.epDbObjectId.trim();
     const cadenceValue = body.cadenceValue !== undefined ? body.cadenceValue : parseInteger(parent.reviewedCadence);
     const cadenceUnit = normalizeCadenceUnit(body.cadenceUnit ?? parent.reviewedCadenceUnit);
     const numberOfGpVisits = Math.max(1, Math.round(body.numberOfGpVisits ?? 1));
@@ -220,50 +226,87 @@ export async function POST(request: Request, { params }: Params) {
       body.reviewedSingleExposureTimeSnapshot ?? parseInteger(parent.reviewedSingleExposureTime);
     const totalExp = singleExp !== null ? singleExp * numberOfGpVisits : null;
 
-    const explicitStart = toDateOnly(body.plannedStartTime);
-    const explicitEnd = toDateOnly(body.plannedEndTime);
-    if (body.plannedStartTime && !explicitStart) {
-      return NextResponse.json({ error: "Invalid planned start date" }, { status: 400 });
-    }
-    if (body.plannedEndTime && !explicitEnd) {
-      return NextResponse.json({ error: "Invalid planned end date" }, { status: 400 });
-    }
-
     const defaultWindow = getDefaultTuesdayWindow();
     const firstStart = explicitStart ?? defaultWindow.start;
     const firstEnd = explicitEnd ?? addDays(firstStart, 7);
 
-    const insertValues = Array.from({ length: numberOfGpVisits }, (_, i) => {
-      const seqNo = sequenceNoBase + i;
-      const window = computeVisitWindow(firstStart, firstEnd, i, cadenceValue, cadenceUnit);
-      return {
-        approvedTooId: numId,
-        operatorName: operator?.name ?? session?.username ?? null,
-        parentEpDbObjectId: parent.epDbObjectId!.trim(),
-        generatedEpDbObjectId: buildGeneratedId(parent.epDbObjectId!, seqNo),
-        sequenceNo: seqNo,
-        earliestStartTime: window.start,
-        plannedStartTime: window.start,
-        plannedEndTime: window.end,
-        cadenceValue,
-        cadenceUnit,
-        reviewedNumberOfVisitsSnapshot: numberOfGpVisits,
-        reviewedSingleExposureTimeSnapshot: singleExp,
-        reviewedTotalExposureTimeSnapshot: totalExp,
-        notes: body.notes?.trim() ? body.notes.trim() : null,
-      };
-    });
+    let inserted: typeof tooToGpSchedule.$inferSelect[] | null = null;
 
-    const inserted = await db
-      .insert(tooToGpSchedule)
-      .values(insertValues)
-      .returning();
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const [latestPlan] = await db
+        .select({
+          sequenceNo: tooToGpSchedule.sequenceNo,
+        })
+        .from(tooToGpSchedule)
+        .where(eq(tooToGpSchedule.approvedTooId, numId))
+        .orderBy(desc(tooToGpSchedule.sequenceNo), desc(tooToGpSchedule.id))
+        .limit(1);
+
+      const sequenceNoBase = (latestPlan?.sequenceNo ?? 0) + 1;
+      const insertValues = Array.from({ length: numberOfGpVisits }, (_, i) => {
+        const seqNo = sequenceNoBase + i;
+        const window = computeVisitWindow(firstStart, firstEnd, i, cadenceValue, cadenceUnit);
+        return {
+          approvedTooId: numId,
+          operatorName: operator?.name ?? session?.username ?? null,
+          parentEpDbObjectId,
+          generatedEpDbObjectId: buildGeneratedId(parentEpDbObjectId, seqNo),
+          sequenceNo: seqNo,
+          earliestStartTime: window.start,
+          plannedStartTime: window.start,
+          plannedEndTime: window.end,
+          cadenceValue,
+          cadenceUnit,
+          reviewedNumberOfVisitsSnapshot: numberOfGpVisits,
+          reviewedSingleExposureTimeSnapshot: singleExp,
+          reviewedTotalExposureTimeSnapshot: totalExp,
+          notes: body.notes?.trim() ? body.notes.trim() : null,
+        };
+      });
+
+      try {
+        inserted = await db.insert(tooToGpSchedule).values(insertValues).returning();
+        break;
+      } catch (attemptErr) {
+        const attemptCause =
+          typeof attemptErr === "object" && attemptErr !== null && "cause" in attemptErr
+            ? (attemptErr as { cause?: { message?: string; code?: string; detail?: string } }).cause
+            : null;
+        const attemptDetails = [attemptCause?.message, attemptCause?.detail].filter(Boolean).join(" ").trim();
+        const isUniqueViolation =
+          attemptCause?.code === "23505" || attemptDetails.toLowerCase().includes("duplicate key value");
+
+        if (isUniqueViolation && attempt < 2) {
+          continue;
+        }
+        throw attemptErr;
+      }
+    }
+
+    if (!inserted) {
+      throw new Error("Failed to create GP planning records after retries");
+    }
 
     return NextResponse.json({ rows: inserted }, { status: 201 });
   } catch (err) {
+    const cause =
+      typeof err === "object" && err !== null && "cause" in err
+        ? (err as { cause?: { message?: string; code?: string; detail?: string } }).cause
+        : null;
+    const details = [cause?.message, cause?.detail].filter(Boolean).join(" ").trim();
+    const isUniqueViolation = cause?.code === "23505" || details.toLowerCase().includes("duplicate key value");
+
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to create GP planning record" },
-      { status: 500 },
+      {
+        error: isUniqueViolation
+          ? `GP planning records conflict with existing sequence numbers or generated IDs. ${details || "Please retry."}`.trim()
+          : err instanceof Error
+            ? details
+              ? `${err.message}: ${details}`
+              : err.message
+            : "Failed to create GP planning record",
+      },
+      { status: isUniqueViolation ? 409 : 500 },
     );
   }
 }
