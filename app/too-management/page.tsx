@@ -20,7 +20,7 @@ type ApprovedTooRow = {
   reviewedCadence: string | null;
   reviewedCadenceUnit: string | null;
   type: string | null;
-  scheduledStatus: "scheduled" | "unscheduled";
+  scheduledStatus: "new" | "planned" | "in_progress" | "done";
 };
 
 type SortConfig = { col: keyof ApprovedTooRow | null; dir: "asc" | "desc" };
@@ -90,11 +90,21 @@ function formatGroupName(value: string | null) {
 }
 
 function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"] }) {
-  const scheduled = status === "scheduled";
-
+  const styles: Record<ApprovedTooRow["scheduledStatus"], string> = {
+    new: "bg-slate-200/60 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300",
+    planned: "bg-sky-500/10 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
+    in_progress: "bg-amber-500/10 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    done: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  };
+  const labels: Record<ApprovedTooRow["scheduledStatus"], string> = {
+    new: "New",
+    planned: "Planned",
+    in_progress: "In Progress",
+    done: "Done",
+  };
   return (
-    <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-medium uppercase tracking-wide ${scheduled ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-slate-200/60 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300"}`}>
-      {status}
+    <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-medium uppercase tracking-wide ${styles[status]}`}>
+      {labels[status]}
     </span>
   );
 }

@@ -15,7 +15,7 @@ type PlanningPayload = {
   cadenceValue?: number | null;
   cadenceUnit?: string | null;
   reviewedSingleExposureTimeSnapshot?: number | null;
-  reviewedTotalExposureTimeSnapshot?: number | null;
+  numberOfGpVisits?: number | null;
 };
 
 function parseInteger(value: string | null | undefined): number | null {
@@ -74,6 +74,45 @@ function getDefaultTuesdayWindow(): { start: string; end: string } {
   return { start, end: addDays(start, 7) };
 }
 
+function buildGeneratedId(epDbObjectId: string, seqNo: number): string {
+  const base = epDbObjectId.trim().replace(/^EP_ToO_Season/, "Cycle2");
+  return `${base}_${seqNo}_ToO`;
+}
+
+function getTuesdayWindowForMs(tsMs: number): { start: string; end: string } {
+  const d = new Date(tsMs);
+  const dayOfWeek = d.getUTCDay();
+  const daysSinceTuesday = (dayOfWeek + 7 - 2) % 7;
+  const tuesday = new Date(tsMs - daysSinceTuesday * 86_400_000);
+  const yyyy = tuesday.getUTCFullYear();
+  const mm = String(tuesday.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(tuesday.getUTCDate()).padStart(2, "0");
+  const start = `${yyyy}-${mm}-${dd}`;
+  return { start, end: addDays(start, 7) };
+}
+
+function computeVisitWindow(
+  firstStart: string,
+  firstEnd: string,
+  visitIndex: number,
+  cadenceValue: number | null,
+  cadenceUnit: "day" | "orbit" | null,
+): { start: string; end: string } {
+  if (visitIndex === 0) return { start: firstStart, end: firstEnd };
+  const endStr = firstEnd || addDays(firstStart, 7);
+  const midMs =
+    (new Date(`${firstStart}T00:00:00Z`).getTime() +
+      new Date(`${endStr}T00:00:00Z`).getTime()) /
+    2;
+  const cadenceMs =
+    cadenceValue && cadenceUnit
+      ? cadenceUnit === "orbit"
+        ? cadenceValue * 97 * 60 * 1000
+        : cadenceValue * 86_400_000
+      : 0;
+  return getTuesdayWindowForMs(midMs + visitIndex * cadenceMs);
+}
+
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
   const numId = Number.parseInt(id, 10);
@@ -102,28 +141,20 @@ export async function GET(_request: Request, { params }: Params) {
         reviewedTotalExposureTimeSnapshot: tooToGpSchedule.reviewedTotalExposureTimeSnapshot,
         status: tooToGpSchedule.status,
         notes: tooToGpSchedule.notes,
-        scheduledStatus: sql<"scheduled" | "unscheduled">`
-          case
-            when exists (
-              select 1
-              from obs_wp o
-              where ${approvedToO.sourceId} is not null
-                and ${approvedToO.sourceId} <> ''
-                and o.source_id is not null
-                and o.source_id = ${approvedToO.sourceId}
-            ) then 'scheduled'
-            else 'unscheduled'
-          end
+        scheduledStatus: sql<"scheduled" | "queued">`
+          CASE
+            WHEN EXISTS (
+              SELECT 1 FROM obs_wp o
+              WHERE o.ep_db_object_id = REGEXP_REPLACE(${tooToGpSchedule.generatedEpDbObjectId}, '_ToO$', '')
+            ) THEN 'scheduled'
+            ELSE 'queued'
+          END
         `,
         matchedObsWpId: sql<number | null>`(
-          select o.id
-          from obs_wp o
-          where ${approvedToO.sourceId} is not null
-            and ${approvedToO.sourceId} <> ''
-            and o.source_id is not null
-            and o.source_id = ${approvedToO.sourceId}
-          order by o.id desc
-          limit 1
+          SELECT o.id FROM obs_wp o
+          WHERE o.ep_db_object_id = REGEXP_REPLACE(${tooToGpSchedule.generatedEpDbObjectId}, '_ToO$', '')
+          ORDER BY o.id DESC
+          LIMIT 1
         )`,
       })
       .from(tooToGpSchedule)
@@ -181,14 +212,13 @@ export async function POST(request: Request, { params }: Params) {
       .orderBy(desc(tooToGpSchedule.sequenceNo), desc(tooToGpSchedule.id))
       .limit(1);
 
-    const sequenceNo = (latestPlan?.sequenceNo ?? 0) + 1;
-    const cadenceValue = body.cadenceValue ?? parseInteger(parent.reviewedCadence);
+    const sequenceNoBase = (latestPlan?.sequenceNo ?? 0) + 1;
+    const cadenceValue = body.cadenceValue !== undefined ? body.cadenceValue : parseInteger(parent.reviewedCadence);
     const cadenceUnit = normalizeCadenceUnit(body.cadenceUnit ?? parent.reviewedCadenceUnit);
-    const reviewedNumberOfVisitsSnapshot = parseInteger(parent.reviewedNumberOfVisits);
-    const reviewedSingleExposureTimeSnapshot =
+    const numberOfGpVisits = Math.max(1, Math.round(body.numberOfGpVisits ?? 1));
+    const singleExp =
       body.reviewedSingleExposureTimeSnapshot ?? parseInteger(parent.reviewedSingleExposureTime);
-    const reviewedTotalExposureTimeSnapshot =
-      body.reviewedTotalExposureTimeSnapshot ?? parseInteger(parent.reviewedTotalExposureTime);
+    const totalExp = singleExp !== null ? singleExp * numberOfGpVisits : null;
 
     const explicitStart = toDateOnly(body.plannedStartTime);
     const explicitEnd = toDateOnly(body.plannedEndTime);
@@ -200,31 +230,36 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const defaultWindow = getDefaultTuesdayWindow();
-    const plannedStartTime = explicitStart ?? defaultWindow.start;
-    const plannedEndTime = explicitEnd ?? addDays(plannedStartTime, 7);
-    const earliestStartTime = plannedStartTime;
+    const firstStart = explicitStart ?? defaultWindow.start;
+    const firstEnd = explicitEnd ?? addDays(firstStart, 7);
 
-    const [inserted] = await db
-      .insert(tooToGpSchedule)
-      .values({
+    const insertValues = Array.from({ length: numberOfGpVisits }, (_, i) => {
+      const seqNo = sequenceNoBase + i;
+      const window = computeVisitWindow(firstStart, firstEnd, i, cadenceValue, cadenceUnit);
+      return {
         approvedTooId: numId,
         operatorName: operator?.name ?? session?.username ?? null,
-        parentEpDbObjectId: parent.epDbObjectId.trim(),
-        generatedEpDbObjectId: `${parent.epDbObjectId.trim()}_${sequenceNo}`,
-        sequenceNo,
-        earliestStartTime,
-        plannedStartTime,
-        plannedEndTime,
+        parentEpDbObjectId: parent.epDbObjectId!.trim(),
+        generatedEpDbObjectId: buildGeneratedId(parent.epDbObjectId!, seqNo),
+        sequenceNo: seqNo,
+        earliestStartTime: window.start,
+        plannedStartTime: window.start,
+        plannedEndTime: window.end,
         cadenceValue,
         cadenceUnit,
-        reviewedNumberOfVisitsSnapshot,
-        reviewedSingleExposureTimeSnapshot,
-        reviewedTotalExposureTimeSnapshot,
+        reviewedNumberOfVisitsSnapshot: numberOfGpVisits,
+        reviewedSingleExposureTimeSnapshot: singleExp,
+        reviewedTotalExposureTimeSnapshot: totalExp,
         notes: body.notes?.trim() ? body.notes.trim() : null,
-      })
+      };
+    });
+
+    const inserted = await db
+      .insert(tooToGpSchedule)
+      .values(insertValues)
       .returning();
 
-    return NextResponse.json({ row: inserted }, { status: 201 });
+    return NextResponse.json({ rows: inserted }, { status: 201 });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to create GP planning record" },

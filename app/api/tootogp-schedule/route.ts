@@ -22,28 +22,20 @@ export async function GET() {
         reviewedSingleExposureTimeSnapshot: tooToGpSchedule.reviewedSingleExposureTimeSnapshot,
         reviewedTotalExposureTimeSnapshot: tooToGpSchedule.reviewedTotalExposureTimeSnapshot,
         status: tooToGpSchedule.status,
-        scheduledStatus: sql<"scheduled" | "unscheduled">`
-          case
-            when exists (
-              select 1
-              from obs_wp o
-              where ${approvedToO.sourceId} is not null
-                and ${approvedToO.sourceId} <> ''
-                and o.source_id is not null
-                and o.source_id = ${approvedToO.sourceId}
-            ) then 'scheduled'
-            else 'unscheduled'
-          end
+        scheduledStatus: sql<"scheduled" | "queued">`
+          CASE
+            WHEN EXISTS (
+              SELECT 1 FROM obs_wp o
+              WHERE o.ep_db_object_id = REGEXP_REPLACE(${tooToGpSchedule.generatedEpDbObjectId}, '_ToO$', '')
+            ) THEN 'scheduled'
+            ELSE 'queued'
+          END
         `,
         matchedObsWpId: sql<number | null>`(
-          select o.id
-          from obs_wp o
-          where ${approvedToO.sourceId} is not null
-            and ${approvedToO.sourceId} <> ''
-            and o.source_id is not null
-            and o.source_id = ${approvedToO.sourceId}
-          order by o.id desc
-          limit 1
+          SELECT o.id FROM obs_wp o
+          WHERE o.ep_db_object_id = REGEXP_REPLACE(${tooToGpSchedule.generatedEpDbObjectId}, '_ToO$', '')
+          ORDER BY o.id DESC
+          LIMIT 1
         )`,
       })
       .from(tooToGpSchedule)

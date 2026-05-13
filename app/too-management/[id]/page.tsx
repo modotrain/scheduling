@@ -107,7 +107,7 @@ type PlanningRow = {
   reviewedTotalExposureTimeSnapshot: number | null;
   status: string;
   notes: string | null;
-  scheduledStatus: "scheduled" | "unscheduled";
+  scheduledStatus: "scheduled" | "queued";
   matchedObsWpId: number | null;
 };
 
@@ -284,6 +284,57 @@ type PlanningWindowOption = {
   end: string;
 };
 
+function normalizeCadenceUnit(unit: string | null | undefined): "day" | "orbit" | "" {
+  const u = unit?.trim().toLowerCase();
+  if (u === "day" || u === "days") return "day";
+  if (u === "orbit" || u === "orbits") return "orbit";
+  return "";
+}
+
+function getISOWeekLabel(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const weekStart = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
+  const weekNo = Math.round((d.getTime() - weekStart.getTime()) / (7 * 86_400_000)) + 1;
+  return `W${String(Math.max(1, weekNo)).padStart(2, "0")}`;
+}
+
+function getTuesdayWindowForMs(tsMs: number): { start: string; end: string } {
+  const d = new Date(tsMs);
+  const dayOfWeek = d.getUTCDay();
+  const daysSinceTuesday = (dayOfWeek + 7 - 2) % 7;
+  const tuesday = new Date(tsMs - daysSinceTuesday * 86_400_000);
+  const yyyy = tuesday.getUTCFullYear();
+  const mm = String(tuesday.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(tuesday.getUTCDate()).padStart(2, "0");
+  const start = `${yyyy}-${mm}-${dd}`;
+  return { start, end: addDaysToDateString(start, 7) };
+}
+
+function computeVisitWindowFrontend(
+  firstStart: string,
+  firstEnd: string,
+  visitIndex: number,
+  cadenceVal: number,
+  cadenceUnit: string,
+): { start: string; end: string } {
+  if (visitIndex === 0) return { start: firstStart, end: firstEnd };
+  const endStr = firstEnd || addDaysToDateString(firstStart, 7);
+  const midMs =
+    (new Date(`${firstStart}T00:00:00Z`).getTime() +
+      new Date(`${endStr}T00:00:00Z`).getTime()) /
+    2;
+  const cadenceMs =
+    cadenceVal > 0 && cadenceUnit
+      ? cadenceUnit === "orbit"
+        ? cadenceVal * 97 * 60 * 1000
+        : cadenceVal * 86_400_000
+      : 0;
+  return getTuesdayWindowForMs(midMs + visitIndex * cadenceMs);
+}
+
 function addDaysToDateString(dateString: string, days: number): string {
   const date = new Date(`${dateString}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
@@ -355,7 +406,7 @@ export default function TooManagementDetailPage() {
   const [planningCadenceValue, setPlanningCadenceValue] = useState("0");
   const [planningCadenceUnit, setPlanningCadenceUnit] = useState("");
   const [planningSingleExposureTime, setPlanningSingleExposureTime] = useState("");
-  const [planningTotalExposureTime, setPlanningTotalExposureTime] = useState("");
+  const [planningNumberOfVisits, setPlanningNumberOfVisits] = useState("1");
   const [planningNotes, setPlanningNotes] = useState("");
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
@@ -369,7 +420,14 @@ export default function TooManagementDetailPage() {
 
   const cadenceNumeric = planningCadenceValue === "" ? null : Number(planningCadenceValue);
   const singleExposureNumeric = planningSingleExposureTime === "" ? null : Number(planningSingleExposureTime);
-  const totalExposureNumeric = planningTotalExposureTime === "" ? null : Number(planningTotalExposureTime);
+  const planningNumberOfVisitsNumeric =
+    planningNumberOfVisits === "" ? null : Math.round(Number(planningNumberOfVisits));
+  const computedTotalExposureTime =
+    singleExposureNumeric !== null &&
+    planningNumberOfVisitsNumeric !== null &&
+    planningNumberOfVisitsNumeric > 0
+      ? singleExposureNumeric * planningNumberOfVisitsNumeric
+      : null;
 
   const planningValidationErrors = useMemo(() => {
     const errors: string[] = [];
@@ -389,20 +447,36 @@ export default function TooManagementDetailPage() {
       }
     }
 
-    if (totalExposureNumeric !== null) {
-      if (Number.isNaN(totalExposureNumeric) || totalExposureNumeric < 1000) {
-        errors.push("Total Exposure Time must be at least 1000.");
-      }
-    }
-
-    if (singleExposureNumeric !== null && totalExposureNumeric !== null) {
-      if (singleExposureNumeric >= 1000 && totalExposureNumeric >= 1000 && totalExposureNumeric % singleExposureNumeric !== 0) {
-        errors.push("Total Exposure Time must be an integer multiple of Single Exposure Time.");
-      }
+    const reviewedN = Number(row?.reviewedNumberOfVisits ?? "0");
+    if (planningNumberOfVisitsNumeric === null || planningNumberOfVisitsNumeric < 1) {
+      errors.push("Number of GP Visits must be at least 1.");
+    } else if (reviewedN > 0 && planningNumberOfVisitsNumeric > reviewedN) {
+      errors.push(`Number of GP Visits cannot exceed reviewed visits (${reviewedN}).`);
     }
 
     return errors;
-  }, [cadenceNumeric, planningCadenceUnit, singleExposureNumeric, totalExposureNumeric]);
+  }, [cadenceNumeric, planningCadenceUnit, singleExposureNumeric, planningNumberOfVisitsNumeric, row]);
+
+  const visitPreviews = useMemo(() => {
+    if (
+      !editingPlanningId &&
+      planningNumberOfVisitsNumeric !== null &&
+      planningNumberOfVisitsNumeric > 0 &&
+      plannedStartInput
+    ) {
+      return Array.from({ length: Math.min(planningNumberOfVisitsNumeric, 52) }, (_, i) => {
+        const w = computeVisitWindowFrontend(
+          plannedStartInput,
+          plannedEndInput,
+          i,
+          cadenceNumeric ?? 0,
+          planningCadenceUnit,
+        );
+        return { visitNo: i + 1, start: w.start, end: w.end, weekId: getISOWeekLabel(w.start) };
+      });
+    }
+    return [];
+  }, [editingPlanningId, planningNumberOfVisitsNumeric, plannedStartInput, plannedEndInput, cadenceNumeric, planningCadenceUnit]);
 
   const canSubmitPlanning =
     !planningSubmitting &&
@@ -422,9 +496,9 @@ export default function TooManagementDetailPage() {
     setPlanningCadenceValue("0");
     setPlanningCadenceUnit("");
     setPlanningSingleExposureTime(row?.reviewedSingleExposureTime ?? "");
-    setPlanningTotalExposureTime(row?.reviewedTotalExposureTime ?? "");
+    setPlanningNumberOfVisits("1");
     setPlanningNotes("");
-  }, [planningWindowOptions, row?.reviewedSingleExposureTime, row?.reviewedTotalExposureTime]);
+  }, [planningWindowOptions, row?.reviewedSingleExposureTime]);
 
   function setStatus(nextMessage: string, tone: "success" | "error") {
     setMessage(nextMessage);
@@ -628,20 +702,20 @@ export default function TooManagementDetailPage() {
           cadenceValue: planningCadenceValue ? Number(planningCadenceValue) : null,
           cadenceUnit: planningCadenceUnit || null,
           reviewedSingleExposureTimeSnapshot: planningSingleExposureTime ? Number(planningSingleExposureTime) : null,
-          reviewedTotalExposureTimeSnapshot: planningTotalExposureTime ? Number(planningTotalExposureTime) : null,
+          numberOfGpVisits: planningNumberOfVisitsNumeric ?? 1,
           notes: planningNotes || null,
         }),
         },
       );
 
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { rows?: unknown[]; error?: string };
       if (!response.ok) {
         throw new Error(data.error ?? `Failed to ${editingPlanningId ? "update" : "create"} GP planning record`);
       }
 
       await loadPlanning();
       resetPlanningForm();
-      setStatus(`GP planning record ${editingPlanningId ? "updated" : "created"}`, "success");
+      setStatus(`${data.rows?.length ?? 1} GP planning record(s) ${editingPlanningId ? "updated" : "created"}`, "success");
     } catch (error) {
       setStatus(
         error instanceof Error
@@ -674,23 +748,24 @@ export default function TooManagementDetailPage() {
     setPlanningSingleExposureTime(
       item.reviewedSingleExposureTimeSnapshot === null ? "" : String(item.reviewedSingleExposureTimeSnapshot),
     );
-    setPlanningTotalExposureTime(
-      item.reviewedTotalExposureTimeSnapshot === null ? "" : String(item.reviewedTotalExposureTimeSnapshot),
-    );
+    setPlanningNumberOfVisits("1");
     setPlanningNotes(item.notes ?? "");
   }
 
   function handleOpenCreatePlanning() {
     const fallback = planningWindowOptions[0];
+    const reviewedVisitsStr = row?.reviewedNumberOfVisits ?? "1";
+    const reviewedVisitsN = Number(reviewedVisitsStr);
+    const isSingleVisit = !reviewedVisitsStr || reviewedVisitsN <= 1;
     setPlanningModalOpen(true);
     setEditingPlanningId(null);
     setPlanningWindowPreset(fallback?.value ?? "custom");
     setPlannedStartInput(fallback?.start ?? "");
     setPlannedEndInput(fallback?.end ?? "");
-    setPlanningCadenceValue("0");
-    setPlanningCadenceUnit("");
+    setPlanningCadenceValue(isSingleVisit ? "0" : (row?.reviewedCadence ?? "0"));
+    setPlanningCadenceUnit(isSingleVisit ? "" : normalizeCadenceUnit(row?.reviewedCadenceUnit));
     setPlanningSingleExposureTime(row?.reviewedSingleExposureTime ?? "");
-    setPlanningTotalExposureTime(row?.reviewedTotalExposureTime ?? "");
+    setPlanningNumberOfVisits(reviewedVisitsStr || "1");
     setPlanningNotes("");
   }
 
@@ -806,15 +881,20 @@ export default function TooManagementDetailPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className={`mb-2 inline-flex rounded-lg px-2.5 py-1 text-xs font-medium ${scheduled ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-primary/10 text-primary"}`}>
-                          {scheduled ? "Scheduled" : "Planned"}
+                          {scheduled ? "Scheduled" : "Queued"}
                         </div>
                         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {item.generatedEpDbObjectId}
                         </h3>
                       </div>
-                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        Visit {item.sequenceNo}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          Visit {item.sequenceNo}
+                        </span>
+                        <span className="rounded-md bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+                          {getISOWeekLabel(item.plannedStartTime)}
+                        </span>
+                      </div>
                     </div>
 
                     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -841,7 +921,7 @@ export default function TooManagementDetailPage() {
                         <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedTotalExposureTimeSnapshot ?? "—"}</dd>
                       </div>
                       <div>
-                        <dt className="text-xs text-slate-500 dark:text-slate-400">Reviewed Visits</dt>
+                        <dt className="text-xs text-slate-500 dark:text-slate-400">GP Visits</dt>
                         <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedNumberOfVisitsSnapshot ?? "—"}</dd>
                       </div>
                     </dl>
@@ -1262,20 +1342,40 @@ export default function TooManagementDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Total Exposure Time
-                  </label>
-                  <input
-                    type="number"
-                    min={1000}
-                    step={1000}
-                    value={planningTotalExposureTime}
-                    onChange={(event) => setPlanningTotalExposureTime(event.target.value)}
-                    disabled={planningSubmitting || loading || !row}
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-                  />
+                  {!editingPlanningId ? (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Number of GP Visits
+                      </label>
+                      <p className="mb-1 text-[11px] text-slate-400 dark:text-slate-500">
+                        Reviewed: {row?.reviewedNumberOfVisits ?? "—"}
+                      </p>
+                      <input
+                        type="number"
+                        min={1}
+                        max={Number(row?.reviewedNumberOfVisits ?? "999") || 999}
+                        step={1}
+                        value={planningNumberOfVisits}
+                        onChange={(event) => setPlanningNumberOfVisits(event.target.value)}
+                        disabled={planningSubmitting || loading || !row}
+                        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                      />
+                    </div>
+                  ) : (
+                    <div />
+                  )}
                 </div>
               </div>
+
+              {computedTotalExposureTime !== null ? (
+                <div className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                  Total Exposure Time:{" "}
+                  <span className="font-mono font-semibold">{computedTotalExposureTime.toLocaleString()} s</span>
+                  {planningNumberOfVisitsNumeric && planningNumberOfVisitsNumeric > 1
+                    ? ` (${planningSingleExposureTime} × ${planningNumberOfVisitsNumeric})`
+                    : ""}
+                </div>
+              ) : null}
 
               <div
                 className={`mt-4 h-10 rounded-lg border px-4 text-sm ${
@@ -1297,6 +1397,36 @@ export default function TooManagementDetailPage() {
                     : "All planning constraints are satisfied and ready to save."}
                 </p>
               </div>
+
+              {!editingPlanningId && visitPreviews.length > 0 ? (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Visit Preview
+                  </p>
+                  <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-slate-50 dark:bg-slate-800/60">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Visit</th>
+                          <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Week</th>
+                          <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Window Start</th>
+                          <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Window End</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {visitPreviews.map((vp) => (
+                          <tr key={vp.visitNo} className={vp.visitNo % 2 === 0 ? "bg-slate-50/50 dark:bg-slate-800/20" : ""}>
+                            <td className="px-3 py-1.5 font-mono">{vp.visitNo}</td>
+                            <td className="px-3 py-1.5 font-mono text-primary">{vp.weekId}</td>
+                            <td className="px-3 py-1.5">{formatDateDisplay(vp.start)}</td>
+                            <td className="px-3 py-1.5">{formatDateDisplay(vp.end)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="mt-4">
                 <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">

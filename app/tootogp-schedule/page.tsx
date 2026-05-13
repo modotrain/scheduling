@@ -18,7 +18,7 @@ type GpPlanningListRow = {
   reviewedSingleExposureTimeSnapshot: number | null;
   reviewedTotalExposureTimeSnapshot: number | null;
   status: string;
-  scheduledStatus: "scheduled" | "unscheduled";
+  scheduledStatus: "scheduled" | "queued";
   matchedObsWpId: number | null;
 };
 
@@ -62,8 +62,8 @@ function StatusIndicator({ status }: { status: GpPlanningListRow["scheduledStatu
   const scheduled = status === "scheduled";
 
   return (
-    <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-medium uppercase tracking-wide ${scheduled ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-slate-200/60 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300"}`}>
-      {status}
+    <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-medium uppercase tracking-wide ${scheduled ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-sky-500/10 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300"}`}>
+      {scheduled ? "Scheduled" : "Queued"}
     </span>
   );
 }
