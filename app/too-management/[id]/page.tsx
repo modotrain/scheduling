@@ -430,6 +430,11 @@ export default function TooManagementDetailPage() {
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const pageLoading = loading || planningLoading || scheduleLoading;
+  const plannedWeekCount = planningRows.length;
+  const plannedVisitCount = planningRows.reduce(
+    (sum, item) => sum + (item.reviewedNumberOfVisitsSnapshot ?? 1),
+    0,
+  );
 
   const matchedWindowPreset = useMemo(() => {
     return planningWindowOptions.find(
@@ -874,14 +879,14 @@ export default function TooManagementDetailPage() {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
             <h2 className="mr-auto text-base font-semibold">GP Planning</h2>
             <span className="text-sm text-slate-600 dark:text-slate-300">
-              Planned visits: <span className="font-mono font-medium">{planningRows.length}</span>
+              Planned <span className="font-mono font-medium">{plannedVisitCount}</span> visit{plannedVisitCount === 1 ? "" : "s"} in <span className="font-mono font-medium">{plannedWeekCount}</span> week{plannedWeekCount === 1 ? "" : "s"}
             </span>
             <div className="flex items-center gap-2">
               <Link
                 href="/tootogp-schedule"
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                All GP Planning
+                GP Pool
               </Link>
               <button
                 type="button"
@@ -917,7 +922,7 @@ export default function TooManagementDetailPage() {
                 return (
                   <div
                     key={item.id}
-                    className={`rounded-xl bg-white/80 p-4 shadow-sm dark:bg-slate-900/70 ${scheduled ? "border border-slate-200 dark:border-slate-700" : "border border-dashed border-slate-300 dark:border-slate-600"}`}
+                    className={`rounded-xl p-4 shadow-sm ${scheduled ? "border border-emerald-200 bg-emerald-50/60 dark:border-emerald-800/70 dark:bg-emerald-950/20" : "border border-dashed border-sky-200 bg-sky-50/50 dark:border-sky-800/60 dark:bg-sky-950/15"}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
