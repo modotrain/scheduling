@@ -372,7 +372,7 @@ function getUpcomingTuesdayWindows(count: number): PlanningWindowOption[] {
 
     return {
       value: `${start}:${end}`,
-      label: `${formatDateDisplay(start)} to ${formatDateDisplay(end)}`,
+      label: `${formatDateDisplay(start)} - ${formatDateDisplay(end)}`,
       start,
       end,
     };
@@ -916,14 +916,14 @@ export default function TooManagementDetailPage() {
                         <dt className="text-xs text-slate-500 dark:text-slate-400">Single Exp. Time</dt>
                         <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedSingleExposureTimeSnapshot ?? "—"}</dd>
                       </div>
-                      <div>
+                      {/* <div>
                         <dt className="text-xs text-slate-500 dark:text-slate-400">Total Exp. Time</dt>
                         <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedTotalExposureTimeSnapshot ?? "—"}</dd>
                       </div>
                       <div>
                         <dt className="text-xs text-slate-500 dark:text-slate-400">GP Visits</dt>
                         <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedNumberOfVisitsSnapshot ?? "—"}</dd>
-                      </div>
+                      </div> */}
                     </dl>
 
                     {item.notes ? (
@@ -1223,7 +1223,7 @@ export default function TooManagementDetailPage() {
               <div className="grid gap-3 lg:grid-cols-[1.1fr_1fr_1fr] lg:items-end">
                 <div>
                   <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Tuesday Window Preset
+                    Full Week
                   </label>
                   <select
                     value={planningWindowPreset}
@@ -1245,7 +1245,7 @@ export default function TooManagementDetailPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Window Start
+                    First GP Visit Start
                   </label>
                   <input
                     type="date"
@@ -1260,7 +1260,7 @@ export default function TooManagementDetailPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Window End
+                    First GP Visit End
                   </label>
                   <input
                     type="date"

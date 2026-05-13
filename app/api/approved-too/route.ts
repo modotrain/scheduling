@@ -15,7 +15,7 @@ export async function GET() {
             COUNT(*) AS total_plans,
             SUM(CASE WHEN EXISTS(
               SELECT 1 FROM obs_wp o
-              WHERE o.ep_db_object_id = REGEXP_REPLACE(tg.generated_ep_db_object_id, '_ToO$', '')
+              WHERE POSITION(tg.generated_ep_db_object_id IN COALESCE(o.ep_db_object_id, '')) > 0
             ) THEN 1 ELSE 0 END) AS scheduled_plans
           FROM tootogp_schedule tg
           GROUP BY tg.approved_too_id

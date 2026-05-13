@@ -26,14 +26,14 @@ export async function GET() {
           CASE
             WHEN EXISTS (
               SELECT 1 FROM obs_wp o
-              WHERE o.ep_db_object_id = REGEXP_REPLACE(${tooToGpSchedule.generatedEpDbObjectId}, '_ToO$', '')
+              WHERE POSITION(${tooToGpSchedule.generatedEpDbObjectId} IN COALESCE(o.ep_db_object_id, '')) > 0
             ) THEN 'scheduled'
             ELSE 'queued'
           END
         `,
         matchedObsWpId: sql<number | null>`(
           SELECT o.id FROM obs_wp o
-          WHERE o.ep_db_object_id = REGEXP_REPLACE(${tooToGpSchedule.generatedEpDbObjectId}, '_ToO$', '')
+          WHERE POSITION(${tooToGpSchedule.generatedEpDbObjectId} IN COALESCE(o.ep_db_object_id, '')) > 0
           ORDER BY o.id DESC
           LIMIT 1
         )`,
