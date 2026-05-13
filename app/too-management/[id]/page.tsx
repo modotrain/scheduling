@@ -74,6 +74,15 @@ type FieldChange = {
   after: string;
 };
 
+type ChangeLogEntry = {
+  id: number;
+  approvedTooId: number;
+  operatorName: string | null;
+  changedAt: string;
+  changes: Array<{ key: string; label: string; before: string; after: string }>;
+  snapshotBefore: Record<string, string>;
+};
+
 type ScheduleRow = {
   id: number;
   obs_id: string | null;
@@ -411,6 +420,10 @@ export default function TooManagementDetailPage() {
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [isVipUser, setIsVipUser] = useState(false);
   const [cachedSourceName, setCachedSourceName] = useState<string | null>(null);
+  const [changeLog, setChangeLog] = useState<ChangeLogEntry[]>([]);
+  const [changeLogLoading, setChangeLogLoading] = useState(true);
+  const [changeLogExpanded, setChangeLogExpanded] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
   const [planningRows, setPlanningRows] = useState<PlanningRow[]>([]);
@@ -583,7 +596,7 @@ export default function TooManagementDetailPage() {
     async function loadSession() {
       try {
         const response = await fetch("/api/auth/session", { cache: "no-store" });
-        const data = (await response.json()) as { vip?: boolean };
+        const data = (await response.json()) as { vip?: boolean; username?: string | null };
         if (!cancelled) {
           setIsVipUser(Boolean(data.vip));
         }
@@ -600,6 +613,24 @@ export default function TooManagementDetailPage() {
       cancelled = true;
     };
   }, []);
+
+  const loadChangeLog = useCallback(async () => {
+    setChangeLogLoading(true);
+    try {
+      const response = await fetch(`/api/approved-too/${id}/change-log`, { cache: "no-store" });
+      const data = (await response.json()) as { rows?: ChangeLogEntry[]; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Failed to load change log");
+      setChangeLog(data.rows ?? []);
+    } catch {
+      setChangeLog([]);
+    } finally {
+      setChangeLogLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void loadChangeLog();
+  }, [loadChangeLog]);
 
   const loadPlanning = useCallback(async () => {
     setPlanningLoading(true);
@@ -649,18 +680,23 @@ export default function TooManagementDetailPage() {
     setSaving(true);
 
     try {
-      const payload = Object.fromEntries(
+      if (!row) throw new Error("No row loaded");
+      const original = rowToInput(row);
+      const changes = getChangedFields(original, input);
+      const snapshotBefore: Record<string, string> = Object.fromEntries(
+        Object.entries(original).map(([k, v]) => [k, v ?? ""]),
+      );
+
+      const patch = Object.fromEntries(
         Object.entries(input).map(([key, value]) => {
           if (key === "epscProposal") {
             if (value === "") return [key, null];
             return [key, value === "true"];
           }
-
           if (numberFields.has(key as keyof InputRow)) {
             if (value === "") return [key, null];
             return [key, Number(value)];
           }
-
           return [key, value === "" ? null : value];
         }),
       );
@@ -668,7 +704,7 @@ export default function TooManagementDetailPage() {
       const response = await fetch(`/api/approved-too/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ patch, changes, snapshotBefore }),
       });
 
       const data = (await response.json()) as { row?: ApprovedTooRow; error?: string };
@@ -684,6 +720,7 @@ export default function TooManagementDetailPage() {
 
       await loadPlanning();
       await loadSchedule();
+      await loadChangeLog();
       sessionStorage.removeItem(TOO_MANAGEMENT_CACHE_KEY);
       setEditing(false);
       setStatus("Saved successfully", "success");
@@ -691,6 +728,53 @@ export default function TooManagementDetailPage() {
       setStatus(error instanceof Error ? error.message : "Failed to save", "error");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleRestoreOriginal() {
+    if (changeLog.length === 0) return;
+    const original = changeLog[0].snapshotBefore;
+    if (!window.confirm("Restore proposal information to the original version? This will also clear all change history.")) return;
+
+    setRestoring(true);
+    try {
+      const patch = Object.fromEntries(
+        Object.entries(original).map(([key, value]) => {
+          if (key === "epscProposal") {
+            if (value === "") return [key, null];
+            return [key, value === "true"];
+          }
+          if (numberFields.has(key as keyof InputRow)) {
+            if (value === "") return [key, null];
+            return [key, Number(value)];
+          }
+          return [key, value === "" ? null : value];
+        }),
+      );
+
+      const putRes = await fetch(`/api/approved-too/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        // Restore sends empty changes so no new log entry is created
+        body: JSON.stringify({ patch, changes: [], snapshotBefore: original }),
+      });
+      if (!putRes.ok) throw new Error("Failed to restore");
+      const putData = (await putRes.json()) as { row?: ApprovedTooRow };
+      if (putData.row) {
+        setRow(putData.row);
+        setInput(rowToInput(putData.row));
+        setCachedSourceName(putData.row.sourceName ?? null);
+      }
+
+      // Clear all change logs
+      await fetch(`/api/approved-too/${id}/change-log`, { method: "DELETE" });
+      setChangeLog([]);
+      sessionStorage.removeItem(TOO_MANAGEMENT_CACHE_KEY);
+      setStatus("Restored to original version", "success");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to restore", "error");
+    } finally {
+      setRestoring(false);
     }
   }
 
@@ -1197,6 +1281,81 @@ export default function TooManagementDetailPage() {
               </div>
             </form>
           )}
+
+          {/* ── Change History ── */}
+          {!changeLogLoading && changeLog.length > 0 ? (
+            <div className="border-t border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setChangeLogExpanded((v) => !v)}
+                className="flex w-full items-center justify-between bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                <span className="flex items-center gap-2">
+                  Change History
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                    {changeLog.length}
+                  </span>
+                </span>
+                <span className="text-slate-400">{changeLogExpanded ? "▲" : "▼"}</span>
+              </button>
+
+              {changeLogExpanded ? (
+                <div className="px-4 pb-4 pt-3">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Original version snapshot is preserved. You can restore it at any time.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void handleRestoreOriginal()}
+                      disabled={restoring || !isVipUser}
+                      title={isVipUser ? "" : "Permission denied: VIP only"}
+                      className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-950/50"
+                    >
+                      {restoring ? "Restoring…" : "↩ Restore original version"}
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {changeLog.map((entry, idx) => (
+                      <div
+                        key={entry.id}
+                        className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700"
+                      >
+                        <div className="flex items-center justify-between bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="font-mono font-medium text-slate-700 dark:text-slate-200">
+                              #{changeLog.length - idx}
+                            </span>
+                            <span className="text-slate-400 dark:text-slate-500">·</span>
+                            <span className="text-slate-600 dark:text-slate-300">
+                              {new Date(entry.changedAt).toLocaleString("en-CA", {
+                                year: "numeric", month: "2-digit", day: "2-digit",
+                                hour: "2-digit", minute: "2-digit", timeZone: "UTC",
+                              })}{" "}
+                              UTC
+                            </span>
+                          </div>
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                            {entry.operatorName ?? "unknown"}
+                          </span>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {entry.changes.map((c) => (
+                            <div key={c.key} className="grid grid-cols-12 gap-2 px-3 py-2 text-xs">
+                              <div className="col-span-3 font-medium text-slate-600 dark:text-slate-300">{c.label}</div>
+                              <div className="col-span-4 break-words text-slate-400 line-through dark:text-slate-500">{c.before}</div>
+                              <div className="col-span-5 break-words font-medium text-slate-800 dark:text-slate-100">{c.after}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </section>
       </div>
 

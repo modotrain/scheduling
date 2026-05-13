@@ -557,6 +557,17 @@ export const tooToGpSchedule = pgTable("tootogp_schedule", {
 	unique("tootogp_schedule_parent_sequence_unique").on(table.approvedTooId, table.sequenceNo),
 ]);
 
+export const approvedTooChangeLog = pgTable("approved_too_change_log", {
+	id: serial().primaryKey().notNull(),
+	approvedTooId: integer("approved_too_id").notNull().references(() => approvedToO.id, { onDelete: "cascade" }),
+	operatorName: varchar("operator_name", { length: 255 }),
+	changedAt: timestamp("changed_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+	// Array of { key, label, before, after }
+	changes: json("changes").notNull().$type<Array<{ key: string; label: string; before: string; after: string }>>(),
+	// Full InputRow snapshot captured before this edit was applied
+	snapshotBefore: json("snapshot_before").notNull().$type<Record<string, string>>(),
+});
+
 export const longTermObservationListCycle2 = pgTable('long_term_observation_list_cycle2', {
   // information
   id: serial('id').primaryKey().notNull(),

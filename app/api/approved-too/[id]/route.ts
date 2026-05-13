@@ -2,7 +2,9 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
-import { approvedToO } from "@/src/db/schema";
+import { approvedToO, approvedTooChangeLog } from "@/src/db/schema";
+import { cookies } from "next/headers";
+import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -37,15 +39,43 @@ export async function PUT(request: Request, { params }: Params) {
   }
 
   try {
-    const body = (await request.json()) as Partial<typeof approvedToO.$inferInsert>;
+    const body = (await request.json()) as {
+      patch: Partial<typeof approvedToO.$inferInsert>;
+      changes: Array<{ key: string; label: string; before: string; after: string }>;
+      snapshotBefore: Record<string, string>;
+    };
+
+    const { patch, changes, snapshotBefore } = body;
+
+    // Resolve operator name from session cookie
+    let operatorName: string | null = null;
+    try {
+      const cookieStore = await cookies();
+      const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+      const session = token ? await verifySessionToken(token) : null;
+      operatorName = session?.username ?? null;
+    } catch {
+      // proceed without operator name
+    }
+
     const [updated] = await db
       .update(approvedToO)
-      .set(body)
+      .set(patch)
       .where(eq(approvedToO.id, numId))
       .returning();
 
     if (!updated) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Record change log (best-effort, non-blocking)
+    if (changes.length > 0) {
+      await db.insert(approvedTooChangeLog).values({
+        approvedTooId: numId,
+        operatorName,
+        changes,
+        snapshotBefore,
+      });
     }
 
     return NextResponse.json({ row: updated });
