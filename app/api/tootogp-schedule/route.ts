@@ -21,6 +21,7 @@ export async function GET() {
         cadenceUnit: tooToGpSchedule.cadenceUnit,
         reviewedSingleExposureTimeSnapshot: tooToGpSchedule.reviewedSingleExposureTimeSnapshot,
         reviewedTotalExposureTimeSnapshot: tooToGpSchedule.reviewedTotalExposureTimeSnapshot,
+        reviewedNumberOfVisitsSnapshot: tooToGpSchedule.reviewedNumberOfVisitsSnapshot,
         status: tooToGpSchedule.status,
         scheduledStatus: sql<"scheduled" | "queued">`
           CASE

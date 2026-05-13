@@ -17,6 +17,7 @@ type GpPlanningListRow = {
   cadenceUnit: string | null;
   reviewedSingleExposureTimeSnapshot: number | null;
   reviewedTotalExposureTimeSnapshot: number | null;
+  reviewedNumberOfVisitsSnapshot: number | null;
   status: string;
   scheduledStatus: "scheduled" | "queued";
   matchedObsWpId: number | null;
@@ -31,7 +32,7 @@ const TABLE_COLS: (keyof GpPlanningListRow)[] = [
 //   "parentEpDbObjectId",
   "generatedEpDbObjectId",
   "reviewedSingleExposureTimeSnapshot",
-  "sequenceNo",
+  "reviewedNumberOfVisitsSnapshot",
   "plannedStartTime",
   "plannedEndTime",
   "scheduledStatus",
@@ -44,7 +45,7 @@ const COL_LABELS: Partial<Record<keyof GpPlanningListRow, string>> = {
   parentEpDbObjectId: "Parent DB ID",
   generatedEpDbObjectId: "Planned DB ID",
   reviewedSingleExposureTimeSnapshot: "Exp.",
-  sequenceNo: "Visit",
+  reviewedNumberOfVisitsSnapshot: "Visits",
   plannedStartTime: "Start",
   plannedEndTime: "End",
   scheduledStatus: "Status",

@@ -930,7 +930,7 @@ export default function TooManagementDetailPage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          Visit {item.sequenceNo}
+                          Visits: {item.reviewedNumberOfVisitsSnapshot ?? 1}
                         </span>
                         <span className="rounded-md bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
                           {getISOWeekLabel(item.plannedStartTime)}

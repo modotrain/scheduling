@@ -87,6 +87,15 @@ function buildGeneratedId(epDbObjectId: string, seqNo: number): string {
   return `${base}_${seqNo}_ToO`;
 }
 
+function getISOWeekId(dateString: string): string {
+  const d = new Date(`${dateString}T00:00:00Z`);
+  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const weekStart = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
+  const weekNo = Math.max(1, Math.round((d.getTime() - weekStart.getTime()) / (7 * 86_400_000)) + 1);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
 function getTuesdayWindowForMs(tsMs: number): { start: string; end: string } {
   const d = new Date(tsMs);
   const dayOfWeek = d.getUTCDay();
@@ -235,7 +244,6 @@ export async function POST(request: Request, { params }: Params) {
     const numberOfGpVisits = Math.max(1, Math.round(body.numberOfGpVisits ?? 1));
     const singleExp =
       body.reviewedSingleExposureTimeSnapshot ?? parseInteger(parent.reviewedSingleExposureTime);
-    const totalExp = singleExp !== null ? singleExp * numberOfGpVisits : null;
 
     const defaultWindow = getDefaultTuesdayWindow();
     const firstStart = explicitStart ?? defaultWindow.start;
@@ -247,30 +255,56 @@ export async function POST(request: Request, { params }: Params) {
       const [latestPlan] = await db
         .select({
           sequenceNo: tooToGpSchedule.sequenceNo,
+          reviewedNumberOfVisitsSnapshot: tooToGpSchedule.reviewedNumberOfVisitsSnapshot,
         })
         .from(tooToGpSchedule)
         .where(eq(tooToGpSchedule.approvedTooId, numId))
         .orderBy(desc(tooToGpSchedule.sequenceNo), desc(tooToGpSchedule.id))
         .limit(1);
 
-      const sequenceNoBase = (latestPlan?.sequenceNo ?? 0) + 1;
-      const insertValues = Array.from({ length: numberOfGpVisits }, (_, i) => {
-        const seqNo = sequenceNoBase + i;
-        const window = computeVisitWindow(firstStart, firstEnd, i, cadenceValue, cadenceUnit);
+      // sequenceNoBase = cumulative starting position for the new batch.
+      // Each existing row's seqNo is the start of its week group, so the next
+      // available cumulative position = lastSeqNo + visitsInThatWeek.
+      const sequenceNoBase = latestPlan
+        ? latestPlan.sequenceNo + (latestPlan.reviewedNumberOfVisitsSnapshot ?? 1)
+        : 1;
+
+      // Compute per-visit windows and group consecutive visits that fall in the
+      // same ISO week into a single row (one row per week group).
+      type WeekGroup = { window: { start: string; end: string }; count: number };
+      const weekGroups: WeekGroup[] = [];
+      for (let i = 0; i < numberOfGpVisits; i += 1) {
+        const w = computeVisitWindow(firstStart, firstEnd, i, cadenceValue, cadenceUnit);
+        const weekId = getISOWeekId(w.start);
+        const last = weekGroups.at(-1);
+        if (last && getISOWeekId(last.window.start) === weekId) {
+          last.count += 1;
+        } else {
+          weekGroups.push({ window: w, count: 1 });
+        }
+      }
+
+      // Build one DB row per week group; seqNo = cumulative starting observation
+      // position across all week groups for this parent.
+      let cumulativeSeq = sequenceNoBase;
+      const insertValues = weekGroups.map((group) => {
+        const seqNo = cumulativeSeq;
+        cumulativeSeq += group.count;
+        const weekTotalExp = singleExp !== null ? singleExp * group.count : null;
         return {
           approvedTooId: numId,
           operatorName: operator?.name ?? session?.username ?? null,
           parentEpDbObjectId,
           generatedEpDbObjectId: buildGeneratedId(parentEpDbObjectId, seqNo),
           sequenceNo: seqNo,
-          earliestStartTime: window.start,
-          plannedStartTime: window.start,
-          plannedEndTime: window.end,
+          earliestStartTime: group.window.start,
+          plannedStartTime: group.window.start,
+          plannedEndTime: group.window.end,
           cadenceValue,
           cadenceUnit,
-          reviewedNumberOfVisitsSnapshot: numberOfGpVisits,
+          reviewedNumberOfVisitsSnapshot: group.count,
           reviewedSingleExposureTimeSnapshot: singleExp,
-          reviewedTotalExposureTimeSnapshot: totalExp,
+          reviewedTotalExposureTimeSnapshot: weekTotalExp,
           notes: body.notes?.trim() ? body.notes.trim() : null,
         };
       });
