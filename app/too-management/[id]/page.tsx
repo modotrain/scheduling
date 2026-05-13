@@ -1393,23 +1393,61 @@ export default function TooManagementDetailPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-xl border-2 border-primary/40 bg-primary/5 px-5 py-4 dark:border-primary/30 dark:bg-primary/10">
-                    <label className="mb-1 block text-sm font-semibold text-primary dark:text-sky-300">
-                      Number of GP Visits
-                    </label>
-                    <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-                      Reviewed: <span className="font-semibold text-slate-700 dark:text-slate-200">{row?.reviewedNumberOfVisits ?? "—"}</span>
-                    </p>
-                    <input
-                      type="number"
-                      min={1}
-                      max={Number(row?.reviewedNumberOfVisits ?? "999") || 999}
-                      step={1}
-                      value={planningNumberOfVisits}
-                      onChange={(event) => setPlanningNumberOfVisits(event.target.value)}
-                      disabled={planningSubmitting || loading || !row}
-                      className="w-full max-w-[160px] rounded-lg border-2 border-primary/50 bg-white px-4 py-2.5 text-lg font-semibold text-primary shadow-sm focus:border-primary focus:outline-none dark:border-primary/40 dark:bg-slate-900 dark:text-sky-300"
-                    />
+                  <div className="mt-4 grid h-44 grid-cols-4 items-stretch gap-3">
+                    {/* Left: Number of GP Visits */}
+                    <div className="flex h-full flex-col justify-center rounded-xl border-2 border-primary/40 bg-primary/5 px-4 py-4 dark:border-primary/30 dark:bg-primary/10">
+                      <label className="mb-1 block text-sm font-semibold text-primary dark:text-sky-300">
+                        Number of GP Visits
+                      </label>
+                      <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                        Reviewed: <span className="font-semibold text-slate-700 dark:text-slate-200">{row?.reviewedNumberOfVisits ?? "—"}</span>
+                      </p>
+                      <input
+                        type="number"
+                        min={1}
+                        max={Number(row?.reviewedNumberOfVisits ?? "999") || 999}
+                        step={1}
+                        value={planningNumberOfVisits}
+                        onChange={(event) => setPlanningNumberOfVisits(event.target.value)}
+                        disabled={planningSubmitting || loading || !row}
+                        className="w-full rounded-lg border-2 border-primary/50 bg-white px-3 py-2.5 text-lg font-semibold text-primary shadow-sm focus:border-primary focus:outline-none dark:border-primary/40 dark:bg-slate-900 dark:text-sky-300"
+                      />
+                    </div>
+
+                    {/* Right: Visit Preview */}
+                    <div className="col-span-3 flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
+                      <div className="shrink-0 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+                        Visit Preview
+                      </div>
+                      {visitPreviews.length > 0 ? (
+                        <div className="flex-1 overflow-y-auto">
+                          <table className="min-w-full text-xs">
+                            <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/60">
+                              <tr>
+                                <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Visit</th>
+                                <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Week</th>
+                                <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Window Start</th>
+                                <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Window End</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {visitPreviews.map((vp) => (
+                                <tr key={vp.visitNo} className={vp.visitNo % 2 === 0 ? "bg-slate-50/50 dark:bg-slate-800/20" : ""}>
+                                  <td className="px-3 py-1.5 font-mono">{vp.visitNo}</td>
+                                  <td className="px-3 py-1.5 font-mono text-primary">{vp.weekId}</td>
+                                  <td className="px-3 py-1.5">{formatDateDisplay(vp.start)}</td>
+                                  <td className="px-3 py-1.5">{formatDateDisplay(vp.end)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="flex flex-1 items-center justify-center px-4 text-xs text-slate-400 dark:text-slate-500">
+                          Enter visits above to see schedule preview
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </>
               ) : (
@@ -1515,35 +1553,7 @@ export default function TooManagementDetailPage() {
                 </p>
               </div>
 
-              {!editingPlanningId && visitPreviews.length > 0 ? (
-                <div className="mt-4">
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Visit Preview
-                  </p>
-                  <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
-                    <table className="min-w-full text-xs">
-                      <thead className="bg-slate-50 dark:bg-slate-800/60">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Visit</th>
-                          <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Week</th>
-                          <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Window Start</th>
-                          <th className="px-3 py-2 text-left font-semibold text-slate-500 dark:text-slate-400">Window End</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {visitPreviews.map((vp) => (
-                          <tr key={vp.visitNo} className={vp.visitNo % 2 === 0 ? "bg-slate-50/50 dark:bg-slate-800/20" : ""}>
-                            <td className="px-3 py-1.5 font-mono">{vp.visitNo}</td>
-                            <td className="px-3 py-1.5 font-mono text-primary">{vp.weekId}</td>
-                            <td className="px-3 py-1.5">{formatDateDisplay(vp.start)}</td>
-                            <td className="px-3 py-1.5">{formatDateDisplay(vp.end)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : null}
+
 
               <div className="mt-4">
                 <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
