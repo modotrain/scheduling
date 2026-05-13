@@ -109,7 +109,26 @@ type PlanningRow = {
   notes: string | null;
   scheduledStatus: "scheduled" | "queued";
   matchedObsWpId: number | null;
+  matchedObsWpCount?: number;
+  matchedObsWpIds?: number[] | string[] | string;
 };
+
+function normalizeObsWpIds(value: PlanningRow["matchedObsWpIds"]): number[] {
+  if (!value) return [];
+  if (typeof value === "string") {
+    const cleaned = value.replace(/[{}]/g, "");
+    return cleaned
+      .split(",")
+      .map((item) => Number(item.trim()))
+      .filter((item) => Number.isInteger(item) && item > 0);
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => Number(item))
+      .filter((item) => Number.isInteger(item) && item > 0);
+  }
+  return [];
+}
 
 type TooManagementCachePayload = {
   ts: number;
@@ -873,6 +892,16 @@ export default function TooManagementDetailPage() {
             <div className="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-3">
               {planningRows.map((item) => {
                 const scheduled = item.scheduledStatus === "scheduled";
+                const normalizedIds = normalizeObsWpIds(item.matchedObsWpIds);
+                const matchedCount =
+                  item.matchedObsWpCount ?? (item.matchedObsWpId ? 1 : normalizedIds.length);
+                const firstMatchedId = item.matchedObsWpId ?? normalizedIds[0] ?? null;
+                const matchedIdsForQuery =
+                  normalizedIds.length > 0
+                    ? normalizedIds
+                    : item.matchedObsWpId
+                      ? [item.matchedObsWpId]
+                      : [];
                 return (
                   <div
                     key={item.id}
@@ -939,28 +968,32 @@ export default function TooManagementDetailPage() {
                       </p>
 
                       <div className="flex flex-wrap justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleEditPlanning(item)}
-                          disabled={planningSubmitting}
-                          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void handleDeletePlanning(item)}
-                          disabled={planningSubmitting}
-                          className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
-                        >
-                          Delete
-                        </button>
-                        {item.matchedObsWpId ? (
+                        {!scheduled ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleEditPlanning(item)}
+                              disabled={planningSubmitting}
+                              className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleDeletePlanning(item)}
+                              disabled={planningSubmitting}
+                              className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        ) : null}
+                        {firstMatchedId ? (
                           <Link
-                            href={`/obs-wp/${item.matchedObsWpId}`}
+                            href={`/obs-wp/${firstMatchedId}?matched=${matchedIdsForQuery.join(",")}`}
                             className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                           >
-                            Observation Details
+                            Observation Details ({matchedCount})
                           </Link>
                         ) : null}
                       </div>

@@ -164,6 +164,17 @@ export async function GET(_request: Request, { params }: Params) {
           ORDER BY o.id DESC
           LIMIT 1
         )`,
+        matchedObsWpCount: sql<number>`(
+          SELECT COUNT(*)::int FROM obs_wp o
+          WHERE POSITION(${tooToGpSchedule.generatedEpDbObjectId} IN COALESCE(o.ep_db_object_id, '')) > 0
+        )`,
+        matchedObsWpIds: sql<number[]>`
+          COALESCE((
+            SELECT ARRAY_AGG(o.id ORDER BY o.id DESC)
+            FROM obs_wp o
+            WHERE POSITION(${tooToGpSchedule.generatedEpDbObjectId} IN COALESCE(o.ep_db_object_id, '')) > 0
+          ), ARRAY[]::integer[])
+        `,
       })
       .from(tooToGpSchedule)
       .innerJoin(approvedToO, eq(approvedToO.id, tooToGpSchedule.approvedTooId))
