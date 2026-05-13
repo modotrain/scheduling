@@ -53,6 +53,7 @@ const COL_LABELS: Partial<Record<keyof GpPlanningListRow, string>> = {
 
 const GP_PLANNING_CACHE_KEY = "tootogp-schedule-cache-v1";
 const GP_PLANNING_CACHE_TTL_MS = 10 * 1000;
+const GP_PLANNING_VIEW_KEY = "tootogp-schedule-view-v1";
 
 type GpPlanningCachePayload = {
   ts: number;
@@ -76,6 +77,10 @@ export default function TooToGpSchedulePage() {
   const [searchText, setSearchText] = useState("");
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "queued" | "scheduled">(() => {
+    if (typeof window === "undefined") return "queued";
+    return (localStorage.getItem(GP_PLANNING_VIEW_KEY) as "all" | "queued" | "scheduled") ?? "queued";
+  });
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
 
   const loadRows = useCallback(async () => {
@@ -118,6 +123,11 @@ export default function TooToGpSchedulePage() {
     }));
   }
 
+  function handleStatusFilterChange(next: "all" | "queued" | "scheduled") {
+    setStatusFilter(next);
+    localStorage.setItem(GP_PLANNING_VIEW_KEY, next);
+  }
+
   function getSortedAndFilteredRows() {
     const query = searchText.toLowerCase().trim();
     const normalizeDate = (value: string | null) => {
@@ -127,6 +137,7 @@ export default function TooToGpSchedulePage() {
     };
 
     const filtered = rows.filter((row) => {
+      if (statusFilter !== "all" && row.scheduledStatus !== statusFilter) return false;
       if (
         query &&
         !Object.values(row).some(
@@ -201,6 +212,41 @@ export default function TooToGpSchedulePage() {
         {message ? <p className="mt-3 text-sm text-rose-700">{message}</p> : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
+          <div className="flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-600 text-xs shrink-0">
+            <button
+              type="button"
+              onClick={() => handleStatusFilterChange("queued")}
+              className={`px-4 py-1.5 font-medium transition-colors ${
+                statusFilter === "queued"
+                  ? "bg-primary text-white"
+                  : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+            >
+              Queued
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStatusFilterChange("scheduled")}
+              className={`border-l border-slate-300 px-4 py-1.5 font-medium transition-colors dark:border-slate-600 ${
+                statusFilter === "scheduled"
+                  ? "bg-primary text-white"
+                  : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+            >
+              Scheduled
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStatusFilterChange("all")}
+              className={`border-l border-slate-300 px-4 py-1.5 font-medium transition-colors dark:border-slate-600 ${
+                statusFilter === "all"
+                  ? "bg-primary text-white"
+                  : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+            >
+              All
+            </button>
+          </div>
           <input
             type="text"
             placeholder="Search all columns..."
