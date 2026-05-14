@@ -684,6 +684,19 @@ export default function TooManagementDetailPage() {
 
   const modalChartMaxKs = 80;
 
+  // Map weekKey → preview ks to overlay on the pool-load chart
+  const previewKsMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (editingPlanningId || !visitPreviews.length || !planningSingleExposureTime) return map;
+    const expKs = Number(planningSingleExposureTime) / 1000;
+    if (expKs <= 0) return map;
+    for (const vp of visitPreviews) {
+      const bucket = modalWeeklyExposure.find((b) => b.label === vp.weekId);
+      if (bucket) map.set(bucket.weekKey, (map.get(bucket.weekKey) ?? 0) + expKs);
+    }
+    return map;
+  }, [editingPlanningId, visitPreviews, planningSingleExposureTime, modalWeeklyExposure]);
+
   const canSubmitPlanning =
     !planningSubmitting &&
     !loading &&
@@ -1851,10 +1864,18 @@ export default function TooManagementDetailPage() {
                 </div>
 
                 {/* Pool load chart */}
-                <div className="flex w-[19.5rem] shrink-0 flex-col rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-800/40">
+                <div className="flex h-56 w-[19.5rem] shrink-0 flex-col rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-800/40">
                   <div className="mb-2 shrink-0">
                     <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Planned ToO in GP (ks)</p>
-                    <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">Scale: 0-80 ks (40/50 guide)</p>
+                    <p className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500">
+                      <span>Scale: 0–80 ks (40/50 guide)</span>
+                      {previewKsMap.size > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-primary/10 px-1 py-0.5 text-primary dark:bg-primary/20">
+                          <span className="inline-block h-1.5 w-3 rounded-sm bg-primary/70" />
+                          preview
+                        </span>
+                      ) : null}
+                    </p>
                   </div>
                   {gpPoolLoading ? (
                     <div className="flex flex-1 items-center justify-center text-xs text-slate-400 dark:text-slate-500">Loading…</div>
@@ -1874,25 +1895,44 @@ export default function TooManagementDetailPage() {
                         ))}
                         <div className="grid h-full grid-cols-6 items-end gap-2">
                           {modalWeeklyExposure.map(({ weekKey, ks }) => {
-                            const clampedKs = Math.min(ks, modalChartMaxKs);
-                            const barH = ks <= 0 ? 4 : Math.max(10, Math.round((clampedKs / modalChartMaxKs) * 118));
-                            const barToneClass =
+                            const previewKs = previewKsMap.get(weekKey) ?? 0;
+                            const totalKs = ks + previewKs;
+                            const clampedExisting = Math.min(Math.max(0, ks), modalChartMaxKs);
+                            const clampedPreview = Math.min(Math.max(0, previewKs), modalChartMaxKs - clampedExisting);
+                            const existingBarH = clampedExisting <= 0 ? 0 : Math.max(4, Math.round((clampedExisting / modalChartMaxKs) * 118));
+                            const previewBarH = clampedPreview <= 0 ? 0 : Math.max(4, Math.round((clampedPreview / modalChartMaxKs) * 118));
+                            const totalBarH = existingBarH + previewBarH || 4;
+                            const existingToneClass =
                               ks >= 50
                                 ? "bg-rose-700/70 dark:bg-rose-400/45"
                                 : ks >= 40
                                   ? "bg-amber-700/68 dark:bg-amber-400/45"
                                   : ks > 0
                                     ? "bg-emerald-700/68 dark:bg-emerald-400/48"
-                                    : "bg-sky-700/55 dark:bg-sky-400/42";
+                                    : "bg-slate-200/60 dark:bg-slate-700/40";
+                            const previewToneClass =
+                              totalKs >= 50
+                                ? "bg-rose-500/55 dark:bg-rose-400/40"
+                                : totalKs >= 40
+                                  ? "bg-amber-500/55 dark:bg-amber-400/40"
+                                  : "bg-primary/60 dark:bg-primary/45";
                             return (
                               <div key={weekKey} className="flex h-full min-w-0 flex-col items-center justify-end gap-0.5">
-                                <span className="text-[10px] font-medium tabular-nums text-slate-600 dark:text-slate-300">
-                                  {ks.toFixed(1)}
+                                <span className={`text-[10px] font-medium tabular-nums ${previewKs > 0 ? "text-primary dark:text-sky-300" : "text-slate-600 dark:text-slate-300"}`}>
+                                  {totalKs > 0 ? totalKs.toFixed(1) : "0"}
                                 </span>
                                 <div
-                                  style={{ height: barH }}
-                                  className={`w-8 rounded-t ${barToneClass} shadow-[inset_0_-1px_0_rgba(255,255,255,0.25)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,0.08)]`}
-                                />
+                                  style={{ height: totalBarH }}
+                                  className="flex w-8 flex-col overflow-hidden rounded-t shadow-[inset_0_-1px_0_rgba(255,255,255,0.25)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,0.08)]"
+                                >
+                                  {previewBarH > 0 ? (
+                                    <div
+                                      style={{ height: previewBarH }}
+                                      className={`w-full shrink-0 ${previewToneClass} border-b border-white/30 dark:border-white/10`}
+                                    />
+                                  ) : null}
+                                  <div className={`w-full flex-1 ${existingToneClass}`} />
+                                </div>
                               </div>
                             );
                           })}
