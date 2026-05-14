@@ -3,6 +3,7 @@
 import { SubmitEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getCycleWeekLabel, getWeekKey } from "@/app/lib/week-utils";
 
 type ApprovedTooRow = {
   id: number;
@@ -320,33 +321,11 @@ type GpPoolRow = {
   reviewedNumberOfVisitsSnapshot: number | null;
 };
 
-function getWeekKey(dateStr: string | null): string | null {
-  if (!dateStr) return null;
-  const normalized = dateStr.includes("T") ? dateStr.split("T")[0]! : dateStr.split(" ")[0]!;
-  const d = new Date(`${normalized}T00:00:00Z`);
-  if (isNaN(d.getTime())) return null;
-  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-  const jan4Day = jan4.getUTCDay() || 7;
-  const weekStart = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
-  const weekNo = Math.round((d.getTime() - weekStart.getTime()) / (7 * 86_400_000)) + 1;
-  return `${d.getUTCFullYear()}-W${String(Math.max(1, weekNo)).padStart(2, "0")}`;
-}
-
 function normalizeCadenceUnit(unit: string | null | undefined): "day" | "orbit" | "" {
   const u = unit?.trim().toLowerCase();
   if (u === "day" || u === "days") return "day";
   if (u === "orbit" || u === "orbits") return "orbit";
   return "";
-}
-
-function getISOWeekLabel(dateStr: string | null): string {
-  if (!dateStr) return "—";
-  const d = new Date(`${dateStr}T00:00:00Z`);
-  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-  const jan4Day = jan4.getUTCDay() || 7;
-  const weekStart = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
-  const weekNo = Math.round((d.getTime() - weekStart.getTime()) / (7 * 86_400_000)) + 1;
-  return `W${String(Math.max(1, weekNo)).padStart(2, "0")}`;
 }
 
 function getTuesdayWindowForDateStringFE(dateString: string): { start: string; end: string } {
@@ -427,9 +406,7 @@ function computeAllVisitWindowsFE(
 // Returns the ISO week label (Wxx) anchored to the Tuesday-start week that
 // contains the date, avoiding Monday-boundary mismatches.
 function getWeekLabelFromDate(dateString: string | null): string {
-  if (!dateString) return "—";
-  const tuesdayStart = getTuesdayWindowForDateStringFE(dateString).start;
-  return getISOWeekLabel(tuesdayStart);
+  return getCycleWeekLabel(dateString);
 }
 
 function addDaysToDateString(dateString: string, days: number): string {
@@ -469,7 +446,7 @@ function getUpcomingTuesdayWindows(count: number): PlanningWindowOption[] {
 
     return {
       value: `${start}:${end}`,
-      label: `${getISOWeekLabel(start)} · ${formatDateDisplay(start)} – ${formatDateDisplay(end)}`,
+      label: `${getCycleWeekLabel(start)} · ${formatDateDisplay(start)} – ${formatDateDisplay(end)}`,
       start,
       end,
     };
@@ -653,7 +630,7 @@ export default function TooManagementDetailPage() {
         visitNo: i + 1,
         start: w.start,
         end: w.end,
-        weekId: getISOWeekLabel(w.weekStart),
+        weekId: getCycleWeekLabel(w.weekStart),
       }));
     }
     return [];
@@ -1282,7 +1259,7 @@ export default function TooManagementDetailPage() {
               {(() => {
                 const todayStr = new Date().toISOString().split("T")[0]!;
                 const currentTuesdayStart = getTuesdayWindowForDateStringFE(todayStr).start;
-                const nextWeekLabel = getISOWeekLabel(addDaysToDateString(currentTuesdayStart, 7));
+                const nextWeekLabel = getCycleWeekLabel(addDaysToDateString(currentTuesdayStart, 7));
                 return weekPlanningGroups.map((group) => {
                 const allScheduled = group.scheduledCount === group.visitCount;
                 const anyScheduled = group.scheduledCount > 0;

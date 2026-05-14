@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { getWeekKey } from "@/app/lib/week-utils";
 
 type GpPlanningListRow = {
   id: number;
@@ -62,18 +63,6 @@ type GpPlanningCachePayload = {
   ts: number;
   rows: GpPlanningListRow[];
 };
-
-function getWeekKey(dateStr: string | null): string | null {
-  if (!dateStr) return null;
-  const normalized = dateStr.includes("T") ? dateStr.split("T")[0]! : dateStr.split(" ")[0]!;
-  const d = new Date(`${normalized}T00:00:00Z`);
-  if (isNaN(d.getTime())) return null;
-  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-  const jan4Day = jan4.getUTCDay() || 7;
-  const weekStart = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
-  const weekNo = Math.round((d.getTime() - weekStart.getTime()) / (7 * 86_400_000)) + 1;
-  return `${d.getUTCFullYear()}-W${String(Math.max(1, weekNo)).padStart(2, "0")}`;
-}
 
 function addWeekId(r: Omit<GpPlanningListRow, "weekId">): GpPlanningListRow {
   return {
