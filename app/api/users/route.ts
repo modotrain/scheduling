@@ -12,6 +12,7 @@ type UserPayload = {
   email?: string;
   password?: string;
   vip?: boolean;
+  role?: string;
 };
 
 type UserValidationResult =
@@ -24,6 +25,7 @@ type UserValidationResult =
         email: string;
         password: string;
         vip: boolean;
+        role: string;
       };
     };
 
@@ -58,6 +60,7 @@ function validateUserPayload(payload: UserPayload): UserValidationResult {
       email,
       password,
       vip: payload.vip ?? false,
+      role: payload.role ?? 'viewer',
     },
   };
 }
@@ -69,6 +72,7 @@ function mapUser(user: {
   age: number;
   email: string;
   vip: boolean;
+  role: string;
 }) {
   return {
     id: user.id,
@@ -77,6 +81,7 @@ function mapUser(user: {
     age: user.age,
     email: user.email,
     vip: user.vip,
+    role: user.role,
   };
 }
 
@@ -90,6 +95,7 @@ export async function GET() {
         age: usersTable.age,
         email: usersTable.email,
         vip: usersTable.vip,
+        role: usersTable.role,
       })
       .from(usersTable)
       .orderBy(desc(usersTable.id));
@@ -119,7 +125,8 @@ export async function POST(request: Request) {
         age: validation.data.age,
         email: validation.data.email,
         passwordHash,
-        vip: validation.data.vip,
+        vip: validation.data.role === 'admin',
+        role: validation.data.role,
       })
       .returning({
         id: usersTable.id,
@@ -128,6 +135,7 @@ export async function POST(request: Request) {
         age: usersTable.age,
         email: usersTable.email,
         vip: usersTable.vip,
+        role: usersTable.role,
       });
 
     return NextResponse.json({ user: mapUser(createdUser) }, { status: 201 });

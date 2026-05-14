@@ -16,6 +16,7 @@ type UserPayload = {
   email?: string;
   password?: string;
   vip?: boolean;
+  role?: string;
 };
 
 type UserValidationResult =
@@ -28,6 +29,7 @@ type UserValidationResult =
         email: string;
         password?: string;
         vip: boolean;
+        role: string;
       };
     };
 
@@ -69,6 +71,7 @@ function validateFullUserPayload(payload: UserPayload): UserValidationResult {
       email,
       password,
       vip: payload.vip ?? false,
+      role: payload.role ?? 'viewer',
     },
   };
 }
@@ -80,6 +83,7 @@ function mapUser(user: {
   age: number;
   email: string;
   vip: boolean;
+  role: string;
 }) {
   return {
     id: user.id,
@@ -88,6 +92,7 @@ function mapUser(user: {
     age: user.age,
     email: user.email,
     vip: user.vip,
+    role: user.role,
   };
 }
 
@@ -112,12 +117,14 @@ export async function PUT(request: Request, context: RouteContext) {
       age?: number;
       email: string;
       vip: boolean;
+      role: string;
       passwordHash?: string;
     } = {
       name: validation.data.name,
       username: validation.data.username,
       email: validation.data.email,
-      vip: validation.data.vip,
+      vip: validation.data.role === 'admin',
+      role: validation.data.role,
     };
 
     if (typeof body.age === "number" && !Number.isNaN(body.age)) {
@@ -139,6 +146,7 @@ export async function PUT(request: Request, context: RouteContext) {
         age: usersTable.age,
         email: usersTable.email,
         vip: usersTable.vip,
+        role: usersTable.role,
       });
 
     if (!updatedUser) {
@@ -162,13 +170,15 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const body = (await request.json()) as UserPayload;
 
-    if (typeof body.vip !== "boolean") {
-      return NextResponse.json({ error: "vip must be a boolean" }, { status: 400 });
+    if (typeof body.role !== 'string' && typeof body.vip !== 'boolean') {
+      return NextResponse.json({ error: "role or vip must be provided" }, { status: 400 });
     }
+
+    const newRole = typeof body.role === 'string' ? body.role : (body.vip ? 'admin' : 'viewer');
 
     const [updatedUser] = await db
       .update(usersTable)
-      .set({ vip: body.vip })
+      .set({ vip: newRole === 'admin', role: newRole })
       .where(eq(usersTable.id, id))
       .returning({
         id: usersTable.id,
@@ -177,6 +187,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         age: usersTable.age,
         email: usersTable.email,
         vip: usersTable.vip,
+        role: usersTable.role,
       });
 
     if (!updatedUser) {
@@ -208,6 +219,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
         age: usersTable.age,
         email: usersTable.email,
         vip: usersTable.vip,
+        role: usersTable.role,
       });
 
     if (!deletedUser) {

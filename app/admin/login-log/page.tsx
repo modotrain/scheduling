@@ -13,7 +13,7 @@ export default async function LoginLogPage() {
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   const session = token ? await verifySessionToken(token) : null;
 
-  if (!session?.vip) {
+  if (session?.role !== 'admin') {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
         <div className="text-center">

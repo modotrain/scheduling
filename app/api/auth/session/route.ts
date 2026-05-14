@@ -12,9 +12,10 @@ export async function GET() {
     return NextResponse.json({
       authenticated: Boolean(session),
       vip: session?.vip ?? false,
+      role: session?.role ?? 'viewer',
       username: session?.username ?? null,
     });
   } catch {
-    return NextResponse.json({ authenticated: false, vip: false, username: null }, { status: 200 });
+    return NextResponse.json({ authenticated: false, vip: false, role: 'viewer', username: null }, { status: 200 });
   }
 }

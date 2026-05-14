@@ -8,7 +8,7 @@ type User = {
   name: string;
   username: string;
   email: string;
-  vip: boolean;
+  role: 'viewer' | 'operator' | 'admin';
 };
 
 type UserInput = {
@@ -16,7 +16,7 @@ type UserInput = {
   username: string;
   email: string;
   password: string;
-  vip: boolean;
+  role: 'viewer' | 'operator' | 'admin';
 };
 
 type FormErrors = Partial<Record<keyof UserInput, string>>;
@@ -26,7 +26,7 @@ const initialForm: UserInput = {
   username: "",
   email: "",
   password: "",
-  vip: false,
+  role: "viewer",
 };
 
 export default function Home() {
@@ -121,7 +121,7 @@ export default function Home() {
           username: createForm.username.trim(),
           email: createForm.email.trim(),
           password: createForm.password,
-          vip: createForm.vip,
+          role: createForm.role,
         }),
       });
 
@@ -149,7 +149,7 @@ export default function Home() {
       username: user.username,
       email: user.email,
       password: "",
-      vip: user.vip,
+      role: user.role,
     });
     setEditErrors({});
     setMessage("");
@@ -173,7 +173,7 @@ export default function Home() {
           username: editForm.username.trim(),
           email: editForm.email.trim(),
           password: editForm.password.trim() || undefined,
-          vip: editForm.vip,
+          role: editForm.role,
         }),
       });
 
@@ -195,29 +195,29 @@ export default function Home() {
     }
   }
 
-  async function handleVipToggle(user: User) {
+  async function handleRoleChange(user: User, newRole: 'viewer' | 'operator' | 'admin') {
     setSaving(true);
     try {
       const response = await fetch(`/api/users/${user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vip: !user.vip }),
+        body: JSON.stringify({ role: newRole }),
       });
 
       const data = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Failed to update vip status");
+        throw new Error(data.error ?? "Failed to update role");
       }
 
       if (editingId === user.id) {
-        setEditForm((previous) => ({ ...previous, vip: !user.vip }));
+        setEditForm((previous) => ({ ...previous, role: newRole }));
       }
 
-      setStatus(user.vip ? "User removed from admin" : "User marked as admin", "success");
+      setStatus(`Role updated to ${newRole}`, "success");
       await loadUsers();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to update vip status", "error");
+      setStatus(error instanceof Error ? error.message : "Failed to update role", "error");
     } finally {
       setSaving(false);
     }
@@ -325,14 +325,15 @@ export default function Home() {
             />
             {renderFieldError(createErrors.password)}
           </div>
-          <label className="flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
-            <input
-              type="checkbox"
-              checked={createForm.vip}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, vip: event.target.checked }))}
-            />
-            Admin
-          </label>
+          <select
+            value={createForm.role}
+            onChange={(event) => setCreateForm((prev) => ({ ...prev, role: event.target.value as 'viewer' | 'operator' | 'admin' }))}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          >
+            <option value="viewer">Viewer</option>
+            <option value="operator">Operator</option>
+            <option value="admin">Admin</option>
+          </select>
           <button
             type="submit"
             disabled={saving}
@@ -443,21 +444,22 @@ export default function Home() {
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium uppercase tracking-wide ${user.vip ? "bg-primary/10 text-primary dark:bg-sky-300/20 dark:text-sky-200" : "bg-slate-200/60 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300"}`}>
-                          {user.vip ? "Admin" : "Standard"}
+                        <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium uppercase tracking-wide ${user.role === 'admin' ? "bg-primary/10 text-primary dark:bg-sky-300/20 dark:text-sky-200" : user.role === 'operator' ? "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300" : "bg-slate-200/60 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300"}`}>
+                          {user.role}
                         </span>
                       </td>
                       <td className="px-3 py-2">
                         {isEditing ? (
                           <div className="flex flex-wrap gap-2">
-                            <label className="flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 dark:border-slate-600 dark:text-slate-200">
-                              <input
-                                type="checkbox"
-                                checked={editForm.vip}
-                                onChange={(event) => setEditForm((prev) => ({ ...prev, vip: event.target.checked }))}
-                              />
-                              Admin
-                            </label>
+                            <select
+                              value={editForm.role}
+                              onChange={(event) => setEditForm((prev) => ({ ...prev, role: event.target.value as 'viewer' | 'operator' | 'admin' }))}
+                              className="rounded-md border border-slate-300 px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                            >
+                              <option value="viewer">Viewer</option>
+                              <option value="operator">Operator</option>
+                              <option value="admin">Admin</option>
+                            </select>
                             <button
                               type="button"
                               disabled={saving}
@@ -488,14 +490,16 @@ export default function Home() {
                             >
                               Edit
                             </button>
-                            <button
-                              type="button"
+                            <select
                               disabled={saving}
-                              onClick={() => handleVipToggle(user)}
-                              className="rounded-md border border-slate-300 px-3 py-1 text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                              value={user.role}
+                              onChange={(event) => void handleRoleChange(user, event.target.value as 'viewer' | 'operator' | 'admin')}
+                              className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
                             >
-                              {user.vip ? "Remove admin" : "Grant admin"}
-                            </button>
+                              <option value="viewer">Viewer</option>
+                              <option value="operator">Operator</option>
+                              <option value="admin">Admin</option>
+                            </select>
                             <button
                               type="button"
                               disabled={saving}

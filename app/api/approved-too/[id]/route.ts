@@ -87,8 +87,48 @@ export async function PUT(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
+  const numId = Number.parseInt(id, 10);
+
+  if (Number.isNaN(numId)) {
+    return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+  }
+
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
+    const session = token ? await verifySessionToken(token) : null;
+
+    if (session?.role !== 'admin') {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
+    const body = (await request.json()) as { concluded?: boolean };
+    if (typeof body.concluded !== 'boolean') {
+      return NextResponse.json({ error: "concluded must be a boolean" }, { status: 400 });
+    }
+
+    const [updated] = await db
+      .update(approvedToO)
+      .set({ concluded: body.concluded })
+      .where(eq(approvedToO.id, numId))
+      .returning();
+
+    if (!updated) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ row: updated });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to update" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(_request: Request, { params }: Params) {  const { id } = await params;
   const numId = Number.parseInt(id, 10);
 
   if (Number.isNaN(numId)) {

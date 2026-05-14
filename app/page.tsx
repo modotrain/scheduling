@@ -8,7 +8,7 @@ export default async function HomePage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   const session = token ? await verifySessionToken(token) : null;
-  const isVip = Boolean(session?.vip);
+  const isAdmin = session?.role === 'admin';
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] px-4 py-10 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:px-8">
@@ -138,7 +138,7 @@ export default async function HomePage() {
             </div>
 
             <div className="flex items-center justify-end border-t border-slate-200/80 pt-4 dark:border-slate-700/70">
-              {isVip ? (
+              {isAdmin ? (
                 <Link
                   href="/users"
                   className="inline-flex items-center rounded-md border border-slate-300/70 bg-white/70 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-700 dark:border-slate-600/80 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-200"

@@ -34,6 +34,7 @@ export async function GET() {
         SELECT
           a.id,
           CASE
+            WHEN a.concluded = true THEN 'concluded'
             WHEN (gs.total_plans IS NULL OR gs.total_plans = 0)
               AND sm.approved_too_id IS NULL
               THEN 'no_schedule'
@@ -60,7 +61,7 @@ export async function GET() {
     const statusMap = new Map(
       (Array.isArray(statusResult) ? statusResult : statusResult.rows).map((row) => [
         Number((row as StatusRow).id),
-        (row as StatusRow).scheduled_status as "no_schedule" | "scheduled" | "pending_gp" | "planned" | "in_progress" | "done",
+        (row as StatusRow).scheduled_status as "no_schedule" | "scheduled" | "pending_gp" | "planned" | "in_progress" | "done" | "concluded",
       ]),
     );
 

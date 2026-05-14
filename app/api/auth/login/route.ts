@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     const result = await db.execute(sql`
-      SELECT id, username, name, email, vip
+      SELECT id, username, name, email, vip, role
       FROM users
       WHERE username = ${username}
         AND password_hash <> ''
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
     const rows = Array.isArray(result) ? result : result.rows;
     const user = rows[0] as
-      | { id: number; username: string; name: string; email: string; vip: boolean }
+      | { id: number; username: string; name: string; email: string; vip: boolean; role: string }
       | undefined;
 
     if (!user) {
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       sub: Number(user.id),
       username: user.username,
       vip: Boolean(user.vip),
+      role: (user.role as 'viewer' | 'operator' | 'admin') ?? 'viewer',
       exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
         name: user.name,
         email: user.email,
         vip: Boolean(user.vip),
+        role: user.role ?? 'viewer',
       },
     });
 

@@ -7,6 +7,7 @@ export type SessionPayload = {
   sub: number;
   username: string;
   vip: boolean;
+  role: 'viewer' | 'operator' | 'admin';
   exp: number;
 };
 
@@ -72,6 +73,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
       sub: Number(rawPayload.sub),
       username: String(rawPayload.username ?? ""),
       vip: Boolean(rawPayload.vip),
+      role: (rawPayload.role as 'viewer' | 'operator' | 'admin' | undefined) ?? (rawPayload.vip ? 'admin' : 'viewer'),
       exp: Number(rawPayload.exp),
     };
     if (!Number.isFinite(payload.sub) || !payload.username || !Number.isFinite(payload.exp)) {

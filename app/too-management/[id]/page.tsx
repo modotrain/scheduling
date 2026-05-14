@@ -52,11 +52,12 @@ type ApprovedTooRow = {
   sourceId: string | null;
   sourceName: string | null;
   type: string | null;
+  concluded: boolean;
 };
 
 type InputStringKeys = Exclude<
   keyof ApprovedTooRow,
-  "id" | "epscProposal" | "requestNumberOfVisits" | "requestSingleExposureTime" | "requestTotalExposureTime" | "requestCadence"
+  "id" | "epscProposal" | "requestNumberOfVisits" | "requestSingleExposureTime" | "requestTotalExposureTime" | "requestCadence" | "concluded"
 >;
 
 type InputRow = { [K in InputStringKeys]: string } & {
@@ -418,7 +419,7 @@ export default function TooManagementDetailPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
-  const [isVipUser, setIsVipUser] = useState(false);
+  const [userRole, setUserRole] = useState<'viewer' | 'operator' | 'admin'>('viewer');
   const [cachedSourceName, setCachedSourceName] = useState<string | null>(null);
   const [changeLog, setChangeLog] = useState<ChangeLogEntry[]>([]);
   const [changeLogLoading, setChangeLogLoading] = useState(true);
@@ -443,6 +444,9 @@ export default function TooManagementDetailPage() {
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const pageLoading = loading || planningLoading || scheduleLoading;
+  const canEdit = userRole === 'operator' || userRole === 'admin';
+  const canRestore = userRole === 'admin';
+  const canManageGP = (userRole === 'operator' || userRole === 'admin') && !row?.concluded;
   const plannedWeekCount = planningRows.length;
   const plannedVisitCount = planningRows.reduce(
     (sum, item) => sum + (item.reviewedNumberOfVisitsSnapshot ?? 1),
@@ -596,13 +600,13 @@ export default function TooManagementDetailPage() {
     async function loadSession() {
       try {
         const response = await fetch("/api/auth/session", { cache: "no-store" });
-        const data = (await response.json()) as { vip?: boolean; username?: string | null };
+        const data = (await response.json()) as { vip?: boolean; role?: string; username?: string | null };
         if (!cancelled) {
-          setIsVipUser(Boolean(data.vip));
+          setUserRole((data.role as 'viewer' | 'operator' | 'admin') ?? (data.vip ? 'admin' : 'viewer'));
         }
       } catch {
         if (!cancelled) {
-          setIsVipUser(false);
+          setUserRole('viewer');
         }
       }
     }
@@ -975,13 +979,44 @@ export default function TooManagementDetailPage() {
               <button
                 type="button"
                 onClick={handleOpenCreatePlanning}
-                disabled={planningSubmitting || loading || !row || !row.epDbObjectId}
+                disabled={planningSubmitting || loading || !row || !row.epDbObjectId || !canManageGP}
+                title={!canManageGP && row?.concluded ? "GP operations are frozen: this record is concluded" : !canManageGP ? "Permission denied: operator or admin only" : ""}
                 className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
               >
                 Add GP Visit
               </button>
             </div>
           </div>
+
+          {row?.concluded ? (
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-100/80 px-4 py-2.5 dark:border-slate-700 dark:bg-slate-800/60">
+              <span className="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+                <span className="inline-flex rounded-md bg-slate-300/60 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-600/60 dark:text-slate-300">Concluded</span>
+                GP plan operations are frozen.
+              </span>
+              {userRole === 'admin' ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/approved-too/${id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ concluded: false }),
+                      });
+                      if (res.ok) {
+                        const data = (await res.json()) as { row?: ApprovedTooRow };
+                        if (data.row) setRow(data.row);
+                      }
+                    } catch { /* ignore */ }
+                  }}
+                  className="rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-white dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  Unconclude
+                </button>
+              ) : null}
+            </div>
+          ) : null}
 
           {planningLoading ? (
             <div className="px-4 py-4" aria-hidden="true" />
@@ -1069,7 +1104,7 @@ export default function TooManagementDetailPage() {
                       </p>
 
                       <div className="flex flex-wrap justify-end gap-2">
-                        {!scheduled ? (
+                        {!scheduled && canManageGP ? (
                           <>
                             <button
                               type="button"
@@ -1194,10 +1229,10 @@ export default function TooManagementDetailPage() {
                 </button>
               </div>
             ) : (
-              <span title={isVipUser ? "" : "Permission denied: VIP only"}>
+              <span title={canEdit ? "" : "Permission denied: operator or admin only"}>
                 <button
                   type="button"
-                  disabled={loading || !row || !isVipUser}
+                  disabled={loading || !row || !canEdit}
                   onClick={() => setEditing(true)}
                   className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -1308,8 +1343,8 @@ export default function TooManagementDetailPage() {
                     <button
                       type="button"
                       onClick={() => void handleRestoreOriginal()}
-                      disabled={restoring || !isVipUser}
-                      title={isVipUser ? "" : "Permission denied: VIP only"}
+                      disabled={restoring || !canRestore}
+                      title={canRestore ? "" : "Permission denied: admin only"}
                       className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-950/50"
                     >
                       {restoring ? "Restoring…" : "↩ Restore original version"}

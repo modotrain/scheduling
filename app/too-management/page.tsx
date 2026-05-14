@@ -20,7 +20,8 @@ type ApprovedTooRow = {
   reviewedCadence: string | null;
   reviewedCadenceUnit: string | null;
   type: string | null;
-  scheduledStatus: "no_schedule" | "scheduled" | "pending_gp" | "planned" | "in_progress" | "done";
+  concluded: boolean;
+  scheduledStatus: "no_schedule" | "scheduled" | "pending_gp" | "planned" | "in_progress" | "done" | "concluded";
 };
 
 type SortConfig = { col: keyof ApprovedTooRow | null; dir: "asc" | "desc" };
@@ -97,6 +98,7 @@ function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"]
     planned: "bg-sky-500/10 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
     in_progress: "bg-amber-500/10 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
     done: "bg-teal-500/10 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
+    concluded: "bg-slate-300/60 text-slate-600 dark:bg-slate-600/40 dark:text-slate-300",
   };
   const labels: Record<ApprovedTooRow["scheduledStatus"], string> = {
     no_schedule: "No Schedule",
@@ -105,6 +107,7 @@ function StatusIndicator({ status }: { status: ApprovedTooRow["scheduledStatus"]
     planned: "Planned",
     in_progress: "In Progress",
     done: "Done",
+    concluded: "Concluded",
   };
   return (
     <span className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-medium uppercase tracking-wide ${styles[status]}`}>
@@ -131,6 +134,8 @@ export default function TooManagementPage() {
   const [searchText, setSearchText] = useState("");
   const [stpFilter, setStpFilter] = useState<StpFilter>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
+  const [userRole, setUserRole] = useState<'viewer' | 'operator' | 'admin'>('viewer');
+  const [concludingId, setConcludingId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"all" | "need_action">(() => {
     if (typeof window === "undefined") return "need_action";
     return (localStorage.getItem(TOO_MANAGEMENT_VIEW_KEY) as "all" | "need_action") ?? "need_action";
@@ -169,6 +174,42 @@ export default function TooManagementPage() {
   useEffect(() => {
     void loadRows();
   }, [loadRows]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: { role?: string; vip?: boolean }) => {
+        if (!cancelled) {
+          const role = (data.role as 'viewer' | 'operator' | 'admin' | undefined)
+            ?? (data.vip ? 'admin' : 'viewer');
+          setUserRole(role);
+        }
+      })
+      .catch(() => {/* stay viewer */});
+    return () => { cancelled = true; };
+  }, []);
+
+  async function handleToggleConcluded(row: ApprovedTooRow) {
+    setConcludingId(row.id);
+    try {
+      const res = await fetch(`/api/approved-too/${row.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ concluded: !row.concluded }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Failed to update");
+      // Bust cache and reload
+      sessionStorage.removeItem(TOO_MANAGEMENT_CACHE_KEY);
+      await loadRows();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed to update");
+      setMessageTone("error");
+    } finally {
+      setConcludingId(null);
+    }
+  }
 
   function handleSort(col: keyof ApprovedTooRow) {
     setSortConfig((prev) => ({
@@ -395,12 +436,28 @@ export default function TooManagementPage() {
                       <StatusIndicator status={row.scheduledStatus} />
                     </td>
                     <td className="px-3 py-2">
-                      <Link
-                        href={`/too-management/${row.id}`}
-                        className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
-                      >
-                        Details
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/too-management/${row.id}`}
+                          className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
+                        >
+                          Details
+                        </Link>
+                        {userRole === 'admin' && (
+                          <button
+                            type="button"
+                            disabled={concludingId === row.id}
+                            onClick={() => void handleToggleConcluded(row)}
+                            className={`rounded-md border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                              row.concluded
+                                ? "border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                                : "border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-400 dark:hover:bg-amber-900/20"
+                            }`}
+                          >
+                            {row.concluded ? "Unconclude" : "Conclude"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

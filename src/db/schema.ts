@@ -8,6 +8,7 @@ export const usersTable = pgTable("users", {
   email: varchar({ length: 255 }).notNull().unique(),
 	passwordHash: text("password_hash").notNull().default(""),
   vip: boolean().notNull().default(false),
+  role: varchar("role", { length: 16 }).notNull().default("viewer"),
 });
 
 export const tooReqTable = pgTable("too_req", {
@@ -531,6 +532,7 @@ export const approvedToO = pgTable("approved_too", {
 	sourceId: varchar("source_id", { length: 255 }),
 	sourceName: varchar("source_name", { length: 255 }),
 	type: varchar("type", { length: 255 }),
+	concluded: boolean("concluded").notNull().default(false),
 });
 
 export const tooToGpSchedule = pgTable("tootogp_schedule", {
