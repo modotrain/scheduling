@@ -81,6 +81,24 @@ function formatCadence(row: ApprovedTooRow) {
   return cadence || cadenceUnit;
 }
 
+function parseNumeric(value: string | null | undefined): number | null {
+  if (value == null) return null;
+  const normalized = String(value).trim().replace(/,/g, "");
+  if (!normalized) return null;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+function cadenceToMinutes(row: ApprovedTooRow): number | null {
+  const cadence = parseNumeric(row.reviewedCadence);
+  if (cadence == null) return null;
+  const unit = row.reviewedCadenceUnit?.trim().toLowerCase();
+  if (!unit) return cadence;
+  if (unit === "day" || unit === "days") return cadence * 24 * 60;
+  if (unit === "orbit" || unit === "orbits") return cadence * 97;
+  return cadence;
+}
+
 function formatReceivedDate(value: string | null) {
   return value?.split(" ")[0] ?? "";
 }
@@ -243,12 +261,33 @@ export default function TooManagementPage() {
     }
 
     return [...filtered].sort((a, b) => {
-      const aVal = a[sortConfig.col!] ?? "";
-      const bVal = b[sortConfig.col!] ?? "";
-      const cmp =
-        typeof aVal === "number" && typeof bVal === "number"
-          ? aVal - bVal
-          : String(aVal).localeCompare(String(bVal));
+      const col = sortConfig.col!;
+
+      let cmp = 0;
+      if (col === "reviewedSingleExposureTime" || col === "reviewedNumberOfVisits" || col === "reviewedTotalExposureTime") {
+        const aNum = parseNumeric(a[col]);
+        const bNum = parseNumeric(b[col]);
+        if (aNum !== null && bNum !== null) {
+          cmp = aNum - bNum;
+        } else {
+          cmp = String(a[col] ?? "").localeCompare(String(b[col] ?? ""));
+        }
+      } else if (col === "reviewedCadence") {
+        const aCad = cadenceToMinutes(a);
+        const bCad = cadenceToMinutes(b);
+        if (aCad !== null && bCad !== null) {
+          cmp = aCad - bCad;
+        } else {
+          cmp = formatCadence(a).localeCompare(formatCadence(b));
+        }
+      } else {
+        const aVal = a[col] ?? "";
+        const bVal = b[col] ?? "";
+        cmp =
+          typeof aVal === "number" && typeof bVal === "number"
+            ? aVal - bVal
+            : String(aVal).localeCompare(String(bVal));
+      }
       return sortConfig.dir === "asc" ? cmp : -cmp;
     });
   }
