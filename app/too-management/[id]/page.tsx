@@ -1622,7 +1622,7 @@ export default function TooManagementDetailPage() {
                 {/* Pool load chart */}
                 <div className="flex w-[19.5rem] shrink-0 flex-col rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-800/40">
                   <div className="mb-2 shrink-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Pool Load / Week</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Planned ToO in GP (ks)</p>
                     <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">Scale: 0-80 ks (40/50 guide)</p>
                   </div>
                   {gpPoolLoading ? (
