@@ -61,7 +61,7 @@ const COL_LABELS: Partial<Record<keyof ApprovedTooRow, string>> = {
   reviewedSingleExposureTime: "Exp.",
   reviewedNumberOfVisits: "Visits",
   reviewedTotalExposureTime: "Total",
-  reviewedCadence: "Cadence",
+  reviewedCadence: "Cad.",
   // receivedTime: "Received Time",
   type: "Type",
 };
@@ -136,9 +136,12 @@ export default function TooManagementPage() {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
   const [userRole, setUserRole] = useState<'viewer' | 'operator' | 'admin'>('viewer');
   const [concludingId, setConcludingId] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<"all" | "need_action">(() => {
+  const [viewMode, setViewMode] = useState<"all" | "need_action" | "in_progress">(() => {
     if (typeof window === "undefined") return "need_action";
-    return (localStorage.getItem(TOO_MANAGEMENT_VIEW_KEY) as "all" | "need_action") ?? "need_action";
+    const storedValue = localStorage.getItem(TOO_MANAGEMENT_VIEW_KEY);
+    return storedValue === "all" || storedValue === "need_action" || storedValue === "in_progress"
+      ? storedValue
+      : "need_action";
   });
 
   const loadRows = useCallback(async () => {
@@ -218,7 +221,7 @@ export default function TooManagementPage() {
     }));
   }
 
-  function handleViewModeChange(next: "all" | "need_action") {
+  function handleViewModeChange(next: "all" | "need_action" | "in_progress") {
     setViewMode(next);
     localStorage.setItem(TOO_MANAGEMENT_VIEW_KEY, next);
   }
@@ -228,6 +231,7 @@ export default function TooManagementPage() {
     const filtered = rows.filter((row) => {
       if (stpFilter !== null && row.stp !== stpFilter) return false;
       if (viewMode === "need_action" && !NEED_ACTION_STATUSES.includes(row.scheduledStatus)) return false;
+      if (viewMode === "in_progress" && row.scheduledStatus !== "in_progress") return false;
       if (query && !Object.values(row).some(
         (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(query),
       )) return false;
@@ -254,6 +258,31 @@ export default function TooManagementPage() {
       return <span className="ml-1 text-slate-300 dark:text-slate-600">⇅</span>;
     }
     return <span className="ml-1 text-primary">{sortConfig.dir === "asc" ? "↑" : "↓"}</span>;
+  }
+
+  function getViewModeButtonClass(mode: "need_action" | "in_progress" | "all") {
+    const isActive = viewMode === mode;
+
+    const activeClasses = {
+      need_action: "bg-orange-500 text-white shadow-sm shadow-orange-500/20 ring-1 ring-orange-400/60",
+      in_progress: "bg-amber-500 text-white shadow-sm shadow-amber-500/20 ring-1 ring-amber-400/60",
+      all: "bg-slate-700 text-white shadow-sm shadow-slate-500/20 ring-1 ring-slate-500/50",
+    } as const;
+
+    const inactiveClasses = {
+      need_action: "text-orange-700 hover:bg-orange-50 dark:text-orange-300 dark:hover:bg-orange-950/30",
+      in_progress: "text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/30",
+      all: "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
+    } as const;
+
+    return [
+      "px-4 py-1.5 font-semibold transition-all duration-150",
+      isActive ? activeClasses[mode] : inactiveClasses[mode],
+      mode !== "need_action" ? "border-l border-slate-300 dark:border-slate-600" : "",
+      isActive ? "relative z-10" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
 
   const displayRows = getSortedAndFilteredRows();
@@ -297,26 +326,25 @@ export default function TooManagementPage() {
         ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <div className="flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-600 text-xs shrink-0">
+          <div className="flex overflow-hidden rounded-lg bg-white text-xs shadow-sm ring-1 ring-slate-300 dark:bg-slate-900 dark:ring-slate-600 shrink-0">
             <button
               type="button"
               onClick={() => handleViewModeChange("need_action")}
-              className={`px-4 py-1.5 font-medium transition-colors ${
-                viewMode === "need_action"
-                  ? "bg-primary text-white"
-                  : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              }`}
+              className={getViewModeButtonClass("need_action")}
             >
               Need Action
             </button>
             <button
               type="button"
+              onClick={() => handleViewModeChange("in_progress")}
+              className={getViewModeButtonClass("in_progress")}
+            >
+              In Progress
+            </button>
+            <button
+              type="button"
               onClick={() => handleViewModeChange("all")}
-              className={`border-l border-slate-300 px-4 py-1.5 font-medium transition-colors dark:border-slate-600 ${
-                viewMode === "all"
-                  ? "bg-primary text-white"
-                  : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              }`}
+              className={getViewModeButtonClass("all")}
             >
               All
             </button>
@@ -368,10 +396,10 @@ export default function TooManagementPage() {
                     key={col}
                     onClick={() => handleSort(col)}
                     className={`cursor-pointer whitespace-nowrap px-3 py-2 select-none hover:bg-slate-200 dark:hover:bg-slate-700 ${
-                      col === "sourceName" || col === "pi" ? "max-w-[9rem]" : ""
+                      col === "sourceName" || col === "pi" ? "max-w-[9rem]" : col === "groupName" ? "max-w-[6rem]" : ""
                     }`}
                   >
-                    <span className={`flex items-center ${col === "sourceName" || col === "pi" ? "max-w-[9rem] truncate" : ""}`}>
+                    <span className={`flex items-center ${col === "sourceName" || col === "pi" ? "max-w-[9rem] truncate" : col === "groupName" ? "max-w-[6rem] truncate" : ""}`}>
                       {COL_LABELS[col] ?? col}
                       <SortIcon col={col} />
                     </span>
@@ -419,13 +447,13 @@ export default function TooManagementPage() {
                         <td
                           key={col}
                           className={`whitespace-nowrap px-3 py-2 ${
-                            col === "sourceName" || col === "pi" ? "max-w-[11rem]" : ""
+                            col === "sourceName" || col === "pi" ? "max-w-[11rem]" : col === "groupName" ? "max-w-[6rem]" : ""
                           }`}
                         >
                           {cellValue === null || cellValue === undefined || cellValue === "" ? (
                             <span className="text-slate-400">—</span>
                           ) : (
-                            <span className={col === "sourceName" || col === "pi" ? "block max-w-[11rem] truncate" : ""}>
+                            <span className={col === "sourceName" || col === "pi" ? "block max-w-[11rem] truncate" : col === "groupName" ? "block max-w-[6rem] truncate" : ""}>
                               {String(cellValue)}
                             </span>
                           )}
