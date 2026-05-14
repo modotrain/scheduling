@@ -264,22 +264,21 @@ export default function TooManagementPage() {
     const isActive = viewMode === mode;
 
     const activeClasses = {
-      need_action: "bg-orange-500 text-white shadow-sm shadow-orange-500/20 ring-1 ring-orange-400/60",
-      in_progress: "bg-amber-500 text-white shadow-sm shadow-amber-500/20 ring-1 ring-amber-400/60",
-      all: "bg-slate-700 text-white shadow-sm shadow-slate-500/20 ring-1 ring-slate-500/50",
+      need_action: "bg-primary text-white",
+      in_progress: "bg-primary text-white",
+      all: "bg-primary text-white",
     } as const;
 
     const inactiveClasses = {
-      need_action: "text-orange-700 hover:bg-orange-50 dark:text-orange-300 dark:hover:bg-orange-950/30",
-      in_progress: "text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/30",
-      all: "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800",
+      need_action: "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
+      in_progress: "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
+      all: "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
     } as const;
 
     return [
-      "px-4 py-1.5 font-semibold transition-all duration-150",
+      "px-4 py-1.5 font-medium transition-colors",
       isActive ? activeClasses[mode] : inactiveClasses[mode],
       mode !== "need_action" ? "border-l border-slate-300 dark:border-slate-600" : "",
-      isActive ? "relative z-10" : "",
     ]
       .filter(Boolean)
       .join(" ");
@@ -326,7 +325,7 @@ export default function TooManagementPage() {
         ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <div className="flex overflow-hidden rounded-lg bg-white text-xs shadow-sm ring-1 ring-slate-300 dark:bg-slate-900 dark:ring-slate-600 shrink-0">
+          <div className="flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-600 text-xs shrink-0">
             <button
               type="button"
               onClick={() => handleViewModeChange("need_action")}
