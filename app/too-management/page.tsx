@@ -154,13 +154,19 @@ export default function TooManagementPage() {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
   const [userRole, setUserRole] = useState<'viewer' | 'operator' | 'admin'>('viewer');
   const [concludingId, setConcludingId] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<"all" | "need_action" | "in_progress">(() => {
-    if (typeof window === "undefined") return "need_action";
-    const storedValue = localStorage.getItem(TOO_MANAGEMENT_VIEW_KEY);
-    return storedValue === "all" || storedValue === "need_action" || storedValue === "in_progress"
-      ? storedValue
-      : "need_action";
-  });
+  const [viewMode, setViewMode] = useState<"all" | "need_action" | "in_progress">("need_action");
+
+  useEffect(() => {
+    const urlView = new URLSearchParams(window.location.search).get("view");
+    if (urlView === "all" || urlView === "need_action" || urlView === "in_progress") {
+      setViewMode(urlView);
+      return;
+    }
+    const stored = localStorage.getItem(TOO_MANAGEMENT_VIEW_KEY);
+    if (stored === "all" || stored === "need_action" || stored === "in_progress") {
+      setViewMode(stored);
+    }
+  }, []);
 
   const loadRows = useCallback(async () => {
     setLoading(true);
@@ -242,6 +248,9 @@ export default function TooManagementPage() {
   function handleViewModeChange(next: "all" | "need_action" | "in_progress") {
     setViewMode(next);
     localStorage.setItem(TOO_MANAGEMENT_VIEW_KEY, next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", next);
+    window.history.replaceState(null, "", url.pathname + "?" + url.searchParams.toString());
   }
 
   function getSortedAndFilteredRows() {

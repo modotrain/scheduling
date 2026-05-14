@@ -85,14 +85,25 @@ export default function TooToGpSchedulePage() {
   const [rows, setRows] = useState<GpPlanningListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [hydrated, setHydrated] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "queued" | "scheduled">(() => {
-    if (typeof window === "undefined") return "queued";
-    return (localStorage.getItem(GP_PLANNING_VIEW_KEY) as "all" | "queued" | "scheduled") ?? "queued";
-  });
+  const [statusFilter, setStatusFilter] = useState<"all" | "queued" | "scheduled">("queued");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
+
+  const effectiveStatusFilter = hydrated ? statusFilter : "queued";
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(GP_PLANNING_VIEW_KEY);
+    if (stored === "all" || stored === "queued" || stored === "scheduled") {
+      setStatusFilter(stored);
+    }
+  }, []);
 
   const loadRows = useCallback(async () => {
     setLoading(true);
@@ -148,7 +159,7 @@ export default function TooToGpSchedulePage() {
     };
 
     const filtered = rows.filter((row) => {
-      if (statusFilter !== "all" && row.scheduledStatus !== statusFilter) return false;
+      if (effectiveStatusFilter !== "all" && row.scheduledStatus !== effectiveStatusFilter) return false;
       if (
         query &&
         !Object.values(row).some(
@@ -279,7 +290,7 @@ export default function TooToGpSchedulePage() {
               type="button"
               onClick={() => handleStatusFilterChange("queued")}
               className={`px-4 py-1.5 font-medium transition-colors ${
-                statusFilter === "queued"
+                effectiveStatusFilter === "queued"
                   ? "bg-primary text-white"
                   : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               }`}
@@ -290,7 +301,7 @@ export default function TooToGpSchedulePage() {
               type="button"
               onClick={() => handleStatusFilterChange("scheduled")}
               className={`border-l border-slate-300 px-4 py-1.5 font-medium transition-colors dark:border-slate-600 ${
-                statusFilter === "scheduled"
+                effectiveStatusFilter === "scheduled"
                   ? "bg-primary text-white"
                   : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               }`}
@@ -301,7 +312,7 @@ export default function TooToGpSchedulePage() {
               type="button"
               onClick={() => handleStatusFilterChange("all")}
               className={`border-l border-slate-300 px-4 py-1.5 font-medium transition-colors dark:border-slate-600 ${
-                statusFilter === "all"
+                effectiveStatusFilter === "all"
                   ? "bg-primary text-white"
                   : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               }`}
