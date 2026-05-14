@@ -513,6 +513,7 @@ export default function TooManagementDetailPage() {
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [gpPoolRows, setGpPoolRows] = useState<GpPoolRow[]>([]);
   const [gpPoolLoading, setGpPoolLoading] = useState(false);
+  const [gpPlanView, setGpPlanView] = useState<'card' | 'list'>('card');
   const pageLoading = loading || planningLoading || scheduleLoading;
   const canEdit = userRole === 'operator' || userRole === 'admin';
   const canRestore = userRole === 'admin';
@@ -1163,6 +1164,22 @@ export default function TooManagementDetailPage() {
         <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
             <h2 className="mr-auto text-base font-semibold">GP Planning</h2>
+            <div className="flex overflow-hidden rounded-md border border-slate-200 text-xs dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setGpPlanView('card')}
+                className={`px-3 py-1.5 font-medium transition-colors ${gpPlanView === 'card' ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+              >
+                Cards
+              </button>
+              <button
+                type="button"
+                onClick={() => setGpPlanView('list')}
+                className={`border-l border-slate-200 px-3 py-1.5 font-medium transition-colors dark:border-slate-700 ${gpPlanView === 'list' ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+              >
+                List
+              </button>
+            </div>
             <span className="text-sm text-slate-600 dark:text-slate-300">
               Planned <span className="font-mono font-medium">{plannedVisitCount}</span> visit{plannedVisitCount === 1 ? "" : "s"} in <span className="font-mono font-medium">{plannedWeekCount}</span> week{plannedWeekCount === 1 ? "" : "s"}
             </span>
@@ -1221,7 +1238,7 @@ export default function TooManagementDetailPage() {
             <div className="px-4 py-5 text-sm text-slate-500 dark:text-slate-400">
               No GP planning for this target. Add a GP visit to start tracking GP-Scheduled ToO proposal.
             </div>
-          ) : (
+          ) : gpPlanView === 'card' ? (
             <div className="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-3">
               {weekPlanningGroups.map((group) => {
                 const allScheduled = group.scheduledCount === group.visitCount;
@@ -1281,30 +1298,6 @@ export default function TooManagementDetailPage() {
                       </div>
                     </dl>
 
-                    {/* Individual visit windows (when > 1 visit in the week) */}
-                    {group.visitCount > 1 ? (
-                      <div className="mt-3 space-y-1">
-                        {group.rows.map((r, idx) => (
-                          <div key={r.id} className="flex items-center gap-2 rounded-md bg-white/60 px-2.5 py-1.5 text-xs dark:bg-slate-800/60">
-                            <span className="w-5 shrink-0 text-slate-400">#{idx + 1}</span>
-                            <span className="flex-1 font-mono text-slate-700 dark:text-slate-200">
-                              {formatDateDisplay(r.plannedStartTime)} → {formatDateDisplay(r.plannedEndTime)}
-                            </span>
-                            {r.scheduledStatus !== "scheduled" && canManageGP ? (
-                              <button
-                                type="button"
-                                onClick={() => handleEditPlanning(r)}
-                                disabled={planningSubmitting}
-                                className="shrink-0 rounded px-1.5 py-0.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700"
-                              >
-                                Edit
-                              </button>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-
                     {/* Notes */}
                     {group.notes ? (
                       <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
@@ -1355,6 +1348,93 @@ export default function TooManagementDetailPage() {
                   </div>
                 );
               })}
+            </div>
+          ) : (
+            <div className="overflow-x-auto border-b border-slate-200 dark:border-slate-700">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-800/50">
+                    <th className="w-10 px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">#</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Generated ID</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Week</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Window</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Cadence</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Exp (s)</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Status</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {planningRows.map((item) => {
+                    const scheduled = item.scheduledStatus === "scheduled";
+                    const normalizedIds = normalizeObsWpIds(item.matchedObsWpIds);
+                    const firstMatchedId = item.matchedObsWpId ?? normalizedIds[0] ?? null;
+                    const matchedIdsForQuery = normalizedIds.length > 0 ? normalizedIds : item.matchedObsWpId ? [item.matchedObsWpId] : [];
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`text-sm ${scheduled ? "bg-emerald-50/30 dark:bg-emerald-950/10" : "hover:bg-slate-50/40 dark:hover:bg-slate-800/30"}`}
+                      >
+                        <td className="px-3 py-2 font-mono text-xs text-slate-400 dark:text-slate-500">{item.sequenceNo}</td>
+                        <td className="max-w-[14rem] px-3 py-2">
+                          <span className="break-all font-mono text-xs text-slate-700 dark:text-slate-200">{item.generatedEpDbObjectId}</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className="rounded bg-sky-50 px-1.5 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+                            {getWeekLabelFromDate(item.plannedStartTime)}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-slate-600 dark:text-slate-300">
+                          {formatDateDisplay(item.plannedStartTime)} → {formatDateDisplay(item.plannedEndTime)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+                          {item.cadenceValue ? `${item.cadenceValue} ${item.cadenceUnit || ""}`.trim() : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+                          {item.reviewedSingleExposureTimeSnapshot ?? "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${scheduled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"}`}>
+                            {scheduled ? "Scheduled" : "Queued"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {!scheduled && canManageGP ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditPlanning(item)}
+                                  disabled={planningSubmitting}
+                                  className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDeletePlanning(item)}
+                                  disabled={planningSubmitting}
+                                  className="rounded border border-rose-200 px-2 py-0.5 text-xs text-rose-600 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            ) : null}
+                            {firstMatchedId ? (
+                              <Link
+                                href={`/obs-wp/${firstMatchedId}?matched=${matchedIdsForQuery.join(",")}`}
+                                className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                              >
+                                Obs
+                              </Link>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
 
