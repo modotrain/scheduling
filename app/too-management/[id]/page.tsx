@@ -1175,8 +1175,10 @@ export default function TooManagementDetailPage() {
         ) : null}
 
         <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-            <h2 className="mr-auto text-base font-semibold">GP Planning</h2>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
+            {/* Left */}
+            <h2 className="text-base font-semibold">GP Planning</h2>
+            {/* Center */}
             <div className="flex items-center rounded-full border border-slate-300 bg-slate-200/70 p-1 text-xs shadow-inner dark:border-slate-600 dark:bg-slate-700/60">
               <button
                 type="button"
@@ -1214,10 +1216,12 @@ export default function TooManagementDetailPage() {
                 List
               </button>
             </div>
-            <span className="text-sm text-slate-600 dark:text-slate-300">
-              Planned <span className="font-mono font-medium">{plannedVisitCount}</span> visit{plannedVisitCount === 1 ? "" : "s"} in <span className="font-mono font-medium">{plannedWeekCount}</span> week{plannedWeekCount === 1 ? "" : "s"}
-            </span>
-            <div className="flex items-center gap-2">
+            {/* Right */}
+            <div className="flex items-center justify-end gap-4">
+              <span className="text-sm text-slate-600 dark:text-slate-300">
+                Planned <span className="font-mono font-medium">{plannedVisitCount}</span> visit{plannedVisitCount === 1 ? "" : "s"} in <span className="font-mono font-medium">{plannedWeekCount}</span> week{plannedWeekCount === 1 ? "" : "s"}
+              </span>
+              <div className="flex items-center gap-2">
               <Link
                 href="/tootogp-schedule"
                 className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -1233,6 +1237,7 @@ export default function TooManagementDetailPage() {
               >
                 Add GP Visit
               </button>
+              </div>
             </div>
           </div>
 
