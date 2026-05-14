@@ -1177,19 +1177,40 @@ export default function TooManagementDetailPage() {
         <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
             <h2 className="mr-auto text-base font-semibold">GP Planning</h2>
-            <div className="flex overflow-hidden rounded-md border border-slate-200 text-xs dark:border-slate-700">
+            <div className="flex items-center rounded-full border border-slate-200 bg-slate-100/80 p-0.5 text-xs dark:border-slate-700 dark:bg-slate-800">
               <button
                 type="button"
                 onClick={() => setGpPlanView('card')}
-                className={`px-3 py-1.5 font-medium transition-colors ${gpPlanView === 'card' ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium transition-all ${
+                  gpPlanView === 'card'
+                    ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-slate-100'
+                    : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
+                }`}
+                title="Card view"
               >
+                <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <rect x="1" y="1" width="6" height="6" rx="1.2" />
+                  <rect x="9" y="1" width="6" height="6" rx="1.2" />
+                  <rect x="1" y="9" width="6" height="6" rx="1.2" />
+                  <rect x="9" y="9" width="6" height="6" rx="1.2" />
+                </svg>
                 Cards
               </button>
               <button
                 type="button"
                 onClick={() => setGpPlanView('list')}
-                className={`border-l border-slate-200 px-3 py-1.5 font-medium transition-colors dark:border-slate-700 ${gpPlanView === 'list' ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium transition-all ${
+                  gpPlanView === 'list'
+                    ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-slate-100'
+                    : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
+                }`}
+                title="List view"
               >
+                <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <rect x="1" y="2" width="14" height="2.2" rx="1.1" />
+                  <rect x="1" y="6.9" width="14" height="2.2" rx="1.1" />
+                  <rect x="1" y="11.8" width="14" height="2.2" rx="1.1" />
+                </svg>
                 List
               </button>
             </div>
@@ -1253,10 +1274,15 @@ export default function TooManagementDetailPage() {
             </div>
           ) : gpPlanView === 'card' ? (
             <div className="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-3">
-              {weekPlanningGroups.map((group) => {
+              {(() => {
+                const todayStr = new Date().toISOString().split("T")[0]!;
+                const currentTuesdayStart = getTuesdayWindowForDateStringFE(todayStr).start;
+                const nextWeekLabel = getISOWeekLabel(addDaysToDateString(currentTuesdayStart, 7));
+                return weekPlanningGroups.map((group) => {
                 const allScheduled = group.scheduledCount === group.visitCount;
                 const anyScheduled = group.scheduledCount > 0;
                 const isQueued = !allScheduled;
+                const isNextWeek = isQueued && group.weekLabel === nextWeekLabel;
                 const statusLabel = allScheduled ? "Scheduled" : anyScheduled ? "Partial" : "Queued";
                 const statusClass = allScheduled
                   ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
@@ -1265,7 +1291,9 @@ export default function TooManagementDetailPage() {
                     : "bg-primary/10 text-primary";
                 const cardClass = allScheduled
                   ? "border border-emerald-200 bg-emerald-50/60 dark:border-emerald-800/70 dark:bg-emerald-950/20"
-                  : "border border-dashed border-sky-200 bg-sky-50/50 dark:border-sky-800/60 dark:bg-sky-950/15";
+                  : isNextWeek
+                    ? "border border-amber-200 bg-amber-50/70 dark:border-amber-700/50 dark:bg-amber-950/25"
+                    : "border border-dashed border-sky-200 bg-sky-50/50 dark:border-sky-800/60 dark:bg-sky-950/15";
 
                 return (
                   <div key={group.generatedEpDbObjectId} className={`rounded-xl p-4 shadow-sm ${cardClass}`}>
@@ -1280,6 +1308,11 @@ export default function TooManagementDetailPage() {
                         </h3>
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        {isNextWeek ? (
+                          <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                            Next Week
+                          </span>
+                        ) : null}
                         <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                           {group.visitCount} visit{group.visitCount === 1 ? "" : "s"}
                         </span>
@@ -1360,7 +1393,8 @@ export default function TooManagementDetailPage() {
                     </div>
                   </div>
                 );
-              })}
+                });
+              })()}
             </div>
           ) : (
             <div className="overflow-x-auto border-b border-slate-200 dark:border-slate-700">
