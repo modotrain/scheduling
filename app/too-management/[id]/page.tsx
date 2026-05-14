@@ -313,6 +313,25 @@ type PlanningWindowOption = {
   end: string;
 };
 
+type GpPoolRow = {
+  scheduledStatus: "scheduled" | "queued";
+  plannedStartTime: string | null;
+  reviewedSingleExposureTimeSnapshot: number | null;
+  reviewedNumberOfVisitsSnapshot: number | null;
+};
+
+function getWeekKey(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const normalized = dateStr.includes("T") ? dateStr.split("T")[0]! : dateStr.split(" ")[0]!;
+  const d = new Date(`${normalized}T00:00:00Z`);
+  if (isNaN(d.getTime())) return null;
+  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const weekStart = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
+  const weekNo = Math.round((d.getTime() - weekStart.getTime()) / (7 * 86_400_000)) + 1;
+  return `${d.getUTCFullYear()}-W${String(Math.max(1, weekNo)).padStart(2, "0")}`;
+}
+
 function normalizeCadenceUnit(unit: string | null | undefined): "day" | "orbit" | "" {
   const u = unit?.trim().toLowerCase();
   if (u === "day" || u === "days") return "day";
@@ -443,6 +462,8 @@ export default function TooManagementDetailPage() {
   const [planningNotes, setPlanningNotes] = useState("");
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [gpPoolRows, setGpPoolRows] = useState<GpPoolRow[]>([]);
+  const [gpPoolLoading, setGpPoolLoading] = useState(false);
   const pageLoading = loading || planningLoading || scheduleLoading;
   const canEdit = userRole === 'operator' || userRole === 'admin';
   const canRestore = userRole === 'admin';
@@ -480,6 +501,15 @@ export default function TooManagementDetailPage() {
     }
     if (plannedStartInput && plannedEndInput && plannedEndInput <= plannedStartInput) {
       errors.push("End date must be after start date.");
+    }
+
+    if (plannedStartInput && plannedEndInput && plannedEndInput > plannedStartInput) {
+      const isInSingleWeek = planningWindowOptions.some(
+        (opt) => opt.start <= plannedStartInput && plannedEndInput <= opt.end,
+      );
+      if (!isInSingleWeek) {
+        errors.push("Date range must be fully contained within a single week window (Tue–Tue).");
+      }
     }
 
     if (cadenceNumeric !== null) {
@@ -527,6 +557,31 @@ export default function TooManagementDetailPage() {
     }
     return [];
   }, [editingPlanningId, planningNumberOfVisitsNumeric, plannedStartInput, plannedEndInput, cadenceNumeric, planningCadenceUnit]);
+
+  const modalWeeklyExposure = useMemo(() => {
+    // Always produce exactly 6 buckets matching the dropdown week options
+    const buckets = planningWindowOptions.map((opt) => {
+      const weekKey = getWeekKey(opt.start) ?? opt.start;
+      return { weekKey, label: weekKey.split("-")[1] ?? opt.start, ks: 0 };
+    });
+    const bucketIndex = new Map(buckets.map((b, i) => [b.weekKey, i]));
+    for (const gpRow of gpPoolRows) {
+      if (gpRow.scheduledStatus !== "queued") continue;
+      if (!gpRow.plannedStartTime) continue;
+      const weekKey = getWeekKey(gpRow.plannedStartTime);
+      if (!weekKey) continue;
+      const idx = bucketIndex.get(weekKey);
+      if (idx === undefined) continue;
+      const ks =
+        ((gpRow.reviewedSingleExposureTimeSnapshot ?? 0) *
+          (gpRow.reviewedNumberOfVisitsSnapshot ?? 0)) /
+        1000;
+      buckets[idx]!.ks += ks;
+    }
+    return buckets;
+  }, [gpPoolRows, planningWindowOptions]);
+
+  const modalChartMaxKs = 80;
 
   const canSubmitPlanning =
     !planningSubmitting &&
@@ -679,6 +734,18 @@ export default function TooManagementDetailPage() {
   useEffect(() => {
     void loadSchedule();
   }, [loadSchedule]);
+
+  useEffect(() => {
+    if (!planningModalOpen) return;
+    const controller = new AbortController();
+    setGpPoolLoading(true);
+    void fetch("/api/tootogp-schedule", { cache: "no-store", signal: controller.signal })
+      .then((r) => (r.ok ? (r.json() as Promise<{ rows?: GpPoolRow[] }>) : Promise.reject()))
+      .then((data: { rows?: GpPoolRow[] }) => { setGpPoolRows(data.rows ?? []); })
+      .catch(() => { setGpPoolRows([]); })
+      .finally(() => { setGpPoolLoading(false); });
+    return () => { controller.abort(); };
+  }, [planningModalOpen]);
 
   async function commitSave() {
     setSaving(true);
@@ -1460,8 +1527,9 @@ export default function TooManagementDetailPage() {
             </div>
 
             <div className="max-h-[70vh] overflow-auto px-6 py-4">
-              {/* ── First Visit Range ── */}
-              <div className="mt-4">
+              {/* ── First Visit Range + Pool Load ── */}
+              <div className="mt-4 flex items-stretch gap-4">
+                <div className="min-w-0 flex-1">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                   First Visit Range
                 </p>
@@ -1549,6 +1617,67 @@ export default function TooManagementDetailPage() {
                   The window opens at 00:00 on the start date and closes at 00:00 on the end date
                   (end-exclusive). For example, May 5 – May 6 means May 5 00:00 to May 6 00:00 (UTC).
                 </p>
+                </div>
+
+                {/* Pool load chart */}
+                <div className="flex w-[19.5rem] shrink-0 flex-col rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-800/40">
+                  <div className="mb-2 shrink-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Pool Load / Week</p>
+                    <p className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">Scale: 0-80 ks (40/50 guide)</p>
+                  </div>
+                  {gpPoolLoading ? (
+                    <div className="flex flex-1 items-center justify-center text-xs text-slate-400 dark:text-slate-500">Loading…</div>
+                  ) : (
+                    <div className="flex min-h-0 flex-1 flex-col">
+                      <div className="relative h-36 rounded-md border border-slate-200/80 bg-white/70 px-2 pb-1 pt-2 dark:border-slate-700 dark:bg-slate-900/45">
+                        {[40, 50].map((guide) => (
+                          <div
+                            key={guide}
+                            className="pointer-events-none absolute inset-x-2 border-t border-dashed border-slate-300/85 dark:border-slate-600/80"
+                            style={{ bottom: `${(guide / modalChartMaxKs) * 100}%` }}
+                          >
+                            <span className="absolute -right-1 -top-2.5 translate-x-full text-[9px] font-medium text-slate-400 dark:text-slate-500">
+                              {guide}
+                            </span>
+                          </div>
+                        ))}
+                        <div className="grid h-full grid-cols-6 items-end gap-2">
+                          {modalWeeklyExposure.map(({ weekKey, ks }) => {
+                            const clampedKs = Math.min(ks, modalChartMaxKs);
+                            const barH = ks <= 0 ? 4 : Math.max(10, Math.round((clampedKs / modalChartMaxKs) * 118));
+                            const barToneClass =
+                              ks >= 50
+                                ? "bg-rose-700/70 dark:bg-rose-400/45"
+                                : ks >= 40
+                                  ? "bg-amber-700/68 dark:bg-amber-400/45"
+                                  : ks > 0
+                                    ? "bg-emerald-700/68 dark:bg-emerald-400/48"
+                                    : "bg-sky-700/55 dark:bg-sky-400/42";
+                            return (
+                              <div key={weekKey} className="flex h-full min-w-0 flex-col items-center justify-end gap-0.5">
+                                <span className="text-[10px] font-medium tabular-nums text-slate-600 dark:text-slate-300">
+                                  {ks.toFixed(1)}
+                                </span>
+                                <div
+                                  style={{ height: barH }}
+                                  className={`w-8 rounded-t ${barToneClass} shadow-[inset_0_-1px_0_rgba(255,255,255,0.25)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,0.08)]`}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="mt-1 grid grid-cols-6 gap-2">
+                        {modalWeeklyExposure.map(({ weekKey, label }) => (
+                          <span key={weekKey} className="text-center font-mono text-[9px] text-slate-400 dark:text-slate-500">
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* ── Add mode: read-only params + prominent visit count ── */}
@@ -1556,7 +1685,7 @@ export default function TooManagementDetailPage() {
                 <>
                   <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                      Reviewed Parameters (read-only)
+                      Reviewed Parameters
                     </p>
                     <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
                       <div>
