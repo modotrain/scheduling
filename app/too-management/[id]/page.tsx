@@ -1386,7 +1386,7 @@ export default function TooManagementDetailPage() {
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-800/50">
                     <th className="w-10 px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">#</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Generated ID</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">DB ID</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Week</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Window</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Cadence</th>
@@ -1456,7 +1456,7 @@ export default function TooManagementDetailPage() {
                                 href={`/obs-wp/${firstMatchedId}?matched=${matchedIdsForQuery.join(",")}`}
                                 className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                               >
-                                Obs
+                                Work Plan
                               </Link>
                             ) : null}
                           </div>
@@ -1799,10 +1799,10 @@ export default function TooManagementDetailPage() {
                 {/* Row 1: Full Week quick-fill */}
                 <div className="mb-3">
                   <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">
-                    Quick-fill by full week
+                    Quick-fill weekly planning window
                     {matchedWindowPreset ? (
                       <span className="ml-2 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
-                        matched
+                        single week
                       </span>
                     ) : null}
                   </label>
