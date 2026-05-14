@@ -21,6 +21,7 @@ type GpPlanningListRow = {
   status: string;
   scheduledStatus: "scheduled" | "queued";
   matchedObsWpId: number | null;
+  weekId: string | null; // derived client-side from plannedStartTime
 };
 
 type SortConfig = { col: keyof GpPlanningListRow | null; dir: "asc" | "desc" };
@@ -33,6 +34,7 @@ const TABLE_COLS: (keyof GpPlanningListRow)[] = [
   "generatedEpDbObjectId",
   "reviewedSingleExposureTimeSnapshot",
   "reviewedNumberOfVisitsSnapshot",
+  "weekId",
   "plannedStartTime",
   "plannedEndTime",
   "scheduledStatus",
@@ -46,12 +48,13 @@ const COL_LABELS: Partial<Record<keyof GpPlanningListRow, string>> = {
   generatedEpDbObjectId: "Planned DB ID",
   reviewedSingleExposureTimeSnapshot: "Exp.",
   reviewedNumberOfVisitsSnapshot: "Visits",
+  weekId: "Week",
   plannedStartTime: "Start",
   plannedEndTime: "End",
   scheduledStatus: "Status",
 };
 
-const GP_PLANNING_CACHE_KEY = "tootogp-schedule-cache-v1";
+const GP_PLANNING_CACHE_KEY = "tootogp-schedule-cache-v2";
 const GP_PLANNING_CACHE_TTL_MS = 10 * 1000;
 const GP_PLANNING_VIEW_KEY = "tootogp-schedule-view-v1";
 
@@ -70,6 +73,13 @@ function getWeekKey(dateStr: string | null): string | null {
   const weekStart = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
   const weekNo = Math.round((d.getTime() - weekStart.getTime()) / (7 * 86_400_000)) + 1;
   return `${d.getUTCFullYear()}-W${String(Math.max(1, weekNo)).padStart(2, "0")}`;
+}
+
+function addWeekId(r: Omit<GpPlanningListRow, "weekId">): GpPlanningListRow {
+  return {
+    ...r,
+    weekId: r.plannedStartTime ? (getWeekKey(r.plannedStartTime)?.split("-")[1] ?? null) : null,
+  };
 }
 
 function StatusIndicator({ status }: { status: GpPlanningListRow["scheduledStatus"] }) {
@@ -102,19 +112,19 @@ export default function TooToGpSchedulePage() {
       if (rawCache) {
         const parsed = JSON.parse(rawCache) as GpPlanningCachePayload;
         if (Date.now() - parsed.ts < GP_PLANNING_CACHE_TTL_MS) {
-          setRows(parsed.rows ?? []);
+          setRows((parsed.rows ?? []).map(addWeekId));
           setLoading(false);
           return;
         }
       }
 
       const response = await fetch("/api/tootogp-schedule", { cache: "no-store" });
-      const data = (await response.json()) as { rows?: GpPlanningListRow[]; error?: string };
+      const data = (await response.json()) as { rows?: Omit<GpPlanningListRow, "weekId">[]; error?: string };
       if (!response.ok) {
         throw new Error(data.error ?? "Failed to load GP planning list");
       }
 
-      const nextRows = data.rows ?? [];
+      const nextRows = (data.rows ?? []).map(addWeekId);
       setRows(nextRows);
       sessionStorage.setItem(GP_PLANNING_CACHE_KEY, JSON.stringify({ ts: Date.now(), rows: nextRows }));
     } catch (error) {
@@ -264,7 +274,7 @@ export default function TooToGpSchedulePage() {
                     </span>
                     <div
                       style={{ height: barH }}
-                      className="w-10 rounded-t bg-sky-500/70 dark:bg-sky-400/50"
+                      className="w-10 rounded-t bg-sky-400/40 dark:bg-sky-400/25"
                     />
                     <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">{label}</span>
                   </div>
@@ -381,7 +391,15 @@ export default function TooToGpSchedulePage() {
                     <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-slate-400 dark:text-slate-500">{index + 1}</td>
                     {TABLE_COLS.map((col) => (
                       <td key={col} className="whitespace-nowrap px-3 py-2">
-                        {col === "scheduledStatus" ? (
+                        {col === "weekId" ? (
+                          row.weekId ? (
+                            <span className="rounded bg-sky-50 px-1.5 py-0.5 font-mono text-xs text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+                              {row.weekId}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )
+                        ) : col === "scheduledStatus" ? (
                           <StatusIndicator status={row.scheduledStatus} />
                         ) : row[col] === null || row[col] === undefined || row[col] === "" ? (
                           <span className="text-slate-400">—</span>
