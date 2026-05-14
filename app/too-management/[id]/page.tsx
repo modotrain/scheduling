@@ -1177,14 +1177,14 @@ export default function TooManagementDetailPage() {
         <section className="mt-6 rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
             <h2 className="mr-auto text-base font-semibold">GP Planning</h2>
-            <div className="flex items-center rounded-full border border-slate-200 bg-slate-100/80 p-0.5 text-xs dark:border-slate-700 dark:bg-slate-800">
+            <div className="flex items-center rounded-full border border-slate-300 bg-slate-200/70 p-1 text-xs shadow-inner dark:border-slate-600 dark:bg-slate-700/60">
               <button
                 type="button"
                 onClick={() => setGpPlanView('card')}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium transition-all ${
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-semibold transition-all duration-150 ${
                   gpPlanView === 'card'
-                    ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-slate-100'
-                    : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
                 title="Card view"
               >
@@ -1199,10 +1199,10 @@ export default function TooManagementDetailPage() {
               <button
                 type="button"
                 onClick={() => setGpPlanView('list')}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium transition-all ${
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-semibold transition-all duration-150 ${
                   gpPlanView === 'list'
-                    ? 'bg-white text-slate-800 shadow-sm dark:bg-slate-700 dark:text-slate-100'
-                    : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                 }`}
                 title="List view"
               >
@@ -1299,15 +1299,15 @@ export default function TooManagementDetailPage() {
                   <div key={group.generatedEpDbObjectId} className={`rounded-xl p-4 shadow-sm ${cardClass}`}>
                     {/* Header */}
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                      <div className="flex-1 min-w-0">
                         <div className={`mb-2 inline-flex rounded-lg px-2.5 py-1 text-xs font-medium ${statusClass}`}>
                           {statusLabel}
                         </div>
-                        <h3 className="break-all text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        <h3 className="line-clamp-2 break-all text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {group.generatedEpDbObjectId}
                         </h3>
                       </div>
-                      <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                         {isNextWeek ? (
                           <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
                             Next Week
