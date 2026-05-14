@@ -1173,7 +1173,7 @@ export default function TooManagementDetailPage() {
                   <rect x="1" y="9" width="6" height="6" rx="1.2" />
                   <rect x="9" y="9" width="6" height="6" rx="1.2" />
                 </svg>
-                Cards
+                Week Plan
               </button>
               <button
                 type="button"
@@ -1190,7 +1190,7 @@ export default function TooManagementDetailPage() {
                   <rect x="1" y="6.9" width="14" height="2.2" rx="1.1" />
                   <rect x="1" y="11.8" width="14" height="2.2" rx="1.1" />
                 </svg>
-                List
+                Visit List
               </button>
             </div>
             {/* Right */}
@@ -1212,7 +1212,7 @@ export default function TooManagementDetailPage() {
                 title={!canManageGP && row?.concluded ? "GP operations are frozen: this record is concluded" : !canManageGP ? "Permission denied: operator or admin only" : ""}
                 className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
               >
-                Add GP Visit
+                Add GP Plan
               </button>
               </div>
             </div>
@@ -2197,7 +2197,7 @@ export default function TooManagementDetailPage() {
                 disabled={!canSubmitPlanning}
                 className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
               >
-                {planningSubmitting ? "Saving..." : editingPlanningId ? "Save GP Visit" : "Add GP Visit"}
+                {planningSubmitting ? "Saving..." : editingPlanningId ? "Save GP Plan" : "Add GP Plan"}
               </button>
             </div>
           </div>
