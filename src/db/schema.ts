@@ -555,7 +555,6 @@ export const tooToGpSchedule = pgTable("tootogp_schedule", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 }, (table) => [
-	unique("tootogp_schedule_generated_ep_db_object_id_unique").on(table.generatedEpDbObjectId),
 	unique("tootogp_schedule_parent_sequence_unique").on(table.approvedTooId, table.sequenceNo),
 ]);
 

@@ -87,47 +87,74 @@ function buildGeneratedId(epDbObjectId: string, seqNo: number): string {
   return `${base}_${seqNo}_ToO`;
 }
 
-function getISOWeekId(dateString: string): string {
-  const d = new Date(`${dateString}T00:00:00Z`);
-  const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-  const jan4Day = jan4.getUTCDay() || 7;
-  const weekStart = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
-  const weekNo = Math.max(1, Math.round((d.getTime() - weekStart.getTime()) / (7 * 86_400_000)) + 1);
-  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+function cadenceToDays(cadenceValue: number | null, cadenceUnit: "day" | "orbit" | null): number {
+  if (!cadenceValue || cadenceValue <= 0) return 0;
+  if (cadenceUnit === "orbit") return (cadenceValue * 97 * 60) / 86_400;
+  return cadenceValue;
 }
 
-function getTuesdayWindowForMs(tsMs: number): { start: string; end: string } {
-  const d = new Date(tsMs);
+function addFractionalDays(dateString: string, days: number): string {
+  const ms = new Date(`${dateString}T00:00:00Z`).getTime() + days * 86_400_000;
+  const d = new Date(ms);
+  return [d.getUTCFullYear(), String(d.getUTCMonth() + 1).padStart(2, "0"), String(d.getUTCDate()).padStart(2, "0")].join("-");
+}
+
+function dateDiffDays(a: string, b: string): number {
+  return (new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86_400_000;
+}
+
+function getTuesdayWindowForDateString(dateString: string): { start: string; end: string } {
+  const d = new Date(`${dateString}T00:00:00Z`);
   const dayOfWeek = d.getUTCDay();
   const daysSinceTuesday = (dayOfWeek + 7 - 2) % 7;
-  const tuesday = new Date(tsMs - daysSinceTuesday * 86_400_000);
-  const yyyy = tuesday.getUTCFullYear();
-  const mm = String(tuesday.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(tuesday.getUTCDate()).padStart(2, "0");
-  const start = `${yyyy}-${mm}-${dd}`;
+  const tuesday = new Date(d.getTime() - daysSinceTuesday * 86_400_000);
+  const start = [tuesday.getUTCFullYear(), String(tuesday.getUTCMonth() + 1).padStart(2, "0"), String(tuesday.getUTCDate()).padStart(2, "0")].join("-");
   return { start, end: addDays(start, 7) };
 }
 
-function computeVisitWindow(
+function computeAllVisitWindows(
   firstStart: string,
   firstEnd: string,
-  visitIndex: number,
-  cadenceValue: number | null,
-  cadenceUnit: "day" | "orbit" | null,
-): { start: string; end: string } {
-  if (visitIndex === 0) return { start: firstStart, end: firstEnd };
-  const endStr = firstEnd || addDays(firstStart, 7);
-  const midMs =
-    (new Date(`${firstStart}T00:00:00Z`).getTime() +
-      new Date(`${endStr}T00:00:00Z`).getTime()) /
-    2;
-  const cadenceMs =
-    cadenceValue && cadenceUnit
-      ? cadenceUnit === "orbit"
-        ? cadenceValue * 97 * 60 * 1000
-        : cadenceValue * 86_400_000
-      : 0;
-  return getTuesdayWindowForMs(midMs + visitIndex * cadenceMs);
+  numberOfVisits: number,
+  cadenceDays: number,
+): Array<{ start: string; end: string; weekStart: string }> {
+  const rangeDays = dateDiffDays(firstStart, firstEnd);
+
+  // Step 1: how many visits fit in the first week
+  let numberInFirstWeek: number;
+  if (cadenceDays <= 0 || cadenceDays >= 7) {
+    numberInFirstWeek = 1;
+  } else {
+    numberInFirstWeek = Math.max(1, Math.ceil((rangeDays - 1) / cadenceDays));
+  }
+
+  // Step 2: narrow the actual first range
+  const actualStart = firstStart;
+  let actualEnd = addFractionalDays(firstEnd, -(cadenceDays * (numberInFirstWeek - 1)));
+  if (dateDiffDays(actualStart, actualEnd) < 1) {
+    actualEnd = addDays(actualStart, 1);
+  }
+
+  // Step 3: anchor point at 1/3 of actual range
+  const actualDurationDays = dateDiffDays(actualStart, actualEnd);
+  const time1 = addFractionalDays(actualStart, Math.floor(actualDurationDays / 3));
+
+  // Step 4: per-visit window = intersection(week window, cadence-shifted actual range)
+  return Array.from({ length: numberOfVisits }, (_, n) => {
+    const timeN = addFractionalDays(time1, cadenceDays * n);
+    const weekWindow = getTuesdayWindowForDateString(timeN);
+    const shiftedStart = addFractionalDays(actualStart, cadenceDays * n);
+    const shiftedEnd = addFractionalDays(actualEnd, cadenceDays * n);
+
+    const intStart = shiftedStart > weekWindow.start ? shiftedStart : weekWindow.start;
+    const intEnd = shiftedEnd < weekWindow.end ? shiftedEnd : weekWindow.end;
+    const weekStart = weekWindow.start;
+    if (intStart < intEnd) {
+      return { start: intStart, end: intEnd, weekStart };
+    }
+    // Fallback: use shifted actual range if intersection is empty
+    return { start: shiftedStart, end: shiftedEnd, weekStart };
+  });
 }
 
 export async function GET(_request: Request, { params }: Params) {
@@ -269,42 +296,39 @@ export async function POST(request: Request, { params }: Params) {
         ? latestPlan.sequenceNo + (latestPlan.reviewedNumberOfVisitsSnapshot ?? 1)
         : 1;
 
-      // Compute per-visit windows and group consecutive visits that fall in the
-      // same ISO week into a single row (one row per week group).
-      type WeekGroup = { window: { start: string; end: string }; count: number };
-      const weekGroups: WeekGroup[] = [];
-      for (let i = 0; i < numberOfGpVisits; i += 1) {
-        const w = computeVisitWindow(firstStart, firstEnd, i, cadenceValue, cadenceUnit);
-        const weekId = getISOWeekId(w.start);
-        const last = weekGroups.at(-1);
-        if (last && getISOWeekId(last.window.start) === weekId) {
-          last.count += 1;
-        } else {
-          weekGroups.push({ window: w, count: 1 });
+      // Compute one window per individual visit (intersection of week window
+      // and cadence-shifted actual first range).
+      const cadenceDays = cadenceToDays(cadenceValue, cadenceUnit);
+      const visitWindows = computeAllVisitWindows(firstStart, firstEnd, numberOfGpVisits, cadenceDays);
+
+      // Assign sequenceNos, then determine the first seqNo per week so all
+      // visits in the same week share the same generatedEpDbObjectId.
+      let seq = sequenceNoBase;
+      const visitsWithSeq = visitWindows.map((w) => ({ ...w, seqNo: seq++ }));
+      const weekFirstSeq = new Map<string, number>();
+      for (const v of visitsWithSeq) {
+        if (!weekFirstSeq.has(v.weekStart)) {
+          weekFirstSeq.set(v.weekStart, v.seqNo);
         }
       }
 
-      // Build one DB row per week group; seqNo = cumulative starting observation
-      // position across all week groups for this parent.
-      let cumulativeSeq = sequenceNoBase;
-      const insertValues = weekGroups.map((group) => {
-        const seqNo = cumulativeSeq;
-        cumulativeSeq += group.count;
-        const weekTotalExp = singleExp !== null ? singleExp * group.count : null;
+      // One DB row per visit; visits in the same week share generatedEpDbObjectId.
+      const insertValues = visitsWithSeq.map((v) => {
+        const weekSeqNo = weekFirstSeq.get(v.weekStart)!;
         return {
           approvedTooId: numId,
           operatorName: operator?.name ?? session?.username ?? null,
           parentEpDbObjectId,
-          generatedEpDbObjectId: buildGeneratedId(parentEpDbObjectId, seqNo),
-          sequenceNo: seqNo,
-          earliestStartTime: group.window.start,
-          plannedStartTime: group.window.start,
-          plannedEndTime: group.window.end,
+          generatedEpDbObjectId: buildGeneratedId(parentEpDbObjectId, weekSeqNo),
+          sequenceNo: v.seqNo,
+          earliestStartTime: v.start,
+          plannedStartTime: v.start,
+          plannedEndTime: v.end,
           cadenceValue,
           cadenceUnit,
-          reviewedNumberOfVisitsSnapshot: group.count,
+          reviewedNumberOfVisitsSnapshot: 1,
           reviewedSingleExposureTimeSnapshot: singleExp,
-          reviewedTotalExposureTimeSnapshot: weekTotalExp,
+          reviewedTotalExposureTimeSnapshot: singleExp,
           notes: body.notes?.trim() ? body.notes.trim() : null,
         };
       });

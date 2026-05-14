@@ -349,38 +349,87 @@ function getISOWeekLabel(dateStr: string | null): string {
   return `W${String(Math.max(1, weekNo)).padStart(2, "0")}`;
 }
 
-function getTuesdayWindowForMs(tsMs: number): { start: string; end: string } {
-  const d = new Date(tsMs);
+function getTuesdayWindowForDateStringFE(dateString: string): { start: string; end: string } {
+  const d = new Date(`${dateString}T00:00:00Z`);
   const dayOfWeek = d.getUTCDay();
   const daysSinceTuesday = (dayOfWeek + 7 - 2) % 7;
-  const tuesday = new Date(tsMs - daysSinceTuesday * 86_400_000);
-  const yyyy = tuesday.getUTCFullYear();
-  const mm = String(tuesday.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(tuesday.getUTCDate()).padStart(2, "0");
-  const start = `${yyyy}-${mm}-${dd}`;
+  const tuesday = new Date(d.getTime() - daysSinceTuesday * 86_400_000);
+  const start = [tuesday.getUTCFullYear(), String(tuesday.getUTCMonth() + 1).padStart(2, "0"), String(tuesday.getUTCDate()).padStart(2, "0")].join("-");
   return { start, end: addDaysToDateString(start, 7) };
 }
 
-function computeVisitWindowFrontend(
+function addFractionalDaysFE(dateString: string, days: number): string {
+  const ms = new Date(`${dateString}T00:00:00Z`).getTime() + days * 86_400_000;
+  const d = new Date(ms);
+  return [d.getUTCFullYear(), String(d.getUTCMonth() + 1).padStart(2, "0"), String(d.getUTCDate()).padStart(2, "0")].join("-");
+}
+
+function computeAllVisitWindowsFE(
   firstStart: string,
   firstEnd: string,
-  visitIndex: number,
+  numberOfVisits: number,
   cadenceVal: number,
   cadenceUnit: string,
-): { start: string; end: string } {
-  if (visitIndex === 0) return { start: firstStart, end: firstEnd };
-  const endStr = firstEnd || addDaysToDateString(firstStart, 7);
-  const midMs =
-    (new Date(`${firstStart}T00:00:00Z`).getTime() +
-      new Date(`${endStr}T00:00:00Z`).getTime()) /
-    2;
-  const cadenceMs =
-    cadenceVal > 0 && cadenceUnit
+): Array<{ start: string; end: string; weekStart: string }> {
+  const cadenceDays =
+    cadenceVal > 0
       ? cadenceUnit === "orbit"
-        ? cadenceVal * 97 * 60 * 1000
-        : cadenceVal * 86_400_000
+        ? (cadenceVal * 97 * 60) / 86_400
+        : cadenceVal
       : 0;
-  return getTuesdayWindowForMs(midMs + visitIndex * cadenceMs);
+  const safeEnd = firstEnd || addDaysToDateString(firstStart, 7);
+  const rangeDays =
+    (new Date(`${safeEnd}T00:00:00Z`).getTime() - new Date(`${firstStart}T00:00:00Z`).getTime()) /
+    86_400_000;
+
+  // Step 1: how many visits fit in the first week
+  let numberInFirstWeek: number;
+  if (cadenceDays <= 0 || cadenceDays >= 7) {
+    numberInFirstWeek = 1;
+  } else {
+    numberInFirstWeek = Math.max(1, Math.ceil((rangeDays - 1) / cadenceDays));
+  }
+
+  // Step 2: narrow the actual first range
+  const actualStart = firstStart;
+  let actualEnd = addFractionalDaysFE(safeEnd, -(cadenceDays * (numberInFirstWeek - 1)));
+  if (
+    new Date(`${actualEnd}T00:00:00Z`).getTime() - new Date(`${actualStart}T00:00:00Z`).getTime() <
+    86_400_000
+  ) {
+    actualEnd = addDaysToDateString(actualStart, 1);
+  }
+
+  // Step 3: anchor point at 1/3 of actual range
+  const actualDurationDays =
+    (new Date(`${actualEnd}T00:00:00Z`).getTime() -
+      new Date(`${actualStart}T00:00:00Z`).getTime()) /
+    86_400_000;
+  const time1 = addFractionalDaysFE(actualStart, Math.floor(actualDurationDays / 3));
+
+  // Step 4: per-visit window = intersection(week window, cadence-shifted actual range)
+  return Array.from({ length: numberOfVisits }, (_, n) => {
+    const timeN = addFractionalDaysFE(time1, cadenceDays * n);
+    const weekWindow = getTuesdayWindowForDateStringFE(timeN);
+    const shiftedStart = addFractionalDaysFE(actualStart, cadenceDays * n);
+    const shiftedEnd = addFractionalDaysFE(actualEnd, cadenceDays * n);
+
+    const intStart = shiftedStart > weekWindow.start ? shiftedStart : weekWindow.start;
+    const intEnd = shiftedEnd < weekWindow.end ? shiftedEnd : weekWindow.end;
+    const weekStart = weekWindow.start;
+    if (intStart < intEnd) {
+      return { start: intStart, end: intEnd, weekStart };
+    }
+    return { start: shiftedStart, end: shiftedEnd, weekStart };
+  });
+}
+
+// Returns the ISO week label (Wxx) anchored to the Tuesday-start week that
+// contains the date, avoiding Monday-boundary mismatches.
+function getWeekLabelFromDate(dateString: string | null): string {
+  if (!dateString) return "—";
+  const tuesdayStart = getTuesdayWindowForDateStringFE(dateString).start;
+  return getISOWeekLabel(tuesdayStart);
 }
 
 function addDaysToDateString(dateString: string, days: number): string {
@@ -468,11 +517,58 @@ export default function TooManagementDetailPage() {
   const canEdit = userRole === 'operator' || userRole === 'admin';
   const canRestore = userRole === 'admin';
   const canManageGP = (userRole === 'operator' || userRole === 'admin') && !row?.concluded;
-  const plannedWeekCount = planningRows.length;
+  const plannedWeekCount = new Set(
+    planningRows.map((r) => r.generatedEpDbObjectId),
+  ).size;
   const plannedVisitCount = planningRows.reduce(
     (sum, item) => sum + (item.reviewedNumberOfVisitsSnapshot ?? 1),
     0,
   );
+
+  // Group individual-visit rows by generatedEpDbObjectId to display one card per week.
+  const weekPlanningGroups = useMemo(() => {
+    const map = new Map<string, PlanningRow[]>();
+    for (const r of planningRows) {
+      const key = r.generatedEpDbObjectId;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return Array.from(map.values()).map((rows) => {
+      const first = rows[0]!;
+      const earliestStart = rows
+        .map((r) => r.plannedStartTime)
+        .filter(Boolean)
+        .sort()[0] ?? null;
+      const latestEnd = rows
+        .map((r) => r.plannedEndTime)
+        .filter(Boolean)
+        .sort()
+        .at(-1) ?? null;
+      const scheduledCount = rows.filter((r) => r.scheduledStatus === "scheduled").length;
+      // Merge all matched obs IDs across the week group
+      const allMatchedIds = rows.flatMap((r) => {
+        const ids = normalizeObsWpIds(r.matchedObsWpIds);
+        return ids.length > 0 ? ids : r.matchedObsWpId ? [r.matchedObsWpId] : [];
+      });
+      const uniqueMatchedIds = [...new Set(allMatchedIds)];
+      return {
+        generatedEpDbObjectId: first.generatedEpDbObjectId,
+        weekLabel: getWeekLabelFromDate(earliestStart),
+        earliestStart,
+        latestEnd,
+        visitCount: rows.length,
+        scheduledCount,
+        cadenceValue: first.cadenceValue,
+        cadenceUnit: first.cadenceUnit,
+        singleExp: first.reviewedSingleExposureTimeSnapshot,
+        notes: first.notes,
+        operatorName: first.operatorName,
+        rows,
+        firstMatchedId: uniqueMatchedIds[0] ?? null,
+        matchedIdsForQuery: uniqueMatchedIds,
+      };
+    });
+  }, [planningRows]);
 
   const matchedWindowPreset = useMemo(() => {
     return planningWindowOptions.find(
@@ -544,16 +640,20 @@ export default function TooManagementDetailPage() {
       planningNumberOfVisitsNumeric > 0 &&
       plannedStartInput
     ) {
-      return Array.from({ length: Math.min(planningNumberOfVisitsNumeric, 52) }, (_, i) => {
-        const w = computeVisitWindowFrontend(
-          plannedStartInput,
-          plannedEndInput,
-          i,
-          cadenceNumeric ?? 0,
-          planningCadenceUnit,
-        );
-        return { visitNo: i + 1, start: w.start, end: w.end, weekId: getISOWeekLabel(w.start) };
-      });
+      const count = Math.min(planningNumberOfVisitsNumeric, 52);
+      const windows = computeAllVisitWindowsFE(
+        plannedStartInput,
+        plannedEndInput,
+        count,
+        cadenceNumeric ?? 0,
+        planningCadenceUnit,
+      );
+      return windows.map((w, i) => ({
+        visitNo: i + 1,
+        start: w.start,
+        end: w.end,
+        weekId: getISOWeekLabel(w.weekStart),
+      }));
     }
     return [];
   }, [editingPlanningId, planningNumberOfVisitsNumeric, plannedStartInput, plannedEndInput, cadenceNumeric, planningCadenceUnit]);
@@ -985,6 +1085,36 @@ export default function TooManagementDetailPage() {
     }
   }
 
+  async function handleDeleteWeekGroup(groupRows: PlanningRow[]) {
+    if (groupRows.length === 0) return;
+    const label = groupRows[0]?.generatedEpDbObjectId ?? "";
+    const msg =
+      groupRows.length === 1
+        ? `Delete planning record ${label}?`
+        : `Delete all ${groupRows.length} visits for ${label}?`;
+    if (!window.confirm(msg)) return;
+
+    setPlanningSubmitting(true);
+    try {
+      const ids = groupRows.map((r) => r.id);
+      if (ids.some((rid) => rid === editingPlanningId)) resetPlanningForm();
+      for (const rid of ids) {
+        const res = await fetch(`/api/tootogp-schedule/${rid}`, { method: "DELETE" });
+        if (!res.ok) {
+          const d = (await res.json()) as { error?: string };
+          throw new Error(d.error ?? "Failed to delete GP planning record");
+        }
+      }
+      await loadPlanning();
+      sessionStorage.removeItem(TOO_MANAGEMENT_CACHE_KEY);
+      setStatus(`${ids.length} GP planning record(s) deleted`, "success");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to delete GP planning records", "error");
+    } finally {
+      setPlanningSubmitting(false);
+    }
+  }
+
   function handleCancel() {
     if (row) {
       setInput(rowToInput(row));
@@ -1093,110 +1223,131 @@ export default function TooManagementDetailPage() {
             </div>
           ) : (
             <div className="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-700 md:grid-cols-2 xl:grid-cols-3">
-              {planningRows.map((item) => {
-                const scheduled = item.scheduledStatus === "scheduled";
-                const normalizedIds = normalizeObsWpIds(item.matchedObsWpIds);
-                const matchedCount =
-                  item.matchedObsWpCount ?? (item.matchedObsWpId ? 1 : normalizedIds.length);
-                const firstMatchedId = item.matchedObsWpId ?? normalizedIds[0] ?? null;
-                const matchedIdsForQuery =
-                  normalizedIds.length > 0
-                    ? normalizedIds
-                    : item.matchedObsWpId
-                      ? [item.matchedObsWpId]
-                      : [];
+              {weekPlanningGroups.map((group) => {
+                const allScheduled = group.scheduledCount === group.visitCount;
+                const anyScheduled = group.scheduledCount > 0;
+                const isQueued = !allScheduled;
+                const statusLabel = allScheduled ? "Scheduled" : anyScheduled ? "Partial" : "Queued";
+                const statusClass = allScheduled
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : anyScheduled
+                    ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "bg-primary/10 text-primary";
+                const cardClass = allScheduled
+                  ? "border border-emerald-200 bg-emerald-50/60 dark:border-emerald-800/70 dark:bg-emerald-950/20"
+                  : "border border-dashed border-sky-200 bg-sky-50/50 dark:border-sky-800/60 dark:bg-sky-950/15";
+
                 return (
-                  <div
-                    key={item.id}
-                    className={`rounded-xl p-4 shadow-sm ${scheduled ? "border border-emerald-200 bg-emerald-50/60 dark:border-emerald-800/70 dark:bg-emerald-950/20" : "border border-dashed border-sky-200 bg-sky-50/50 dark:border-sky-800/60 dark:bg-sky-950/15"}`}
-                  >
+                  <div key={group.generatedEpDbObjectId} className={`rounded-xl p-4 shadow-sm ${cardClass}`}>
+                    {/* Header */}
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className={`mb-2 inline-flex rounded-lg px-2.5 py-1 text-xs font-medium ${scheduled ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-primary/10 text-primary"}`}>
-                          {scheduled ? "Scheduled" : "Queued"}
+                      <div className="min-w-0">
+                        <div className={`mb-2 inline-flex rounded-lg px-2.5 py-1 text-xs font-medium ${statusClass}`}>
+                          {statusLabel}
                         </div>
-                        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {item.generatedEpDbObjectId}
+                        <h3 className="break-all text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {group.generatedEpDbObjectId}
                         </h3>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex shrink-0 flex-wrap items-center gap-2">
                         <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          Visits: {item.reviewedNumberOfVisitsSnapshot ?? 1}
+                          {group.visitCount} visit{group.visitCount === 1 ? "" : "s"}
                         </span>
                         <span className="rounded-md bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
-                          {getISOWeekLabel(item.plannedStartTime)}
+                          {group.weekLabel}
                         </span>
                       </div>
                     </div>
 
+                    {/* Summary window + cadence */}
                     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                       <div>
                         <dt className="text-xs text-slate-500 dark:text-slate-400">Window Start</dt>
-                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{formatDateDisplay(item.plannedStartTime)}</dd>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{formatDateDisplay(group.earliestStart)}</dd>
                       </div>
                       <div>
                         <dt className="text-xs text-slate-500 dark:text-slate-400">Window End</dt>
-                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{formatDateDisplay(item.plannedEndTime)}</dd>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{formatDateDisplay(group.latestEnd)}</dd>
                       </div>
                       <div>
                         <dt className="text-xs text-slate-500 dark:text-slate-400">Cadence</dt>
                         <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">
-                          {item.cadenceValue ? `${item.cadenceValue} ${item.cadenceUnit || ""}`.trim() : "—"}
+                          {group.cadenceValue ? `${group.cadenceValue} ${group.cadenceUnit || ""}`.trim() : "—"}
                         </dd>
                       </div>
                       <div>
                         <dt className="text-xs text-slate-500 dark:text-slate-400">Single Exp. Time</dt>
-                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedSingleExposureTimeSnapshot ?? "—"}</dd>
+                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{group.singleExp ?? "—"}</dd>
                       </div>
-                      {/* <div>
-                        <dt className="text-xs text-slate-500 dark:text-slate-400">Total Exp. Time</dt>
-                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedTotalExposureTimeSnapshot ?? "—"}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-slate-500 dark:text-slate-400">GP Visits</dt>
-                        <dd className="mt-0.5 break-words text-slate-900 dark:text-slate-100">{item.reviewedNumberOfVisitsSnapshot ?? "—"}</dd>
-                      </div> */}
                     </dl>
 
-                    {item.notes ? (
+                    {/* Individual visit windows (when > 1 visit in the week) */}
+                    {group.visitCount > 1 ? (
+                      <div className="mt-3 space-y-1">
+                        {group.rows.map((r, idx) => (
+                          <div key={r.id} className="flex items-center gap-2 rounded-md bg-white/60 px-2.5 py-1.5 text-xs dark:bg-slate-800/60">
+                            <span className="w-5 shrink-0 text-slate-400">#{idx + 1}</span>
+                            <span className="flex-1 font-mono text-slate-700 dark:text-slate-200">
+                              {formatDateDisplay(r.plannedStartTime)} → {formatDateDisplay(r.plannedEndTime)}
+                            </span>
+                            {r.scheduledStatus !== "scheduled" && canManageGP ? (
+                              <button
+                                type="button"
+                                onClick={() => handleEditPlanning(r)}
+                                disabled={planningSubmitting}
+                                className="shrink-0 rounded px-1.5 py-0.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700"
+                              >
+                                Edit
+                              </button>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {/* Notes */}
+                    {group.notes ? (
                       <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
-                        {item.notes}
+                        {group.notes}
                       </p>
                     ) : null}
 
+                    {/* Footer */}
                     <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
                       <p className="min-w-0 text-xs text-slate-500 dark:text-slate-400">
                         <span className="font-medium">Operator:</span>{" "}
-                        <span className="break-words text-slate-700 dark:text-slate-200">{item.operatorName || "—"}</span>
+                        <span className="break-words text-slate-700 dark:text-slate-200">{group.operatorName || "—"}</span>
                       </p>
-
                       <div className="flex flex-wrap justify-end gap-2">
-                        {!scheduled && canManageGP ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleEditPlanning(item)}
-                              disabled={planningSubmitting}
-                              className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void handleDeletePlanning(item)}
-                              disabled={planningSubmitting}
-                              className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
-                            >
-                              Delete
-                            </button>
-                          </>
-                        ) : null}
-                        {firstMatchedId ? (
-                          <Link
-                            href={`/obs-wp/${firstMatchedId}?matched=${matchedIdsForQuery.join(",")}`}
+                        {/* Single-visit card: show Edit button */}
+                        {group.visitCount === 1 && !allScheduled && canManageGP ? (
+                          <button
+                            type="button"
+                            onClick={() => handleEditPlanning(group.rows[0]!)}
+                            disabled={planningSubmitting}
                             className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                           >
-                            Observation Details ({matchedCount})
+                            Edit
+                          </button>
+                        ) : null}
+                        {/* Delete week group (all non-scheduled rows) */}
+                        {isQueued && canManageGP ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteWeekGroup(group.rows.filter((r) => r.scheduledStatus !== "scheduled"))}
+                            disabled={planningSubmitting}
+                            className="rounded-md border border-rose-200 px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-50 dark:border-rose-900/60 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                          >
+                            {group.visitCount === 1 ? "Delete" : `Delete (${group.rows.filter((r) => r.scheduledStatus !== "scheduled").length})`}
+                          </button>
+                        ) : null}
+                        {/* Observation Details */}
+                        {group.firstMatchedId ? (
+                          <Link
+                            href={`/obs-wp/${group.firstMatchedId}?matched=${group.matchedIdsForQuery.join(",")}`}
+                            className="rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            Observation Details ({group.matchedIdsForQuery.length})
                           </Link>
                         ) : null}
                       </div>
