@@ -1298,21 +1298,23 @@ export default function TooManagementDetailPage() {
                 return (
                   <div key={group.generatedEpDbObjectId} className={`rounded-xl p-4 shadow-sm ${cardClass}`}>
                     {/* Header */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className={`mb-2 inline-flex rounded-lg px-2.5 py-1 text-xs font-medium ${statusClass}`}>
-                          {statusLabel}
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                          <div className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-medium ${statusClass}`}>
+                            {statusLabel}
+                          </div>
+                          {isNextWeek ? (
+                            <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                              Next Week
+                            </span>
+                          ) : null}
                         </div>
-                        <h3 className="line-clamp-2 break-all text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        <h3 className="break-all text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {group.generatedEpDbObjectId}
                         </h3>
                       </div>
-                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                        {isNextWeek ? (
-                          <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
-                            Next Week
-                          </span>
-                        ) : null}
+                      <div className="flex shrink-0 items-center gap-2">
                         <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                           {group.visitCount} visit{group.visitCount === 1 ? "" : "s"}
                         </span>
