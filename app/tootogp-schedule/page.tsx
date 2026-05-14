@@ -235,8 +235,6 @@ export default function TooToGpSchedulePage() {
       .map(([weekKey, ks]) => ({ weekKey, label: weekKey.split("-")[1]!, ks }));
   }, [rows, todayStr]);
 
-  const maxKs = weeklyExposure.reduce((acc, w) => Math.max(acc, w.ks), 0);
-
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] p-4 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:p-8">
       <div className="mx-auto max-w-screen-2xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
@@ -244,7 +242,7 @@ export default function TooToGpSchedulePage() {
           <div>
             <h1 className="text-2xl font-semibold">GP Planning Pool</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Manual ToO-to-GP planning rows used to track pre-arranged visits before they are scheduled.
+              Track all ToO-to-GP planning visits.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -261,25 +259,63 @@ export default function TooToGpSchedulePage() {
 
         {weeklyExposure.length > 0 && (
           <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-              Queued exposure by week
-            </p>
-            <div className="flex items-end gap-2 overflow-x-auto pb-1">
-              {weeklyExposure.map(({ weekKey, label, ks }) => {
-                const barH = maxKs > 0 ? Math.max(4, Math.round((ks / maxKs) * 64)) : 4;
+            <div className="mb-2 flex items-baseline gap-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                Queued exposure by week
+              </p>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">Scale: 0–80 ks (40/50 guide)</span>
+            </div>
+            <div className="overflow-x-auto">
+              {(() => {
+                const CHART_MAX = 80;
+                const CHART_H = 96;
                 return (
-                  <div key={weekKey} className="flex shrink-0 flex-col items-center gap-1">
-                    <span className="text-[11px] font-medium tabular-nums text-slate-600 dark:text-slate-300">
-                      {ks.toFixed(1)}<span className="ml-0.5 text-[9px] text-slate-400">ks</span>
-                    </span>
-                    <div
-                      style={{ height: barH }}
-                      className="w-10 rounded-t bg-sky-400/40 dark:bg-sky-400/25"
-                    />
-                    <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500">{label}</span>
+                  <div>
+                    <div className="relative rounded-md border border-slate-200/80 bg-white/70 px-2 pb-1 pt-2 dark:border-slate-700 dark:bg-slate-900/45" style={{ height: CHART_H + 24 }}>
+                      {[40, 50].map((guide) => (
+                        <div
+                          key={guide}
+                          className="pointer-events-none absolute inset-x-2 border-t border-dashed border-slate-300/85 dark:border-slate-600/80"
+                          style={{ bottom: `${(guide / CHART_MAX) * CHART_H + 8}px` }}
+                        >
+                          <span className="absolute left-1 -top-2.5 text-[9px] font-medium text-slate-400 dark:text-slate-500">
+                            {guide}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="absolute inset-x-2 bottom-1 top-2 flex items-end gap-2">
+                        {weeklyExposure.map(({ weekKey, ks }) => {
+                          const clamped = Math.min(Math.max(0, ks), CHART_MAX);
+                          const barH = clamped <= 0 ? 4 : Math.max(4, Math.round((clamped / CHART_MAX) * CHART_H));
+                          const toneClass =
+                            ks >= 50 ? "bg-rose-700/70 dark:bg-rose-400/45"
+                            : ks >= 40 ? "bg-amber-700/68 dark:bg-amber-400/45"
+                            : ks > 0 ? "bg-emerald-700/68 dark:bg-emerald-400/48"
+                            : "bg-slate-200/60 dark:bg-slate-700/40";
+                          return (
+                            <div key={weekKey} className="flex shrink-0 flex-col items-center justify-end gap-0.5" style={{ width: "2.5rem" }}>
+                              <span className="text-[10px] font-medium tabular-nums text-slate-600 dark:text-slate-300">
+                                {ks > 0 ? ks.toFixed(1) : "0"}
+                              </span>
+                              <div
+                                style={{ height: barH }}
+                                className={`w-10 rounded-t shadow-[inset_0_-1px_0_rgba(255,255,255,0.25)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,0.08)] ${toneClass}`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="mt-1 flex gap-2">
+                      {weeklyExposure.map(({ weekKey, label }) => (
+                        <span key={weekKey} className="shrink-0 text-center font-mono text-[9px] text-slate-400 dark:text-slate-500" style={{ width: "2.5rem" }}>
+                          {label}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 );
-              })}
+              })()}
             </div>
           </div>
         )}

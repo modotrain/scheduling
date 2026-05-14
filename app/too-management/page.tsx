@@ -154,6 +154,7 @@ export default function TooManagementPage() {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
   const [userRole, setUserRole] = useState<'viewer' | 'operator' | 'admin'>('viewer');
   const [concludingId, setConcludingId] = useState<number | null>(null);
+  const [confirmConcludeId, setConfirmConcludeId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"all" | "need_action" | "in_progress">("need_action");
 
   useEffect(() => {
@@ -519,18 +520,38 @@ export default function TooManagementPage() {
                           Details
                         </Link>
                         {userRole === 'admin' && (
-                          <button
-                            type="button"
-                            disabled={concludingId === row.id}
-                            onClick={() => void handleToggleConcluded(row)}
-                            className={`rounded-md border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
-                              row.concluded
-                                ? "border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-                                : "border-amber-400 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-400 dark:hover:bg-amber-900/20"
-                            }`}
-                          >
-                            {row.concluded ? "Unconclude" : "Conclude"}
-                          </button>
+                          confirmConcludeId === row.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                disabled={concludingId === row.id}
+                                onClick={() => { setConfirmConcludeId(null); void handleToggleConcluded(row); }}
+                                className="rounded-md bg-amber-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmConcludeId(null)}
+                                className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={concludingId === row.id}
+                              onClick={() => row.concluded ? void handleToggleConcluded(row) : setConfirmConcludeId(row.id)}
+                              className={`rounded-md border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                                row.concluded
+                                  ? "border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                                  : "border-slate-300 text-slate-500 hover:border-amber-400 hover:text-amber-700 dark:border-slate-600 dark:text-slate-400 dark:hover:border-amber-600 dark:hover:text-amber-400"
+                              }`}
+                            >
+                              {row.concluded ? "Unconclude" : "Conclude"}
+                            </button>
+                          )
                         )}
                       </div>
                     </td>
