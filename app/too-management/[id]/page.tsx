@@ -118,6 +118,7 @@ type PlanningRow = {
   reviewedTotalExposureTimeSnapshot: number | null;
   status: string;
   notes: string | null;
+  updatedAt: string | null;
   scheduledStatus: "scheduled" | "queued";
   matchedObsWpId: number | null;
   matchedObsWpCount?: number;
@@ -421,6 +422,22 @@ function formatDateDisplay(dateString: string | null): string {
   }
 
   const date = new Date(`${dateString}T00:00:00Z`);
+  return date.toLocaleDateString("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "UTC",
+  });
+}
+
+function formatUpdatedDate(dateString: string | null): string {
+  if (!dateString) {
+    return "—";
+  }
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return dateString;
+  }
   return date.toLocaleDateString("en-CA", {
     year: "numeric",
     month: "2-digit",
@@ -1391,6 +1408,8 @@ export default function TooManagementDetailPage() {
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Window</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Cadence</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Exp (s)</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Operator</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Updated</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Status</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">Actions</th>
                   </tr>
@@ -1423,6 +1442,12 @@ export default function TooManagementDetailPage() {
                         </td>
                         <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
                           {item.reviewedSingleExposureTimeSnapshot ?? "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+                          {item.operatorName || "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+                          {formatUpdatedDate(item.updatedAt)}
                         </td>
                         <td className="px-3 py-2">
                           <span className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${scheduled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"}`}>

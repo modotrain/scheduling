@@ -7,6 +7,7 @@ import { getWeekKey } from "@/app/lib/week-utils";
 type GpPlanningListRow = {
   id: number;
   approvedTooId: number;
+  operatorName: string | null;
   pi: string | null;
   sourceName: string | null;
   parentEpDbObjectId: string;
@@ -20,6 +21,7 @@ type GpPlanningListRow = {
   reviewedTotalExposureTimeSnapshot: number | null;
   reviewedNumberOfVisitsSnapshot: number | null;
   status: string;
+  updatedAt: string | null;
   scheduledStatus: "scheduled" | "queued";
   matchedObsWpId: number | null;
   weekId: string | null; // derived client-side from plannedStartTime
@@ -38,6 +40,8 @@ const TABLE_COLS: (keyof GpPlanningListRow)[] = [
   "weekId",
   "plannedStartTime",
   "plannedEndTime",
+  "operatorName",
+  "updatedAt",
   "scheduledStatus",
 ];
 
@@ -52,6 +56,8 @@ const COL_LABELS: Partial<Record<keyof GpPlanningListRow, string>> = {
   weekId: "Week",
   plannedStartTime: "Start",
   plannedEndTime: "End",
+  operatorName: "Operator",
+  updatedAt: "Updated",
   scheduledStatus: "Status",
 };
 
@@ -69,6 +75,18 @@ function addWeekId(r: Omit<GpPlanningListRow, "weekId">): GpPlanningListRow {
     ...r,
     weekId: r.plannedStartTime ? (getWeekKey(r.plannedStartTime)?.split("-")[1] ?? null) : null,
   };
+}
+
+function formatUpdatedDate(value: string | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "UTC",
+  });
 }
 
 function StatusIndicator({ status }: { status: GpPlanningListRow["scheduledStatus"] }) {
@@ -439,6 +457,8 @@ export default function TooToGpSchedulePage() {
                           <StatusIndicator status={row.scheduledStatus} />
                         ) : row[col] === null || row[col] === undefined || row[col] === "" ? (
                           <span className="text-slate-400">—</span>
+                        ) : col === "updatedAt" ? (
+                          formatUpdatedDate(row.updatedAt)
                         ) : (
                           String(row[col])
                         )}

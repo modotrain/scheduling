@@ -10,6 +10,7 @@ export async function GET() {
       .select({
         id: tooToGpSchedule.id,
         approvedTooId: tooToGpSchedule.approvedTooId,
+        operatorName: tooToGpSchedule.operatorName,
         pi: approvedToO.pi,
         sourceName: approvedToO.sourceName,
         parentEpDbObjectId: tooToGpSchedule.parentEpDbObjectId,
@@ -23,6 +24,7 @@ export async function GET() {
         reviewedTotalExposureTimeSnapshot: tooToGpSchedule.reviewedTotalExposureTimeSnapshot,
         reviewedNumberOfVisitsSnapshot: tooToGpSchedule.reviewedNumberOfVisitsSnapshot,
         status: tooToGpSchedule.status,
+        updatedAt: tooToGpSchedule.updatedAt,
         scheduledStatus: sql<"scheduled" | "queued">`
           CASE
             WHEN EXISTS (

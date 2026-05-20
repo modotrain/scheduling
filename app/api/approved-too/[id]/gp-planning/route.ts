@@ -185,6 +185,7 @@ export async function GET(_request: Request, { params }: Params) {
         reviewedTotalExposureTimeSnapshot: tooToGpSchedule.reviewedTotalExposureTimeSnapshot,
         status: tooToGpSchedule.status,
         notes: tooToGpSchedule.notes,
+        updatedAt: tooToGpSchedule.updatedAt,
         scheduledStatus: sql<"scheduled" | "queued">`
           CASE
             WHEN EXISTS (
