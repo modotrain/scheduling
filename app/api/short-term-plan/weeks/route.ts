@@ -64,13 +64,13 @@ export async function GET() {
       }
     }
 
-    // Compute current week label using the same Tuesday-epoch logic as week-utils.ts
+    // Compute the NEXT week's label (start from next Tuesday, not current week)
     const currentWeekLabel = getWeekLabel(new Date());
     const currentWeekNum = parseWeekNum(currentWeekLabel);
 
-    // Keep only weeks from the current week onwards, sorted numerically, up to 8
+    // Keep only weeks strictly after the current week (i.e., from next Tuesday onwards)
     const upcoming = [...weekMap.values()]
-      .filter((w) => parseWeekNum(w.weekId) >= currentWeekNum)
+      .filter((w) => parseWeekNum(w.weekId) > currentWeekNum)
       .sort((a, b) => parseWeekNum(a.weekId) - parseWeekNum(b.weekId))
       .slice(0, 8);
 

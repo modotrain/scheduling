@@ -38,6 +38,12 @@ function formatWeekRange(minStart: string | null, maxEnd: string | null): string
   return `${start} – ${end}`;
 }
 
+/** Normalize any week ID to "W42" display format (handles "42", "WK42", "W42"). */
+function formatWeekId(weekId: string): string {
+  const num = parseInt(weekId.replace(/\D/g, ""), 10);
+  return isNaN(num) ? weekId : `W${String(num).padStart(2, "0")}`;
+}
+
 export default function ShortTermPlanningPage() {
   const router = useRouter();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -164,7 +170,7 @@ export default function ShortTermPlanningPage() {
                   const st = STATUS_LABELS[s.status] ?? { label: s.status, color: "bg-slate-100 text-slate-600" };
                   return (
                     <tr key={s.id} className="transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                      <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">{s.weekId}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">{formatWeekId(s.weekId)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${st.color}`}>{st.label}</span>
                       </td>
@@ -217,7 +223,7 @@ export default function ShortTermPlanningPage() {
                 >
                   {weeks.map((w) => (
                     <option key={w.weekId} value={w.weekId}>
-                      {w.weekId}{w.minStart ? ` · ${formatWeekRange(w.minStart, w.maxEnd)}` : ""}
+                      {formatWeekId(w.weekId)}{w.minStart ? ` · ${formatWeekRange(w.minStart, w.maxEnd)}` : ""}
                     </option>
                   ))}
                   {weeks.length === 0 && <option value="">No upcoming weeks available</option>}

@@ -81,6 +81,12 @@ function formatWeekRange(minStart: string | null, maxEnd: string | null): string
   return `${minStart.slice(0, 10)} – ${(maxEnd ?? "?").slice(0, 10)}`;
 }
 
+/** Normalize any week ID to "W42" display format (handles "42", "WK42", "W42"). */
+function formatWeekId(weekId: string): string {
+  const num = parseInt(weekId.replace(/\D/g, ""), 10);
+  return isNaN(num) ? weekId : `W${String(num).padStart(2, "0")}`;
+}
+
 // ── Step indicator ────────────────────────────────────────────────────────────
 
 const STEPS = ["Select Week", "Cycle2 Sources", "GF Sources", "Overview"];
@@ -614,7 +620,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
           </Link>
           <div className="flex flex-wrap items-start gap-2">
             <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
-              Short-Term Planning · {session.weekId}
+              Short-Term Planning · {formatWeekId(session.weekId)}
             </h1>
             <span className={`mt-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
               isCompleted ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
@@ -645,7 +651,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
               <div className="flex flex-col gap-4 sm:flex-row sm:gap-8">
                 <div className="flex-1">
                   <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Selected Week</p>
-                  <p className="text-2xl font-bold text-primary">{session.weekId}</p>
+                  <p className="text-2xl font-bold text-primary">{formatWeekId(session.weekId)}</p>
                 </div>
                 <div className="flex-1">
                   <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Operator</p>
@@ -653,7 +659,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                 </div>
               </div>
               <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                This session will load sources from <strong>Cycle2 Long-Term</strong> and <strong>Cycle2-GF</strong> tables for week <strong>{session.weekId}</strong>. Click Next to proceed.
+                This session will load sources from <strong>Cycle2 Long-Term</strong> and <strong>Cycle2-GF</strong> tables for week <strong>{formatWeekId(session.weekId)}</strong>. Click Next to proceed.
               </p>
             </div>
           )}
@@ -663,7 +669,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
             <div>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-slate-900 dark:text-white">Step 2: Cycle2 Long-Term Sources</h2>
-                <span className="text-xs text-slate-500">Week: {session.weekId}</span>
+                <span className="text-xs text-slate-500">Week: {formatWeekId(session.weekId)}</span>
               </div>
               <SourceTable
                 rows={cycle2Rows}
@@ -680,7 +686,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
             <div>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-slate-900 dark:text-white">Step 3: Cycle2-GF Sources</h2>
-                <span className="text-xs text-slate-500">Week: {session.weekId}</span>
+                <span className="text-xs text-slate-500">Week: {formatWeekId(session.weekId)}</span>
               </div>
               <SourceTable
                 rows={gfRows}
@@ -935,7 +941,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                           <td className="px-3 py-2 font-mono text-[11px]">{s.sourceId ?? "—"}</td>
                           <td className="max-w-[130px] truncate px-3 py-2 font-medium">{s.sourceName ?? "—"}</td>
                           <td className="px-3 py-2 text-[10px]">{s.obsType ?? "—"}</td>
-                          <td className="px-3 py-2 font-mono">{session.weekId}</td>
+                          <td className="px-3 py-2 font-mono">{formatWeekId(session.weekId)}</td>
                           <td className="px-3 py-2">
                             {isCompleted ? (
                               <span className="font-mono text-green-600 dark:text-green-400">{assignments[s.rowId] ?? "—"}</span>
@@ -947,7 +953,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                               >
                                 <option value="">— skip —</option>
                                 {availableWeeks.filter((w) => w.weekId !== session.weekId).map((w) => (
-                                  <option key={w.weekId} value={w.weekId}>{w.weekId}{w.minStart ? ` (${w.minStart.slice(0, 10)})` : ""}</option>
+                                  <option key={w.weekId} value={w.weekId}>{formatWeekId(w.weekId)}{w.minStart ? ` (${w.minStart.slice(0, 10)})` : ""}</option>
                                 ))}
                               </select>
                             )}
