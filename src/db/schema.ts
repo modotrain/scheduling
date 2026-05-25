@@ -817,3 +817,27 @@ export const loginLog = pgTable("login_log", {
 	ipAddress: varchar("ip_address", { length: 64 }),
 	userAgent: varchar("user_agent", { length: 512 }),
 });
+
+export type WeekIdChange = {
+  rowId: number;
+  table: 'cycle2' | 'gf';
+  oldWeekId: string | null;
+  newWeekId: string;
+};
+
+export const shortTermPlanSessions = pgTable("short_term_plan_sessions", {
+  id: serial("id").primaryKey().notNull(),
+  weekId: varchar("week_id", { length: 32 }).notNull(),
+  // active | confirmed | uploaded | completed | cancelled
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  operatorName: varchar("operator_name", { length: 255 }),
+  excludedCycle2Ids: json("excluded_cycle2_ids").notNull().default([]).$type<number[]>(),
+  excludedGfIds: json("excluded_gf_ids").notNull().default([]).$type<number[]>(),
+  mergedCsvText: text("merged_csv_text"),
+  uploadedObsPlanText: text("uploaded_obs_plan_text"),
+  unscheduledEpDbIds: json("unscheduled_ep_db_ids").notNull().default([]).$type<string[]>(),
+  weekIdChanges: json("week_id_changes").notNull().default([]).$type<WeekIdChange[]>(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+

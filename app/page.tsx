@@ -100,6 +100,19 @@ export default async function HomePage() {
                       Browse cycle2 gap-filling sources, completion ratios, and open details for full source metadata.
                     </p>
                   </Link>
+
+                  <Link
+                    href="/short-term-planning"
+                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900 sm:col-span-2 xl:col-span-2"
+                  >
+                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                      Short-Term Scheduler
+                    </div>
+                    <h2 className="text-lg font-semibold">Cycle-2 Short-Term Planning</h2>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                      Step-by-step weekly source selection, merged CSV generation, scheduling result integration, and unscheduled source management.
+                    </p>
+                  </Link>
                 </div>
               </section>
 
