@@ -734,7 +734,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
-                      <th className="px-3 py-2">Source</th>
+                      <th className="px-3 py-2">Cycle</th>
                       <th className="px-3 py-2">Source ID</th>
                       <th className="px-3 py-2">Name</th>
                       <th className="px-3 py-2">PI</th>
@@ -920,7 +920,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-amber-200/60 bg-amber-50 text-left text-[11px] uppercase tracking-wider text-slate-500 dark:border-amber-800/30 dark:bg-amber-900/20 dark:text-slate-400">
-                        <th className="px-3 py-2">Source</th>
+                        <th className="px-3 py-2">Cycle</th>
                         <th className="px-3 py-2">Source ID</th>
                         <th className="px-3 py-2">Name</th>
                         <th className="px-3 py-2">Type</th>
