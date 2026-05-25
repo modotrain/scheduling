@@ -345,7 +345,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   // ── Load sources on step change ──────────────────────────────────────────
 
   useEffect(() => {
-    if (currentStep === 1 && session && cycle2Rows.length === 0) {
+    if ((currentStep === 1 || currentStep === 3) && session && cycle2Rows.length === 0) {
       setCycle2Loading(true);
       fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=cycle2`)
         .then((r) => r.json())
@@ -360,7 +360,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   }, [currentStep, session, cycle2Rows.length]);
 
   useEffect(() => {
-    if (currentStep === 2 && session && gfRows.length === 0) {
+    if ((currentStep === 2 || currentStep === 3) && session && gfRows.length === 0) {
       setGfLoading(true);
       fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=gf`)
         .then((r) => r.json())
