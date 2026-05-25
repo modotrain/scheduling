@@ -173,8 +173,8 @@ async function main() {
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
 
-  await db.delete(cycle2SkymapSchedule);
-  await db.delete(cycle2SkymapSources);
+  await db.delete(cycle2SkymapSchedule).where(sql`${cycle2SkymapSchedule.dataset} = 'cycle2'`);
+  await db.delete(cycle2SkymapSources).where(sql`${cycle2SkymapSources.dataset} = 'cycle2'`);
 
   await insertInBatches(sourceRows, async (batch) => {
     await db.insert(cycle2SkymapSources).values(batch);

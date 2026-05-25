@@ -775,6 +775,7 @@ export const gpCycle2SourceReports = pgTable('gp_cycle2_source_reports', {
 // Raw inputs for cycle2 sky map rendering
 export const cycle2SkymapSources = pgTable("cycle2_skymap_sources", {
 	id: serial("id").primaryKey().notNull(),
+	dataset: varchar("dataset", { length: 32 }).notNull().default("cycle2"),
 	sourceId: integer("source_id").notNull(),
 	sourceName: varchar("source_name", { length: 255 }),
 	proposalNo: varchar("proposal_no", { length: 255 }),
@@ -787,13 +788,14 @@ export const cycle2SkymapSources = pgTable("cycle2_skymap_sources", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 }, (table) => [
-	unique("cycle2_skymap_sources_source_id_unique").on(table.sourceId),
-	index("cycle2_skymap_sources_source_id_idx").on(table.sourceId),
+	unique("cycle2_skymap_sources_dataset_source_id_unique").on(table.dataset, table.sourceId),
+	index("cycle2_skymap_sources_dataset_source_id_idx").on(table.dataset, table.sourceId),
 	index("cycle2_skymap_sources_priority_idx").on(table.sourcePriority),
 ]);
 
 export const cycle2SkymapSchedule = pgTable("cycle2_skymap_schedule", {
 	id: serial("id").primaryKey().notNull(),
+	dataset: varchar("dataset", { length: 32 }).notNull().default("cycle2"),
 	sourceId: integer("source_id").notNull(),
 	visitIndex: integer("visit_index"),
 	nVisits: integer("n_visits"),
@@ -804,7 +806,7 @@ export const cycle2SkymapSchedule = pgTable("cycle2_skymap_schedule", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 }, (table) => [
-	index("cycle2_skymap_schedule_source_id_idx").on(table.sourceId),
+	index("cycle2_skymap_schedule_dataset_source_id_idx").on(table.dataset, table.sourceId),
 	index("cycle2_skymap_schedule_week_index_idx").on(table.weekIndex),
 ]);
 export const loginLog = pgTable("login_log", {

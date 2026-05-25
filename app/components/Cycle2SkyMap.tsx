@@ -5,10 +5,11 @@ import { geoMollweide } from "d3-geo-projection";
 import { InputNumber } from "antd";
 import { Slider } from "antd";
 import type { InputNumberProps } from "antd";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Cycle2GanttChart from "./Cycle2GanttChart";
 
 type SkyPoint = {
+  dataset: "cycle2" | "gf";
   sourceId: number;
   sourceName: string | null;
   proposalNo: string | null;
@@ -64,6 +65,11 @@ const PRIORITY_COLORS: Record<string, string> = {
   B: "#1f77b4",
   C: "#2ca02c",
 };
+const GF_POINT_COLOR = "#fef08a";
+
+function getPointKey(point: Pick<SkyPoint, "dataset" | "sourceId">): string {
+  return `${point.dataset}:${point.sourceId}`;
+}
 
 function toMollweideLon(ra: number): number {
   return ((ra + 180) % 360) - 180;
@@ -98,6 +104,11 @@ export default function Cycle2SkyMap() {
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [weekRangeStart, setWeekRangeStart] = useState(1);
   const [weekRangeEnd, setWeekRangeEnd] = useState(52);
+  const [popupPosition, setPopupPosition] = useState<{ left: number; top: number } | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   const width = 1300;
   const height = 740;
@@ -150,7 +161,9 @@ export default function Cycle2SkyMap() {
           const projected = projection([toMollweideLon(point.ra), point.dec]);
           if (!projected) return null;
           const [x, y] = projected;
-          const color = PRIORITY_COLORS[point.sourcePriority ?? ""] ?? "#111827";
+          const color = point.dataset === "gf"
+            ? GF_POINT_COLOR
+            : PRIORITY_COLORS[point.sourcePriority ?? ""] ?? "#111827";
           return { point, x, y, color };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null) ?? [],
@@ -251,6 +264,10 @@ export default function Cycle2SkyMap() {
 
   const activePopup = lockedHover ?? hover;
   const isPopupLocked = lockedHover !== null;
+  const cycle2TimelinePoints = useMemo(
+    () => data?.points.filter((point) => point.dataset === "cycle2") ?? [],
+    [data],
+  );
 
   const copyText = useCallback(async (text: string, token: string) => {
     try {
@@ -266,6 +283,55 @@ export default function Cycle2SkyMap() {
     const timeoutId = window.setTimeout(() => setCopiedToken(null), 1300);
     return () => window.clearTimeout(timeoutId);
   }, [copiedToken]);
+
+  useEffect(() => {
+    if (!activePopup) {
+      setPopupPosition(null);
+      return;
+    }
+
+    const updatePopupPosition = () => {
+      const container = containerRef.current;
+      const svg = svgRef.current;
+      const popup = popupRef.current;
+      if (!container || !svg || !popup) {
+        return;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      const svgRect = svg.getBoundingClientRect();
+      const popupRect = popup.getBoundingClientRect();
+      const scaleX = svgRect.width / width;
+      const scaleY = svgRect.height / height;
+      const pointLeft = svgRect.left - containerRect.left + activePopup.x * scaleX;
+      const pointTop = svgRect.top - containerRect.top + activePopup.y * scaleY;
+      const gap = 12;
+      const padding = 8;
+
+      let left = pointLeft + gap;
+      let top = pointTop + gap;
+
+      if (left + popupRect.width > containerRect.width - padding) {
+        left = pointLeft - popupRect.width - gap;
+      }
+      if (left < padding) {
+        left = padding;
+      }
+
+      if (top + popupRect.height > containerRect.height - padding) {
+        top = pointTop - popupRect.height - gap;
+      }
+      if (top < padding) {
+        top = Math.max(padding, containerRect.height - popupRect.height - padding);
+      }
+
+      setPopupPosition({ left, top });
+    };
+
+    updatePopupPosition();
+    window.addEventListener("resize", updatePopupPosition);
+    return () => window.removeEventListener("resize", updatePopupPosition);
+  }, [activePopup, height, width]);
 
   const clearPopupLock = useCallback(() => {
     setLockedHover(null);
@@ -326,6 +392,7 @@ export default function Cycle2SkyMap() {
 
   return (
     <div
+      ref={containerRef}
       className="relative rounded-lg ring-1 ring-slate-200 bg-white p-4 dark:ring-slate-700 dark:bg-slate-900"
       onClick={() => {
         if (isPopupLocked) {
@@ -418,6 +485,7 @@ export default function Cycle2SkyMap() {
       </div>
 
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
         className="h-auto w-full rounded-md bg-white dark:bg-slate-900"
         onMouseLeave={() => {
@@ -435,15 +503,15 @@ export default function Cycle2SkyMap() {
         <path d={graticulePath} fill="none" stroke="#94a3b8" strokeOpacity={0.45} strokeWidth={0.8} />
 
         {displayedPoints.map(({ point, x, y, color, radius, activeExposureKs }) => (
-          <g key={`${point.sourceId}-${point.ra}-${point.dec}`}>
+          <g key={`${getPointKey(point)}-${point.ra}-${point.dec}`}>
             <circle
               cx={x}
               cy={y}
               r={radius}
               fill={color}
-              fillOpacity={0.62}
-              stroke="#111827"
-              strokeWidth={0.45}
+              fillOpacity={point.dataset === "gf" ? 0.55 : 0.62}
+              stroke={point.dataset === "gf" ? "none" : "#111827"}
+              strokeWidth={point.dataset === "gf" ? 0 : 0.45}
               onPointerEnter={() => {
                 if (!isPopupLocked) {
                   setHover({ point, x, y });
@@ -451,7 +519,7 @@ export default function Cycle2SkyMap() {
               }}
               onPointerLeave={() => {
                 if (!isPopupLocked) {
-                  setHover((current) => (current?.point.sourceId === point.sourceId ? null : current));
+                  setHover((current) => (current && getPointKey(current.point) === getPointKey(point) ? null : current));
                 }
               }}
               onClick={(event) => {
@@ -496,15 +564,14 @@ export default function Cycle2SkyMap() {
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#d62728]" />Priority A</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#1f77b4]" />Priority B</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#2ca02c]" />Priority C</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#fef08a] border border-slate-300/60" />Cycle2-GF</span>
       </div>
 
       {activePopup ? (
         <div
+          ref={popupRef}
           className="absolute z-20 max-w-sm rounded-md border border-slate-200 bg-white/95 px-3 py-2 text-xs shadow-xl dark:border-slate-700 dark:bg-slate-900/95"
-          style={{
-            left: `${Math.min((activePopup.x / width) * 100 + 2, 74)}%`,
-            top: `${Math.min((activePopup.y / height) * 100 + 2, 78)}%`,
-          }}
+          style={popupPosition ? { left: popupPosition.left, top: popupPosition.top } : { left: 8, top: 8 }}
           onClick={(event) => event.stopPropagation()}
         >
           <div className="mb-1 flex items-start justify-between gap-2">
@@ -549,6 +616,9 @@ export default function Cycle2SkyMap() {
             </div>
           </div>
           <p className="mt-1 text-slate-700 dark:text-slate-200">
+            Dataset: {activePopup.point.dataset === "gf" ? "Cycle2-GF" : "Cycle2"}
+          </p>
+          <p className="text-slate-700 dark:text-slate-200">
             Source ID: {isPopupLocked ? (
               <span className="inline-flex items-center gap-1">
                 <button
@@ -650,7 +720,7 @@ export default function Cycle2SkyMap() {
       ) : null}
 
       <Cycle2GanttChart
-        points={data.points}
+        points={cycle2TimelinePoints}
         weekBounds={data.weekBounds}
         filterMode={filterMode}
         selectedWeek={selectedWeek}
