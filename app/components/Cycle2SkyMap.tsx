@@ -68,7 +68,6 @@ const PRIORITY_COLORS: Record<string, string> = {
   B: "#1f77b4",
   C: "#2ca02c",
 };
-const GF_POINT_COLOR = "#fef3c7";
 
 function getPointKey(point: Pick<SkyPoint, "dataset" | "sourceId">): string {
   return `${point.dataset}:${point.sourceId}`;
@@ -109,6 +108,7 @@ export default function Cycle2SkyMap() {
   const [weekRangeEnd, setWeekRangeEnd] = useState(52);
   const [popupPosition, setPopupPosition] = useState<{ left: number; top: number } | null>(null);
   const [showGF, setShowGF] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -153,6 +153,23 @@ export default function Cycle2SkyMap() {
     void loadData();
   }, []);
 
+  useEffect(() => {
+    // Check initial dark mode state
+    setIsDarkMode(document.documentElement.classList.contains('dark'));
+
+    // Listen for theme changes
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   const graticulePath = useMemo(() => {
     const graticule = geoGraticule().step([30, 30])();
     return pathBuilder(graticule) ?? "";
@@ -171,14 +188,14 @@ export default function Cycle2SkyMap() {
           } else if (point.pointType === "wxt-calibration") {
             color = "#f59e0b"; // Amber for WXT
           } else if (point.dataset === "gf") {
-            color = GF_POINT_COLOR;
+            color = isDarkMode ? "#d4af37" : "#fef3c7";
           } else {
             color = PRIORITY_COLORS[point.sourcePriority ?? ""] ?? "#111827";
           }
           return { point, x, y, color };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null) ?? [],
-    [data, projection],
+    [data, projection, isDarkMode],
   );
 
   const weekMin = useMemo(() => {
@@ -665,7 +682,7 @@ export default function Cycle2SkyMap() {
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#d62728]" />Priority A</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#1f77b4]" />Priority B</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#2ca02c]" />Priority C</span>
-        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#fef3c7]" />Cycle2-GF</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: isDarkMode ? "#d4af37" : "#fef3c7" }} />Cycle2-GF</span>
         <span className="inline-flex items-center gap-1">
           <svg className="inline-block h-2 w-2" viewBox="0 0 8 8">
             <rect x="1" y="1" width="6" height="6" fill="#8b5cf6" />
