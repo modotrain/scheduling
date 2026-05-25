@@ -560,7 +560,13 @@ export default function Cycle2SkyMap() {
 
         <path d={graticulePath} fill="none" stroke="#94a3b8" strokeOpacity={0.45} strokeWidth={0.8} />
 
-        {displayedPoints.map(({ point, x, y, color, radius, activeExposureKs }) => {
+        {[...displayedPoints]
+          .sort((a, b) => {
+            const aRank = a.point.dataset === "gf" ? 0 : 1;
+            const bRank = b.point.dataset === "gf" ? 0 : 1;
+            return aRank - bRank;
+          })
+          .map(({ point, x, y, color, radius, activeExposureKs }) => {
           const commonProps = {
             fill: color,
             fillOpacity: point.dataset === "gf" ? 0.45 : 0.62,
@@ -639,7 +645,7 @@ export default function Cycle2SkyMap() {
               ) : null}
             </g>
           );
-        })}
+          })}
 
         {raTickMarks.map(({ lon, x, y, raLabel }) => (
           <g key={`tick-${lon}`}>
