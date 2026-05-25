@@ -165,6 +165,16 @@ export async function GET() {
           .map(([weekIndex, weekExposureS]) => ({ weekIndex, exposureS: weekExposureS }))
           .sort((a, b) => a.weekIndex - b.weekIndex) as WeeklyExposure[];
 
+        // Determine point type: calibration or normal
+        let pointType: "normal" | "fxt-calibration" | "wxt-calibration" = "normal";
+        if (row.obsType === "GP-CAL") {
+          if (row.pi === "FXT") {
+            pointType = "fxt-calibration";
+          } else if (row.pi === "WXT") {
+            pointType = "wxt-calibration";
+          }
+        }
+
         return {
           dataset,
           sourceId: row.sourceId,
@@ -173,6 +183,7 @@ export async function GET() {
           pi: row.pi,
           obsType: row.obsType,
           sourcePriority: row.sourcePriority,
+          pointType,
           ra: row.ra as number,
           dec: row.dec as number,
           totalExposureTimeAll: exposureS,
@@ -226,12 +237,33 @@ export async function GET() {
       region.alpha = 0.45 - normalized * (0.45 - 0.15);
     }
 
-    const totalExposureS = points.reduce((sum, point) => sum + point.totalExposureTimeAll, 0);
+    // ── Identify calibration sources and compute statistics ──────────────
+    const calibrationSources = sources.filter(
+      (row) => row.obsType === "GP-CAL" && (row.pi === "FXT" || row.pi === "WXT")
+    );
+    const fxtCalibration = calibrationSources.filter((row) => row.pi === "FXT");
+    const wxtCalibration = calibrationSources.filter((row) => row.pi === "WXT");
+
+    const fxtCalibrationExposureS = fxtCalibration.reduce(
+      (sum, row) => sum + (row.totalExposureTimeAll ?? 0),
+      0
+    );
+    const wxtCalibrationExposureS = wxtCalibration.reduce(
+      (sum, row) => sum + (row.totalExposureTimeAll ?? 0),
+      0
+    );
+    const calibrationIds = new Set(calibrationSources.map((row) => `${row.dataset}:${row.sourceId}`));
+
+    // Count priorities (GF sources are treated as priority D)
+    const nonCalibrationPoints = points.filter((p) => !calibrationIds.has(`${p.dataset}:${p.sourceId}`));
     const priorities = {
-      A: points.filter((item) => item.sourcePriority === "A").length,
-      B: points.filter((item) => item.sourcePriority === "B").length,
-      C: points.filter((item) => item.sourcePriority === "C").length,
+      A: nonCalibrationPoints.filter((item) => item.sourcePriority === "A").length,
+      B: nonCalibrationPoints.filter((item) => item.sourcePriority === "B").length,
+      C: nonCalibrationPoints.filter((item) => item.sourcePriority === "C").length,
+      D: nonCalibrationPoints.filter((item) => item.dataset === "gf").length,
     };
+
+    const totalExposureS = points.reduce((sum, point) => sum + point.totalExposureTimeAll, 0);
 
     return NextResponse.json({
       points,
@@ -239,10 +271,20 @@ export async function GET() {
       weekBounds,
       projection: { type: "mollweide", raEdges: RA_EDGES, decEdges: DEC_EDGES },
       summary: {
-        totalSources: points.length,
+        totalSources: nonCalibrationPoints.length,
         totalExposureS,
         totalExposureMillionS: totalExposureS / 1_000_000,
         priorities,
+        fxtCalibration: {
+          count: fxtCalibration.length,
+          exposureS: fxtCalibrationExposureS,
+          exposureMillionS: fxtCalibrationExposureS / 1_000_000,
+        },
+        wxtCalibration: {
+          count: wxtCalibration.length,
+          exposureS: wxtCalibrationExposureS,
+          exposureMillionS: wxtCalibrationExposureS / 1_000_000,
+        },
       },
     });
   } catch (error) {

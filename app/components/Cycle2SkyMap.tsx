@@ -16,6 +16,7 @@ type SkyPoint = {
   pi: string | null;
   obsType: string | null;
   sourcePriority: string | null;
+  pointType: "normal" | "fxt-calibration" | "wxt-calibration";
   ra: number;
   dec: number;
   totalExposureTimeAll: number;
@@ -50,7 +51,9 @@ type SkyPayload = {
     totalSources: number;
     totalExposureS: number;
     totalExposureMillionS: number;
-    priorities: { A: number; B: number; C: number };
+    priorities: { A: number; B: number; C: number; D: number };
+    fxtCalibration: { count: number; exposureS: number; exposureMillionS: number };
+    wxtCalibration: { count: number; exposureS: number; exposureMillionS: number };
   };
 };
 
@@ -65,7 +68,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   B: "#1f77b4",
   C: "#2ca02c",
 };
-const GF_POINT_COLOR = "#fef08a";
+const GF_POINT_COLOR = "#fef3c7";
 
 function getPointKey(point: Pick<SkyPoint, "dataset" | "sourceId">): string {
   return `${point.dataset}:${point.sourceId}`;
@@ -105,6 +108,7 @@ export default function Cycle2SkyMap() {
   const [weekRangeStart, setWeekRangeStart] = useState(1);
   const [weekRangeEnd, setWeekRangeEnd] = useState(52);
   const [popupPosition, setPopupPosition] = useState<{ left: number; top: number } | null>(null);
+  const [showGF, setShowGF] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -161,9 +165,16 @@ export default function Cycle2SkyMap() {
           const projected = projection([toMollweideLon(point.ra), point.dec]);
           if (!projected) return null;
           const [x, y] = projected;
-          const color = point.dataset === "gf"
-            ? GF_POINT_COLOR
-            : PRIORITY_COLORS[point.sourcePriority ?? ""] ?? "#111827";
+          let color: string;
+          if (point.pointType === "fxt-calibration") {
+            color = "#8b5cf6"; // Purple for FXT
+          } else if (point.pointType === "wxt-calibration") {
+            color = "#f59e0b"; // Amber for WXT
+          } else if (point.dataset === "gf") {
+            color = GF_POINT_COLOR;
+          } else {
+            color = PRIORITY_COLORS[point.sourcePriority ?? ""] ?? "#111827";
+          }
           return { point, x, y, color };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null) ?? [],
@@ -207,6 +218,7 @@ export default function Cycle2SkyMap() {
 
   const displayedPoints = useMemo(() => {
     return pointMarks
+      .filter((item) => showGF || item.point.dataset !== "gf")
       .map((item) => {
         const activeExposureS = computeExposureSInActiveRange(item.point);
         const exposureClipped = Math.max(activeExposureS, 1);
@@ -228,15 +240,17 @@ export default function Cycle2SkyMap() {
         }
         return true;
       });
-  }, [pointMarks, filterMode, selectedWeek, computeExposureSInActiveRange]);
+  }, [pointMarks, filterMode, selectedWeek, computeExposureSInActiveRange, showGF]);
 
   const activeSummary = useMemo(() => {
-    const priorities = { A: 0, B: 0, C: 0 };
+    const priorities = { A: 0, B: 0, C: 0, D: 0 };
     let totalExposureS = 0;
 
     for (const item of displayedPoints) {
       totalExposureS += item.activeExposureS;
-      if (item.point.sourcePriority === "A") priorities.A += 1;
+      if (item.point.dataset === "gf") {
+        priorities.D += 1;
+      } else if (item.point.sourcePriority === "A") priorities.A += 1;
       else if (item.point.sourcePriority === "B") priorities.B += 1;
       else if (item.point.sourcePriority === "C") priorities.C += 1;
     }
@@ -245,6 +259,22 @@ export default function Cycle2SkyMap() {
       totalSources: displayedPoints.length,
       totalExposureMillionS: totalExposureS / 1_000_000,
       priorities,
+    };
+  }, [displayedPoints]);
+
+  const activeCalibrationStats = useMemo(() => {
+    const normalPoints = displayedPoints.filter((item) => item.point.pointType === "normal");
+    const fxtPoints = displayedPoints.filter((item) => item.point.pointType === "fxt-calibration");
+    const wxtPoints = displayedPoints.filter((item) => item.point.pointType === "wxt-calibration");
+
+    const fxtExposureS = fxtPoints.reduce((sum, item) => sum + item.activeExposureS, 0);
+    const wxtExposureS = wxtPoints.reduce((sum, item) => sum + item.activeExposureS, 0);
+
+    return {
+      fxtCount: fxtPoints.length,
+      fxtExposureMillionS: fxtExposureS / 1_000_000,
+      wxtCount: wxtPoints.length,
+      wxtExposureMillionS: wxtExposureS / 1_000_000,
     };
   }, [displayedPoints]);
 
@@ -400,20 +430,48 @@ export default function Cycle2SkyMap() {
         }
       }}
     >
-      <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-600 dark:text-slate-300">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <span>
-            Sources: <span className="font-mono font-semibold">{activeSummary.totalSources}</span>
-          </span>
-          <span>
-            Exposure: <span className="font-mono font-semibold">{activeSummary.totalExposureMillionS.toFixed(2)}M s</span>
-          </span>
-          <span>
-            Priority A/B/C: <span className="font-mono font-semibold">{activeSummary.priorities.A}/{activeSummary.priorities.B}/{activeSummary.priorities.C}</span>
-          </span>
+      <div className="mb-4 flex flex-wrap items-start gap-x-5 gap-y-2 text-sm text-slate-600 dark:text-slate-300">
+        <div className="flex flex-col gap-y-1.5">
+          <div className="flex items-center gap-x-5">
+            <span>
+              Sources: <span className="font-mono font-semibold">{activeSummary.totalSources}</span>
+            </span>
+            <span>
+              Exposure: <span className="font-mono font-semibold">{activeSummary.totalExposureMillionS.toFixed(2)}M s</span>
+            </span>
+            <span>
+              Priority A/B/C/D: <span className="font-mono font-semibold">{activeSummary.priorities.A}/{activeSummary.priorities.B}/{activeSummary.priorities.C}/{activeSummary.priorities.D}</span>
+            </span>
+          </div>
+          {data?.summary && (
+            <>
+              <div className="flex items-center gap-x-5">
+                <span>
+                  FXT-Cal: <span className="font-mono font-semibold">{activeCalibrationStats.fxtCount}</span> sources, <span className="font-mono font-semibold">{activeCalibrationStats.fxtExposureMillionS.toFixed(2)}M s</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-x-5">
+                <span>
+                  WXT-Cal: <span className="font-mono font-semibold">{activeCalibrationStats.wxtCount}</span> sources, <span className="font-mono font-semibold">{activeCalibrationStats.wxtExposureMillionS.toFixed(2)}M s</span>
+                </span>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="ml-auto flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-800/60">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showGF}
+              onChange={(e) => setShowGF(e.target.checked)}
+              className="w-3.5 h-3.5 cursor-pointer"
+            />
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-200">GF</span>
+          </label>
+
+          <div className="w-px bg-slate-300 dark:bg-slate-600" style={{ height: "1.25rem" }} />
+
           <label htmlFor="week-filter" className="text-xs font-medium text-slate-700 dark:text-slate-200">
             Week
           </label>
@@ -502,49 +560,86 @@ export default function Cycle2SkyMap() {
 
         <path d={graticulePath} fill="none" stroke="#94a3b8" strokeOpacity={0.45} strokeWidth={0.8} />
 
-        {displayedPoints.map(({ point, x, y, color, radius, activeExposureKs }) => (
-          <g key={`${getPointKey(point)}-${point.ra}-${point.dec}`}>
-            <circle
-              cx={x}
-              cy={y}
-              r={radius}
-              fill={color}
-              fillOpacity={point.dataset === "gf" ? 0.55 : 0.62}
-              stroke={point.dataset === "gf" ? "none" : "#111827"}
-              strokeWidth={point.dataset === "gf" ? 0 : 0.45}
-              onPointerEnter={() => {
-                if (!isPopupLocked) {
-                  setHover({ point, x, y });
-                }
-              }}
-              onPointerLeave={() => {
-                if (!isPopupLocked) {
-                  setHover((current) => (current && getPointKey(current.point) === getPointKey(point) ? null : current));
-                }
-              }}
-              onClick={(event) => {
-                event.stopPropagation();
-                const nextHover = { point, x, y };
-                setHover(nextHover);
-                setLockedHover(nextHover);
-              }}
-            />
-            {activeExposureKs > 0 ? (
-              <text
-                x={x}
-                y={y + 1.5}
-                fontSize={6}
-                textAnchor="middle"
-                fill="currentColor"
-                fillOpacity={0.72}
-                className="text-slate-800 dark:text-slate-200"
-                pointerEvents="none"
-              >
-                {Math.round(activeExposureKs)}
-              </text>
-            ) : null}
-          </g>
-        ))}
+        {displayedPoints.map(({ point, x, y, color, radius, activeExposureKs }) => {
+          const commonProps = {
+            fill: color,
+            fillOpacity: point.dataset === "gf" ? 0.45 : 0.62,
+            stroke: point.dataset === "gf" ? "none" : "#111827",
+            strokeWidth: point.dataset === "gf" ? 0 : 0.45,
+            onPointerEnter: () => {
+              if (!isPopupLocked) {
+                setHover({ point, x, y });
+              }
+            },
+            onPointerLeave: () => {
+              if (!isPopupLocked) {
+                setHover((current) => (current && getPointKey(current.point) === getPointKey(point) ? null : current));
+              }
+            },
+            onClick: (event: React.MouseEvent) => {
+              event.stopPropagation();
+              const nextHover = { point, x, y };
+              setHover(nextHover);
+              setLockedHover(nextHover);
+            },
+          };
+
+          let shape = null;
+          if (point.pointType === "fxt-calibration") {
+            // FXT: square
+            const size = radius * 1.6;
+            shape = (
+              <rect
+                x={x - size / 2}
+                y={y - size / 2}
+                width={size}
+                height={size}
+                {...commonProps}
+              />
+            );
+          } else if (point.pointType === "wxt-calibration") {
+            // WXT: triangle (pointing up)
+            const h = radius * 1.8;
+            const w = radius * 1.6;
+            const points = `${x},${y - h / 2} ${x + w / 2},${y + h / 2} ${x - w / 2},${y + h / 2}`;
+            shape = (
+              <polygon
+                points={points}
+                {...commonProps}
+              />
+            );
+          } else {
+            // Normal or GF: circle
+            shape = (
+              <circle
+                cx={x}
+                cy={y}
+                r={radius}
+                {...commonProps}
+              />
+            );
+          }
+
+          return (
+            <g key={`${getPointKey(point)}-${point.ra}-${point.dec}`}>
+              {shape}
+              {point.dataset !== "gf" && point.pointType === "normal" && activeExposureKs > 0 ? (
+                <text
+                  x={x}
+                  y={y + 1.5}
+                  fontSize={6}
+                  textAnchor="middle"
+                  fill="currentColor"
+                  fillOpacity={0.72}
+                  className="text-slate-800 dark:text-slate-200"
+                  pointerEvents="none"
+                >
+                  {Math.round(activeExposureKs)}
+                </text>
+              ) : null}
+            </g>
+          );
+        })}
 
         {raTickMarks.map(({ lon, x, y, raLabel }) => (
           <g key={`tick-${lon}`}>
@@ -564,7 +659,19 @@ export default function Cycle2SkyMap() {
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#d62728]" />Priority A</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#1f77b4]" />Priority B</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#2ca02c]" />Priority C</span>
-        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#fef08a] border border-slate-300/60" />Cycle2-GF</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#fef3c7]" />Cycle2-GF</span>
+        <span className="inline-flex items-center gap-1">
+          <svg className="inline-block h-2 w-2" viewBox="0 0 8 8">
+            <rect x="1" y="1" width="6" height="6" fill="#8b5cf6" />
+          </svg>
+          FXT-Cal
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <svg className="inline-block h-2 w-2" viewBox="0 0 8 8">
+            <polygon points="4,1 7,7 1,7" fill="#f59e0b" />
+          </svg>
+          WXT-Cal
+        </span>
       </div>
 
       {activePopup ? (
