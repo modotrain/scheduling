@@ -13,6 +13,7 @@ type UserPayload = {
   password?: string;
   vip?: boolean;
   role?: string;
+  allowShortTermPlanning?: boolean;
 };
 
 type UserValidationResult =
@@ -73,6 +74,7 @@ function mapUser(user: {
   email: string;
   vip: boolean;
   role: string;
+  allowShortTermPlanning: boolean;
 }) {
   return {
     id: user.id,
@@ -82,6 +84,7 @@ function mapUser(user: {
     email: user.email,
     vip: user.vip,
     role: user.role,
+    allowShortTermPlanning: user.allowShortTermPlanning,
   };
 }
 
@@ -96,6 +99,7 @@ export async function GET() {
         email: usersTable.email,
         vip: usersTable.vip,
         role: usersTable.role,
+        allowShortTermPlanning: usersTable.allowShortTermPlanning,
       })
       .from(usersTable)
       .orderBy(desc(usersTable.id));
@@ -127,6 +131,7 @@ export async function POST(request: Request) {
         passwordHash,
         vip: validation.data.role === 'admin',
         role: validation.data.role,
+        allowShortTermPlanning: body.allowShortTermPlanning ?? false,
       })
       .returning({
         id: usersTable.id,
@@ -136,6 +141,7 @@ export async function POST(request: Request) {
         email: usersTable.email,
         vip: usersTable.vip,
         role: usersTable.role,
+        allowShortTermPlanning: usersTable.allowShortTermPlanning,
       });
 
     return NextResponse.json({ user: mapUser(createdUser) }, { status: 201 });

@@ -399,7 +399,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     if (uploadResult) return;
     if (!session.unscheduledEpDbIds.length && !session.uploadedObsPlanText) return;
 
-    // Reconstruct unscheduled list from cycle2+gf rows
+    // Reconstruct unscheduled list from cycle2 rows only (GF not tracked)
     const loadUnscheduled = async () => {
       const [c2Res, gfRes] = await Promise.all([
         fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=cycle2`),
@@ -411,18 +411,14 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
       const unscheduled: UnscheduledSource[] = [
         ...c2Data.rows.filter((r) => !r.isExcluded && r.epDbObjectId && unscheduledSet.has(r.epDbObjectId))
           .map((r) => ({ rowId: r.id, table: "cycle2" as const, sourceId: r.sourceId, epDbObjectId: r.epDbObjectId, sourceName: r.sourceName, obsType: r.obsType })),
-        ...gfData.rows.filter((r) => !r.isExcluded && r.epDbObjectId && unscheduledSet.has(r.epDbObjectId))
-          .map((r) => ({ rowId: r.id, table: "gf" as const, sourceId: r.sourceId, epDbObjectId: r.epDbObjectId, sourceName: r.sourceName, obsType: r.obsType })),
+        // GF is intentionally excluded from unscheduled tracking
       ];
       if (cycle2Rows.length === 0) { setCycle2Rows(c2Data.rows ?? []); }
       if (gfRows.length === 0) { setGfRows(gfData.rows ?? []); }
-      const mergedIncluded = [
-        ...(c2Data.rows ?? []).filter((r) => !r.isExcluded),
-        ...(gfData.rows ?? []).filter((r) => !r.isExcluded),
-      ];
+      const cycle2Included = (c2Data.rows ?? []).filter((r) => !r.isExcluded);
       setUploadResult({
-        scheduledCount: mergedIncluded.length - unscheduled.length,
-        mergedCount: mergedIncluded.length,
+        scheduledCount: cycle2Included.length - unscheduled.length,
+        mergedCount: cycle2Included.length,
         unscheduledCount: unscheduled.length,
         unscheduledSources: unscheduled,
       });
@@ -596,11 +592,17 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   const cycle2Included = cycle2Rows.filter((r) => !excludedCycle2.has(r.id));
   const gfIncluded = gfRows.filter((r) => !excludedGf.has(r.id));
   const mergedAll = [...cycle2Included, ...gfIncluded];
-  const mergedExpS = mergedAll.reduce((sum, r) => {
-    const v = parseFloat(r.totalExposureTimeAll ?? r.totalExposureTime ?? "0");
-    const unit = r.exposureTimeUnit?.toLowerCase() ?? "";
-    return sum + (unit === "ks" ? v * 1000 : unit === "hr" ? v * 3600 : v);
-  }, 0);
+
+  function calcExpS(rows: SourceRow[]) {
+    return rows.reduce((sum, r) => {
+      const v = parseFloat(r.totalExposureTimeAll ?? r.totalExposureTime ?? "0");
+      const unit = r.exposureTimeUnit?.toLowerCase() ?? "";
+      return sum + (unit === "ks" ? v * 1000 : unit === "hr" ? v * 3600 : v);
+    }, 0);
+  }
+  const cycle2ExpS = calcExpS(cycle2Included);
+  const gfExpS = calcExpS(gfIncluded);
+  const mergedExpS = cycle2ExpS + gfExpS;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-8 dark:from-slate-950 dark:to-slate-900 md:px-8">
@@ -696,12 +698,13 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
               <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">Step 4: Overview & Confirm</h2>
 
               {/* Stats summary */}
-              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {[
                   { label: "Total Sources", value: mergedAll.length },
-                  { label: "Cycle2", value: cycle2Included.length },
-                  { label: "GF", value: gfIncluded.length },
-                  { label: "Total Exposure", value: fmtKs(mergedExpS) },
+                  { label: "Cycle2 Sources", value: cycle2Included.length },
+                  { label: "GF Sources", value: gfIncluded.length },
+                  { label: "Cycle2 Exposure", value: fmtKs(cycle2ExpS) },
+                  { label: "GF Exposure", value: fmtKs(gfExpS) },
                 ].map((stat) => (
                   <div key={stat.label} className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
                     <p className="text-xs text-slate-500 dark:text-slate-400">{stat.label}</p>

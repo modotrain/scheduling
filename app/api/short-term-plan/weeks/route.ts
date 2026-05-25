@@ -4,6 +4,26 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/db/client";
 import { longTermObservationListCycle2, longTermObservationListCycle2GF } from "@/src/db/schema";
 
+// Mirror of week-utils.ts — keeps API route self-contained (no client-only import)
+const CYCLE2_EPOCH = "2025-08-12"; // Must stay in sync with app/lib/week-utils.ts
+
+function getTuesdayWeekStart(date: Date): Date {
+  const dayOfWeek = date.getUTCDay(); // 0=Sun, 1=Mon, 2=Tue, …
+  const daysSinceTuesday = (dayOfWeek + 7 - 2) % 7;
+  return new Date(date.getTime() - daysSinceTuesday * 86_400_000);
+}
+
+function getWeekLabel(date: Date): string {
+  const tuesdayMs = getTuesdayWeekStart(date).getTime();
+  const epochMs = new Date(`${CYCLE2_EPOCH}T00:00:00Z`).getTime();
+  const weekNo = Math.floor((tuesdayMs - epochMs) / (7 * 86_400_000)) + 1;
+  return `W${String(weekNo).padStart(2, "0")}`;
+}
+
+function parseWeekNum(wid: string): number {
+  return parseInt(wid.replace(/\D/g, ""), 10) || 0;
+}
+
 export async function GET() {
   try {
     // Query distinct weekIds with their date ranges from both tables
@@ -44,20 +64,14 @@ export async function GET() {
       }
     }
 
-    // Sort numerically by week number (WK42 → 42)
-    const parseWeekNum = (wid: string) => parseInt(wid.replace(/\D/g, ""), 10) || 0;
-    const now = new Date();
-    // Keep weeks that have data (include ~4 weeks from today)
-    const sorted = [...weekMap.values()]
-      .sort((a, b) => parseWeekNum(a.weekId) - parseWeekNum(b.weekId));
+    // Compute current week label using the same Tuesday-epoch logic as week-utils.ts
+    const currentWeekLabel = getWeekLabel(new Date());
+    const currentWeekNum = parseWeekNum(currentWeekLabel);
 
-    // Return up to 8 upcoming weeks (start from closest week to today based on minStart)
-    const upcoming = sorted
-      .filter((w) => {
-        if (!w.minStart) return true;
-        const startDate = new Date(w.minStart);
-        return startDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // include last week
-      })
+    // Keep only weeks from the current week onwards, sorted numerically, up to 8
+    const upcoming = [...weekMap.values()]
+      .filter((w) => parseWeekNum(w.weekId) >= currentWeekNum)
+      .sort((a, b) => parseWeekNum(a.weekId) - parseWeekNum(b.weekId))
       .slice(0, 8);
 
     return NextResponse.json({ weeks: upcoming });

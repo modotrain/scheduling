@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
 	passwordHash: text("password_hash").notNull().default(""),
   vip: boolean().notNull().default(false),
   role: varchar("role", { length: 16 }).notNull().default("viewer"),
+  allowShortTermPlanning: boolean("allow_short_term_planning").notNull().default(false),
 });
 
 export const tooReqTable = pgTable("too_req", {

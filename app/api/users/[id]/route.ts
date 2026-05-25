@@ -17,6 +17,7 @@ type UserPayload = {
   password?: string;
   vip?: boolean;
   role?: string;
+  allowShortTermPlanning?: boolean;
 };
 
 type UserValidationResult =
@@ -84,6 +85,7 @@ function mapUser(user: {
   email: string;
   vip: boolean;
   role: string;
+  allowShortTermPlanning: boolean;
 }) {
   return {
     id: user.id,
@@ -93,6 +95,7 @@ function mapUser(user: {
     email: user.email,
     vip: user.vip,
     role: user.role,
+    allowShortTermPlanning: user.allowShortTermPlanning,
   };
 }
 
@@ -147,6 +150,7 @@ export async function PUT(request: Request, context: RouteContext) {
         email: usersTable.email,
         vip: usersTable.vip,
         role: usersTable.role,
+        allowShortTermPlanning: usersTable.allowShortTermPlanning,
       });
 
     if (!updatedUser) {
@@ -170,15 +174,25 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const body = (await request.json()) as UserPayload;
 
-    if (typeof body.role !== 'string' && typeof body.vip !== 'boolean') {
-      return NextResponse.json({ error: "role or vip must be provided" }, { status: 400 });
+    if (typeof body.role !== 'string' && typeof body.vip !== 'boolean' && typeof body.allowShortTermPlanning !== 'boolean') {
+      return NextResponse.json({ error: "role, vip, or allowShortTermPlanning must be provided" }, { status: 400 });
     }
 
-    const newRole = typeof body.role === 'string' ? body.role : (body.vip ? 'admin' : 'viewer');
+    const patchValues: Record<string, unknown> = {};
+    if (typeof body.role === 'string') {
+      patchValues.role = body.role;
+      patchValues.vip = body.role === 'admin';
+    } else if (typeof body.vip === 'boolean') {
+      patchValues.vip = body.vip;
+      patchValues.role = body.vip ? 'admin' : 'viewer';
+    }
+    if (typeof body.allowShortTermPlanning === 'boolean') {
+      patchValues.allowShortTermPlanning = body.allowShortTermPlanning;
+    }
 
     const [updatedUser] = await db
       .update(usersTable)
-      .set({ vip: newRole === 'admin', role: newRole })
+      .set(patchValues)
       .where(eq(usersTable.id, id))
       .returning({
         id: usersTable.id,
@@ -188,6 +202,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         email: usersTable.email,
         vip: usersTable.vip,
         role: usersTable.role,
+        allowShortTermPlanning: usersTable.allowShortTermPlanning,
       });
 
     if (!updatedUser) {
@@ -220,6 +235,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
         email: usersTable.email,
         vip: usersTable.vip,
         role: usersTable.role,
+        allowShortTermPlanning: usersTable.allowShortTermPlanning,
       });
 
     if (!deletedUser) {

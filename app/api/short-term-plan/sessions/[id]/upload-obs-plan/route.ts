@@ -99,10 +99,10 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const mergedSources = [
       ...cycle2Rows.filter((r) => !excludedCycle2.has(r.id)).map((r) => ({ ...r, table: "cycle2" as const })),
-      ...gfRows.filter((r) => !excludedGf.has(r.id)).map((r) => ({ ...r, table: "gf" as const })),
+      // GF sources are NOT included in unscheduled tracking — only Cycle2 matters here
     ];
 
-    // Find unscheduled sources (in merged list but EP_DB_OBJECT_ID not in obs plan)
+    // Find unscheduled Cycle2 sources (in merged list but EP_DB_OBJECT_ID not in obs plan)
     const unscheduledSources = mergedSources.filter(
       (r) => !r.epDbObjectId || !scheduledEpIds.has(r.epDbObjectId),
     );

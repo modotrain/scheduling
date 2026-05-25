@@ -43,15 +43,20 @@ export default function ShortTermPlanningPage() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [weeks, setWeeks] = useState<WeekOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newWeekId, setNewWeekId] = useState("");
-  const [newOperator, setNewOperator] = useState("");
   const [creating, setCreating] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      const meRes = await fetch("/api/me");
+      const meData = (await meRes.json()) as { user: { allowShortTermPlanning: boolean } | null };
+      if (!meData.user) { router.push("/login"); return; }
+      if (!meData.user.allowShortTermPlanning) { setAccessDenied(true); setLoading(false); return; }
+
       const [sessRes, weeksRes] = await Promise.all([
         fetch("/api/short-term-plan/sessions"),
         fetch("/api/short-term-plan/weeks"),
@@ -64,7 +69,7 @@ export default function ShortTermPlanningPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => { void loadData(); }, [loadData]);
 
@@ -75,9 +80,10 @@ export default function ShortTermPlanningPage() {
       const res = await fetch("/api/short-term-plan/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weekId: newWeekId, operatorName: newOperator || undefined }),
+        body: JSON.stringify({ weekId: newWeekId }),
       });
       if (res.status === 401) { router.push("/login"); return; }
+      if (res.status === 403) { setAccessDenied(true); return; }
       const data = (await res.json()) as { session: { id: number } };
       router.push(`/short-term-planning/${data.session.id}`);
     } finally {
@@ -99,6 +105,15 @@ export default function ShortTermPlanningPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-8 dark:from-slate-950 dark:to-slate-900 md:px-8">
       <div className="mx-auto max-w-5xl">
+        {accessDenied && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-800/40 dark:bg-red-900/10">
+            <p className="text-base font-semibold text-red-700 dark:text-red-400">Access Denied</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">You do not have permission to access Short-Term Planning. Contact an admin to grant you access via the Users page.</p>
+            <Link href="/" className="mt-3 inline-block text-sm text-primary underline">← Back to Home</Link>
+          </div>
+        )}
+        {!accessDenied && (
+        <>
         {/* Header */}
         <div className="mb-6 flex items-start justify-between">
           <div>
@@ -180,10 +195,12 @@ export default function ShortTermPlanningPage() {
             </table>
           )}
         </div>
+      </>
+      )}
       </div>
 
       {/* New Session Modal */}
-      {showNewModal && (
+      {!accessDenied && showNewModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
             <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">New Planning Session</h2>
@@ -205,19 +222,6 @@ export default function ShortTermPlanningPage() {
                   ))}
                   {weeks.length === 0 && <option value="">No upcoming weeks available</option>}
                 </select>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Operator Name
-                </label>
-                <input
-                  type="text"
-                  value={newOperator}
-                  onChange={(e) => setNewOperator(e.target.value)}
-                  placeholder="Your name (optional)"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500"
-                />
               </div>
             </div>
 

@@ -9,6 +9,7 @@ type User = {
   username: string;
   email: string;
   role: 'viewer' | 'operator' | 'admin';
+  allowShortTermPlanning: boolean;
 };
 
 type UserInput = {
@@ -223,6 +224,30 @@ export default function Home() {
     }
   }
 
+  async function handleToggleShortTermPlanning(user: User) {
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowShortTermPlanning: !user.allowShortTermPlanning }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to update permission");
+      }
+
+      setStatus(`Short-term planning access ${!user.allowShortTermPlanning ? "granted" : "revoked"} for ${user.name}`, "success");
+      await loadUsers();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Failed to update permission", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function confirmDelete() {
     if (!deleteCandidate) {
       return;
@@ -359,13 +384,14 @@ export default function Home() {
                 <th className="px-3 py-2">Email</th>
                 <th className="px-3 py-2">Password</th>
                 <th className="px-3 py-2">Role</th>
+                <th className="px-3 py-2">Short-Term Plan</th>
                 <th className="px-3 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-3 py-4" colSpan={7}>
+                  <td className="px-3 py-4" colSpan={8}>
                     <div className="flex justify-center">
                       <div className="h-2 w-28 rounded-sm border border-slate-300/60 bg-[repeating-linear-gradient(-45deg,rgba(100,116,139,0.12)_0px,rgba(100,116,139,0.12)_8px,rgba(100,116,139,0.3)_8px,rgba(100,116,139,0.3)_16px)] bg-[length:200%_100%] animate-[stripe-flow_1.1s_linear_infinite] dark:border-slate-600/70 dark:bg-[repeating-linear-gradient(-45deg,rgba(148,163,184,0.12)_0px,rgba(148,163,184,0.12)_8px,rgba(148,163,184,0.3)_8px,rgba(148,163,184,0.3)_16px)]" />
                     </div>
@@ -373,7 +399,7 @@ export default function Home() {
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={7}>
+                  <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={8}>
                     No users yet.
                   </td>
                 </tr>
@@ -447,6 +473,17 @@ export default function Home() {
                         <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium uppercase tracking-wide ${user.role === 'admin' ? "bg-primary/10 text-primary dark:bg-sky-300/20 dark:text-sky-200" : user.role === 'operator' ? "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300" : "bg-slate-200/60 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300"}`}>
                           {user.role}
                         </span>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => void handleToggleShortTermPlanning(user)}
+                          title={user.allowShortTermPlanning ? "Click to revoke short-term planning access" : "Click to grant short-term planning access"}
+                          className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:opacity-50 ${user.allowShortTermPlanning ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50" : "bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"}`}
+                        >
+                          {user.allowShortTermPlanning ? "✓ Allowed" : "✗ Denied"}
+                        </button>
                       </td>
                       <td className="px-3 py-2">
                         {isEditing ? (
