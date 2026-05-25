@@ -19,6 +19,7 @@ interface ChartData {
 
 interface SourceReportChartProps {
   sourceId: string | null;
+  dataset?: string;
   isDarkMode?: boolean;
   embedded?: boolean;
   apiBase?: string;
@@ -40,6 +41,7 @@ interface TooltipData {
 
 export default function SourceReportChart({
   sourceId,
+  dataset,
   isDarkMode = false,
   embedded = false,
   apiBase = "/api/gp-cycle2",
@@ -160,7 +162,9 @@ export default function SourceReportChart({
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`${apiBase}/source-report?sourceId=${sourceId}`);
+        const params = new URLSearchParams({ sourceId });
+        if (dataset) params.set("dataset", dataset);
+        const res = await fetch(`${apiBase}/source-report?${params.toString()}`);
         if (allowMissingPlan && res.status === 404) {
           setChartData(null);
           return;
@@ -198,7 +202,9 @@ export default function SourceReportChart({
         setPreviewLoading(true);
         setPreviewError(null);
         setPreviewText("");
-        const res = await fetch(`${apiBase}/source-reports/download?sourceId=${sourceId}`);
+        const params = new URLSearchParams({ sourceId });
+        if (dataset) params.set("dataset", dataset);
+        const res = await fetch(`${apiBase}/source-reports/download?${params.toString()}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
         if (disposed) return;

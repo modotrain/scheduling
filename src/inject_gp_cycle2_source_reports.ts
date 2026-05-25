@@ -20,9 +20,40 @@ import { db } from "./db/client.ts";
 import { gpCycle2SourceReports } from "./db/schema.ts";
 
 const LONGTERM_SCH_DIR = path.join(process.cwd(), "longterm_sch");
-const SOURCE_CSV = path.join(LONGTERM_SCH_DIR, "cc2.csv");
-const SCHEDULE_CSV = path.join(LONGTERM_SCH_DIR, "schedule_result.csv");
-const REPORT_DIR = path.join(LONGTERM_SCH_DIR, "source_reports");
+
+type DatasetType = "cycle2" | "gf";
+
+function readDatasetArg(): DatasetType {
+  const arg = process.argv.find((item) => item.startsWith("--dataset="));
+  const fromArg = arg?.split("=")[1]?.trim().toLowerCase();
+  const fromEnv = process.env.SOURCE_REPORT_DATASET?.trim().toLowerCase();
+  const value = fromArg || fromEnv || "cycle2";
+  return value === "gf" ? "gf" : "cycle2";
+}
+
+function resolveInputs(dataset: DatasetType): {
+  sourceCsv: string;
+  scheduleCsv: string;
+  reportDir: string;
+} {
+  const defaults = dataset === "gf"
+    ? {
+      sourceCsv: path.join(LONGTERM_SCH_DIR, "reviewed_cycle2_source_list_GF_forDatabase.csv"),
+      scheduleCsv: path.join(LONGTERM_SCH_DIR, "schedule_gf_records.csv"),
+      reportDir: path.join(LONGTERM_SCH_DIR, "source_reports_gf"),
+    }
+    : {
+      sourceCsv: path.join(LONGTERM_SCH_DIR, "cc2.csv"),
+      scheduleCsv: path.join(LONGTERM_SCH_DIR, "schedule_result.csv"),
+      reportDir: path.join(LONGTERM_SCH_DIR, "source_reports"),
+    };
+
+  return {
+    sourceCsv: process.env.SOURCE_REPORT_SOURCE_CSV || defaults.sourceCsv,
+    scheduleCsv: process.env.SOURCE_REPORT_SCHEDULE_CSV || defaults.scheduleCsv,
+    reportDir: process.env.SOURCE_REPORT_DIR || defaults.reportDir,
+  };
+}
 
 // Color mapping for obs types
 const OBS_COLORS: Record<string, string> = {
@@ -98,11 +129,11 @@ function parseVisibleRanges(visibleRangesStr: string | null): Array<[string, str
   return ranges;
 }
 
-function safeReadTxtFile(sourceId: number, sourceName: string): string {
+function safeReadTxtFile(sourceId: number, sourceName: string, reportDir: string): string {
   const safeName = String(sourceName)
     .replace(/[^\w\-+.]/g, "_")
     .substring(0, 80);
-  const filePath = path.join(REPORT_DIR, `${sourceId.toString().padStart(5, "0")}_${safeName}.txt`);
+  const filePath = path.join(reportDir, `${sourceId.toString().padStart(5, "0")}_${safeName}.txt`);
   try {
     if (fs.existsSync(filePath)) {
       return fs.readFileSync(filePath, "utf-8");
@@ -114,20 +145,23 @@ function safeReadTxtFile(sourceId: number, sourceName: string): string {
 }
 
 async function main() {
-  console.log("[info] Starting GP Cycle 2 source reports import...");
+  const dataset = readDatasetArg();
+  const { sourceCsv, scheduleCsv, reportDir } = resolveInputs(dataset);
+
+  console.log(`[info] Starting source reports import for dataset=${dataset}...`);
 
   // Read CSV
-  if (!fs.existsSync(SOURCE_CSV)) {
-    console.error(`[error] CSV not found: ${SOURCE_CSV}`);
+  if (!fs.existsSync(sourceCsv)) {
+    console.error(`[error] CSV not found: ${sourceCsv}`);
     process.exit(1);
   }
 
-  const csvContent = fs.readFileSync(SOURCE_CSV, "utf-8");
+  const csvContent = fs.readFileSync(sourceCsv, "utf-8");
   const sourceRows = parseCSV(csvContent, { columns: true }) as SourceRow[];
   console.log(`[info] Loaded ${sourceRows.length} source rows from CSV`);
 
   // Read schedule data
-  const scheduleRows = parseCSV(fs.readFileSync(SCHEDULE_CSV, "utf-8"), { columns: true }) as ScheduleRow[];
+  const scheduleRows = parseCSV(fs.readFileSync(scheduleCsv, "utf-8"), { columns: true }) as ScheduleRow[];
   console.log(`[info] Loaded ${scheduleRows.length} schedule rows`);
 
   // Group schedule by source_id
@@ -205,12 +239,13 @@ async function main() {
         };
 
         // Read summary text
-        const summaryText = safeReadTxtFile(sourceId, sourceName);
+        const summaryText = safeReadTxtFile(sourceId, sourceName, reportDir);
 
         // Insert or update into DB
         await db
           .insert(gpCycle2SourceReports)
           .values({
+            dataset,
             sourceId,
             sourceName,
             proposalId: sourceRow.proposal_id,
@@ -232,7 +267,7 @@ async function main() {
             summaryText,
           })
           .onConflictDoUpdate({
-            target: gpCycle2SourceReports.sourceId,
+            target: [gpCycle2SourceReports.dataset, gpCycle2SourceReports.sourceId],
             set: {
               chartData: chartData as JsonValue,
               summaryText,

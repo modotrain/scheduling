@@ -1,10 +1,11 @@
 import { db, gpCycle2SourceReports } from "@/src/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const sourceIdStr = url.searchParams.get("sourceId");
+    const dataset = (url.searchParams.get("dataset") || "cycle2").toLowerCase() === "gf" ? "gf" : "cycle2";
 
     if (!sourceIdStr) {
       return new Response(
@@ -25,7 +26,10 @@ export async function GET(request: Request) {
     const report = await db
       .select()
       .from(gpCycle2SourceReports)
-      .where(eq(gpCycle2SourceReports.sourceId, sourceId))
+      .where(and(
+        eq(gpCycle2SourceReports.dataset, dataset),
+        eq(gpCycle2SourceReports.sourceId, sourceId),
+      ))
       .limit(1);
 
     if (report.length === 0) {

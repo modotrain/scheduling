@@ -622,6 +622,7 @@ export default function Cycle2GfDetailPage() {
             <div className="border-b border-slate-200 dark:border-slate-700">
               <SourceReportChart
                 sourceId={row.sourceId}
+                dataset="gf"
                 embedded
                 apiBase="/api/cycle2-gf"
                 allowMissingPlan

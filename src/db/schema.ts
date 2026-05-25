@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, varchar, serial, text, timestamp, unique, doublePrecision, date, json, index } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, varchar, serial, text, timestamp, unique, doublePrecision, date, json, index, primaryKey } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -648,10 +648,93 @@ export const longTermObservationListCycle2 = pgTable('long_term_observation_list
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 });
 
+export const longTermObservationListCycle2GF = pgTable('long_term_observation_list_cycle2_gf', {
+  // information
+  id: serial('id').primaryKey().notNull(),
+	tdicId: varchar('tdic_id', { length: 255 }),
+	sourceId: varchar('source_id', { length: 255 }),
+	proposalId: varchar('proposal_id', { length: 255 }),
+	proposalNo: varchar('proposal_no', { length: 255 }),
+	epDbObjectId: varchar('ep_db_object_id', { length: 255 }),
+	weekId: varchar('week_id', { length: 255 }),
+
+  // pi and group
+	pi: varchar('pi', { length: 255 }),
+	groupName: varchar('group', { length: 255 }),
+	sourceName: varchar('source_name', { length: 255 }),
+	obsType: varchar('obs_type', { length: 255 }),
+
+  // object information
+	ra: varchar('ra', { length: 255 }),
+	dec: varchar('dec', { length: 255 }),
+
+  // exposure
+	totalExposureTime: varchar('total_exposure_time', { length: 255 }),
+	totalExposureTimeAll: varchar('total_exposure_time_all', { length: 255 }),
+	exposureTimeUnit: varchar('exposure_time_unit', { length: 255 }),
+	continousExposure: varchar('continous_exposure', { length: 255 }),
+
+  // observation
+	visitNumber: varchar('visit_number', { length: 255 }),
+	exposurePerVistMin: varchar('exposure_per_vist_min', { length: 255 }),
+	exposurePerVistMax: varchar('exposure_per_vist_max', { length: 255 }),
+
+  // quality and cadence
+	completeness: varchar('completeness', { length: 255 }),
+	cadence: varchar('cadence', { length: 255 }),
+	cadenceUnit: varchar('cadence_unit', { length: 255 }),
+	precision: varchar('precision', { length: 255 }),
+	precisionUnit: varchar('precision_unit', { length: 255 }),
+
+  // range
+	startTime: varchar('start_time', { length: 255 }),
+	endTime: varchar('end_time', { length: 255 }),
+
+  // configuration
+	sourcePriority: varchar('source_priority', { length: 255 }),
+	fxt1WindowMode: varchar('fxt1_window_mode', { length: 255 }),
+	fxt1Filter: varchar('fxt1_filter', { length: 255 }),
+	fxt2WindowMode: varchar('fxt2_window_mode', { length: 255 }),
+	fxt2Filter: varchar('fxt2_filter', { length: 255 }),
+
+  // status
+	isUpdated: varchar('is_updated', { length: 255 }),
+	payload: varchar('payload', { length: 255 }),
+
+  // payload
+	wxtCmos: varchar('wxt_cmos', { length: 255 }),
+	wxtCmosX: varchar('wxt_cmos_x', { length: 255 }),
+	wxtCmosY: varchar('wxt_cmos_y', { length: 255 }),
+	fxtCmr: varchar('fxt_cmr', { length: 255 }),
+	fxtX: varchar('fxt_x', { length: 255 }),
+	fxtY: varchar('fxt_y', { length: 255 }),
+	isForDisrupted: varchar('is_for_disrupted', { length: 255 }),
+
+  // visible
+	visibleDays: varchar('visible_days', { length: 255 }),
+	visibleDateRanges: varchar('visible_date_ranges', { length: 255 }),
+	visibleRangeCount: varchar('visible_range_count', { length: 255 }),
+	visibleTotalDays: varchar('visible_total_days', { length: 255 }),
+	visibleDateRangesOnlySun: varchar('visible_date_ranges_only_sun', { length: 255 }),
+	visibleFirstEnd: varchar('visible_first_end', { length: 255 }),
+	visibleLastEnd: varchar('visible_last_end', { length: 255 }),
+
+	mtDays: varchar('mt_days', { length: 255 }),
+	leftMtDays: varchar('left_mt_days', { length: 255 }),
+
+  // time stamp
+	createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+}, (table) => [
+	index("long_term_observation_list_cycle2_gf_source_id_idx").on(table.sourceId),
+	index("long_term_observation_list_cycle2_gf_week_id_idx").on(table.weekId),
+]);
+
 // GP Cycle2 Source Reports - for visualization and download
 export const gpCycle2SourceReports = pgTable('gp_cycle2_source_reports', {
-	// Primary key
-	sourceId: integer('source_id').primaryKey().notNull(),
+	// Composite key: dataset + source id
+	dataset: varchar('dataset', { length: 32 }).notNull(),
+	sourceId: integer('source_id').notNull(),
 	
 	// Metadata
 	sourceName: varchar('source_name', { length: 255 }).notNull(),
@@ -683,7 +766,11 @@ export const gpCycle2SourceReports = pgTable('gp_cycle2_source_reports', {
 	// Metadata
 	generatedAt: timestamp('generated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 	updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
-});
+}, (table) => [
+	primaryKey({ columns: [table.dataset, table.sourceId] }),
+	index('gp_cycle2_source_reports_dataset_source_id_idx').on(table.dataset, table.sourceId),
+	index('gp_cycle2_source_reports_dataset_priority_idx').on(table.dataset, table.priority),
+]);
 
 // Raw inputs for cycle2 sky map rendering
 export const cycle2SkymapSources = pgTable("cycle2_skymap_sources", {

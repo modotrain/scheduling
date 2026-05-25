@@ -622,6 +622,7 @@ export default function GpCycle2DetailPage() {
             <div className="border-b border-slate-200 dark:border-slate-700">
               <SourceReportChart
                 sourceId={row.sourceId}
+                dataset="cycle2"
                 embedded
                 activePointKey={activePlannedScheduleHoverKey}
                 onPointHover={(key) => {

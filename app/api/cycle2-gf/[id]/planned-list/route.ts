@@ -27,7 +27,7 @@ export async function GET(_req: Request, { params }: Params) {
         lt.fxt2_window_mode AS "fxt2WindowMode",
         lt.fxt2_filter AS "fxt2Filter"
       FROM cycle2_gf g
-      JOIN long_term_observation_list_cycle2 lt
+      JOIN long_term_observation_list_cycle2_gf lt
         ON lt.source_id = g.source_id
       WHERE g.id = ${numId}
       ORDER BY
