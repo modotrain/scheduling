@@ -576,7 +576,7 @@ export default function GpPlanVisibilityReferenceChart({
         <div>
           <p className="text-sm font-semibold text-slate-900 dark:text-white">Visibility Reference</p>
           <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-            Green bands indicate daily visibility windows. Visit markers are colored by the same constraint check used for saving.
+            Green bands indicate daily visibility windows. Visit markers are colored by the constraint check.
           </p>
         </div>
         <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
@@ -686,10 +686,10 @@ export default function GpPlanVisibilityReferenceChart({
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-            V band = visit window
+            Schedulable
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
-            red V band = blocked visit
+            Unschedulable
           </span>
         </div>
       </div>
