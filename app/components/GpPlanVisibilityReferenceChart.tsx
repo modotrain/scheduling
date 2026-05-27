@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { MouseEvent as ReactMouseEvent, useMemo, useState } from "react";
+import * as Astronomy from "astronomy-engine";
 
 import { getCycleWeekLabel } from "@/app/lib/week-utils";
 
@@ -96,78 +97,25 @@ function parseCoordinate(value: string | null): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function julianDay(date: Date): number {
-  return date.getTime() / DAY_MS + 2440587.5;
+function raDecFromGeoVector(body: Astronomy.Body, date: Date): { ra: number; dec: number } {
+  const v = Astronomy.GeoVector(body, date, true);
+  const r = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  if (r <= 0) {
+    return { ra: 0, dec: 0 };
+  }
+
+  return {
+    ra: normalizeAngle(toDeg(Math.atan2(v.y, v.x))),
+    dec: toDeg(Math.asin(v.z / r)),
+  };
 }
 
 function sunRaDec(date: Date): { ra: number; dec: number } {
-  const jd = julianDay(date);
-  const T = (jd - 2451545.0) / 36525;
-
-  const L0 = normalizeAngle(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
-  const M = normalizeAngle(357.52911 + 35999.05029 * T - 0.0001537 * T * T);
-  const omega = 125.04 - 1934.136 * T;
-
-  const C =
-    (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(toRad(M)) +
-    (0.019993 - 0.000101 * T) * Math.sin(toRad(2 * M)) +
-    0.000289 * Math.sin(toRad(3 * M));
-
-  const trueLong = L0 + C;
-  const lambda = trueLong - 0.00569 - 0.00478 * Math.sin(toRad(omega));
-
-  const eps0 =
-    23 +
-    (26 +
-      (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60) /
-      60;
-  const eps = eps0 + 0.00256 * Math.cos(toRad(omega));
-
-  const x = Math.cos(toRad(lambda));
-  const y = Math.cos(toRad(eps)) * Math.sin(toRad(lambda));
-  const z = Math.sin(toRad(eps)) * Math.sin(toRad(lambda));
-
-  return {
-    ra: normalizeAngle(toDeg(Math.atan2(y, x))),
-    dec: toDeg(Math.asin(z)),
-  };
+  return raDecFromGeoVector(Astronomy.Body.Sun, date);
 }
 
 function moonRaDec(date: Date): { ra: number; dec: number } {
-  const jd = julianDay(date);
-  const d = jd - 2451545.0;
-
-  const L = normalizeAngle(218.316 + 13.176396 * d);
-  const Mm = normalizeAngle(134.963 + 13.064993 * d);
-  const D = normalizeAngle(297.850 + 12.190749 * d);
-  const F = normalizeAngle(93.272 + 13.229350 * d);
-
-  const lon =
-    L +
-    6.289 * Math.sin(toRad(Mm)) +
-    1.274 * Math.sin(toRad(2 * D - Mm)) +
-    0.658 * Math.sin(toRad(2 * D)) +
-    0.214 * Math.sin(toRad(2 * Mm)) +
-    0.11 * Math.sin(toRad(D));
-
-  const lat =
-    5.128 * Math.sin(toRad(F)) +
-    0.280 * Math.sin(toRad(Mm + F)) +
-    0.277 * Math.sin(toRad(Mm - F)) +
-    0.173 * Math.sin(toRad(2 * D - F));
-
-  const eps = 23.439291 - 0.0130042 * (d / 36525);
-  const x = Math.cos(toRad(lon)) * Math.cos(toRad(lat));
-  const y = Math.sin(toRad(lon)) * Math.cos(toRad(lat));
-  const z = Math.sin(toRad(lat));
-
-  const ye = y * Math.cos(toRad(eps)) - z * Math.sin(toRad(eps));
-  const ze = y * Math.sin(toRad(eps)) + z * Math.cos(toRad(eps));
-
-  return {
-    ra: normalizeAngle(toDeg(Math.atan2(ye, x))),
-    dec: toDeg(Math.asin(ze)),
-  };
+  return raDecFromGeoVector(Astronomy.Body.Moon, date);
 }
 
 function angularDistance(raA: number, decA: number, raB: number, decB: number): number {
@@ -338,6 +286,8 @@ export default function GpPlanVisibilityReferenceChart({
   plannedEnd,
   visitPreviews,
 }: Props) {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
   const state = useMemo(
     () => evaluateGpVisibility({ sourceRa, sourceDec, plannedStart, plannedEnd, visitPreviews }),
     [plannedEnd, plannedStart, sourceDec, sourceRa, visitPreviews],
@@ -348,11 +298,12 @@ export default function GpPlanVisibilityReferenceChart({
   const padding = { top: 12, right: 16, bottom: 34, left: 40 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
-  const bgColor = "#f8fafc";
-  const darkText = "#334155";
-  const gridColor = "#cbd5e1";
-  const sunColor = "#b91c1c";
-  const moonColor = "#0056b3";
+  const bgColor = "var(--chart-bg)";
+  const maskColor = "var(--chart-mask)";
+  const darkText = "var(--axis-text)";
+  const gridColor = "var(--grid-color)";
+  const sunColor = "var(--sun-color)";
+  const moonColor = "var(--moon-color)";
   const pointRadius = state.daySeries.length > 60 ? 2.2 : state.daySeries.length > 28 ? 2.6 : 2.9;
 
   const maxAngle = 180;
@@ -368,21 +319,76 @@ export default function GpPlanVisibilityReferenceChart({
     return padding.top + chartHeight - ((clamped - minAngle) / (maxAngle - minAngle)) * chartHeight;
   };
 
-  const visibleRects = state.visibleRanges.map((range, index) => {
-    const startIndex = state.daySeries.findIndex((day) => day.date === range.start);
-    const endIndex = state.daySeries.findIndex((day) => day.date === range.end);
-    const left = startIndex >= 0 ? xForIndex(startIndex) : padding.left;
-    const right = endIndex >= 0 ? xForIndex(endIndex) : padding.left + chartWidth;
+  const xForDate = (date: string, fallbackToRight = false): number => {
+    const index = state.daySeries.findIndex((day) => day.date === date);
+    if (index >= 0) return xForIndex(index);
+    return fallbackToRight ? padding.left + chartWidth : padding.left;
+  };
+
+  const dayBoundsForIndex = (index: number): { left: number; right: number } => {
+    const x = xForIndex(index);
+    const prev = index > 0 ? xForIndex(index - 1) : x;
+    const next = index < state.daySeries.length - 1 ? xForIndex(index + 1) : x;
+    const left = index === 0 ? padding.left : (prev + x) / 2;
+    const right = index === state.daySeries.length - 1 ? padding.left + chartWidth : (x + next) / 2;
+    return { left, right };
+  };
+
+  const segmentBoundsForIndex = (index: number): { left: number; right: number } => {
+    if (state.daySeries.length <= 1) {
+      return { left: padding.left, right: padding.left + chartWidth };
+    }
+    const left = xForIndex(index);
+    const right = xForIndex(Math.min(index + 1, state.daySeries.length - 1));
+    return { left, right };
+  };
+
+  // Segment-level rule (UTC midnight to UTC midnight):
+  // if day i is invisible at 00:00, block [i-1, i) and [i, i+1).
+  // Equivalent: segment j is blocked when day j or day j+1 is invisible.
+  const segmentFlags = state.daySeries.length > 1
+    ? Array.from({ length: state.daySeries.length - 1 }, (_value, i) => {
+        const leftDay = state.daySeries[i]!;
+        const rightDay = state.daySeries[i + 1]!;
+        return {
+          index: i,
+          blocked: !leftDay.visible || !rightDay.visible,
+        };
+      })
+    : [];
+
+  const visibleRects = segmentFlags.flatMap((segment) => {
+    if (segment.blocked) return [];
+    const { left, right } = segmentBoundsForIndex(segment.index);
     return (
       <rect
-        key={`${range.start}-${range.end}-${index}`}
+        key={`visible-segment-${segment.index}`}
         x={left}
         y={padding.top}
-        width={Math.max(2, right - left)}
+        width={Math.max(1.2, right - left)}
         height={chartHeight}
         fill="#16a34a"
         opacity="0.12"
       />
+    );
+  });
+
+  const invisibleDayOverlays = segmentFlags.flatMap((segment) => {
+    if (!segment.blocked) return [];
+    const { left, right } = segmentBoundsForIndex(segment.index);
+    const widthPx = Math.max(1.2, right - left);
+    const x = left;
+    return (
+      <g key={`blocked-segment-${segment.index}`}>
+        <rect
+          x={x}
+          y={padding.top}
+          width={widthPx}
+          height={chartHeight}
+          fill={maskColor}
+          opacity="1"
+        />
+      </g>
     );
   });
 
@@ -402,22 +408,29 @@ export default function GpPlanVisibilityReferenceChart({
   const sunPath = state.daySeries.map((day, index) => `${index === 0 ? "M" : "L"} ${xForIndex(index)} ${yForAngle(day.sunAngle)}`).join(" ");
   const moonPath = state.daySeries.map((day, index) => `${index === 0 ? "M" : "L"} ${xForIndex(index)} ${yForAngle(day.moonAngle)}`).join(" ");
 
-  const visitMarkers = state.visitPreviews.map((visit) => {
-    const index = Math.min(
-      Math.max(0, state.daySeries.findIndex((day) => day.date === visit.dayKey)),
-      Math.max(0, state.daySeries.length - 1),
-    );
-    const x = xForIndex(index);
-    const y = padding.top + chartHeight - 12;
+  const visitBands = state.visitPreviews.map((visit) => {
+    const left = xForDate(visit.start, false);
+    const right = xForDate(visit.end, true);
+    const bandWidth = Math.max(2, right - left);
+    const centerX = left + bandWidth / 2;
     const tone = visit.visible
-      ? { fill: "#16a34a", stroke: "#14532d" }
-      : { fill: "#ef4444", stroke: "#7f1d1d" };
+      ? { fill: "var(--visit-band-fill)", stroke: "var(--visit-band-stroke)", text: "var(--visit-band-text)" }
+      : { fill: "var(--blocked-band-fill)", stroke: "var(--blocked-band-stroke)", text: "var(--blocked-band-text)" };
 
     return (
       <g key={`visit-${visit.visitNo}`}>
-        <line x1={x} y1={padding.top + chartHeight} x2={x} y2={y} stroke={tone.fill} strokeWidth="1.8" opacity="0.8" />
-        <circle cx={x} cy={y} r="5" fill={tone.fill} stroke={tone.stroke} strokeWidth="1.5" />
-        <text x={x} y={y - 9} textAnchor="middle" fontSize="12" fill={tone.fill} fontWeight="700">
+        <rect
+          x={left}
+          y={padding.top}
+          width={bandWidth}
+          height={chartHeight}
+          fill={tone.fill}
+          opacity="0.16"
+          stroke={tone.stroke}
+          strokeOpacity="0.28"
+          strokeWidth="0.8"
+        />
+        <text x={centerX} y={padding.top + 11} textAnchor="middle" fontSize="12" fill={tone.text} fontWeight="700">
           V{visit.visitNo}
         </text>
       </g>
@@ -451,6 +464,41 @@ export default function GpPlanVisibilityReferenceChart({
         })
     : null;
 
+  const handleChartMouseMove = (event: ReactMouseEvent<SVGSVGElement>) => {
+    if (state.daySeries.length === 0) {
+      setHoverIndex(null);
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+      setHoverIndex(null);
+      return;
+    }
+
+    const svgX = ((event.clientX - rect.left) / rect.width) * width;
+    const svgY = ((event.clientY - rect.top) / rect.height) * height;
+
+    if (
+      svgX < padding.left ||
+      svgX > width - padding.right ||
+      svgY < padding.top ||
+      svgY > padding.top + chartHeight
+    ) {
+      setHoverIndex(null);
+      return;
+    }
+
+    const denominator = Math.max(1, state.daySeries.length - 1);
+    const normalized = (svgX - padding.left) / chartWidth;
+    const candidate = Math.round(normalized * denominator);
+    const clamped = Math.min(Math.max(0, candidate), state.daySeries.length - 1);
+    setHoverIndex(clamped);
+  };
+
+  const hoverDay = hoverIndex !== null ? (state.daySeries[hoverIndex] ?? null) : null;
+  const hoverX = hoverIndex !== null ? xForIndex(hoverIndex) : null;
+
   if (!state.hasGeometry) {
     return (
       <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/40">
@@ -470,7 +518,7 @@ export default function GpPlanVisibilityReferenceChart({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/40 [--chart-bg:#f8fafc] [--chart-mask:#f8fafc] [--axis-text:#334155] [--grid-color:#cbd5e1] [--sun-color:#b91c1c] [--moon-color:#0056b3] [--visit-band-fill:#0284c7] [--visit-band-stroke:#0c4a6e] [--visit-band-text:#0c4a6e] [--blocked-band-fill:#ef4444] [--blocked-band-stroke:#7f1d1d] [--blocked-band-text:#991b1b] [--tooltip-bg:#ffffff] [--tooltip-border:#cbd5e1] [--tooltip-title:#0f172a] [--tooltip-sun:#991b1b] [--tooltip-moon:#1d4ed8] dark:[--chart-bg:#0b1220] dark:[--chart-mask:#0b1220] dark:[--axis-text:#cbd5e1] dark:[--grid-color:#334155] dark:[--sun-color:#fca5a5] dark:[--moon-color:#93c5fd] dark:[--visit-band-fill:#38bdf8] dark:[--visit-band-stroke:#7dd3fc] dark:[--visit-band-text:#bae6fd] dark:[--blocked-band-fill:#fb7185] dark:[--blocked-band-stroke:#fda4af] dark:[--blocked-band-text:#fecdd3] dark:[--tooltip-bg:#0f172a] dark:[--tooltip-border:#334155] dark:[--tooltip-title:#e2e8f0] dark:[--tooltip-sun:#fecaca] dark:[--tooltip-moon:#bfdbfe]">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900 dark:text-white">Visibility Reference</p>
@@ -484,9 +532,17 @@ export default function GpPlanVisibilityReferenceChart({
       </div>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block w-full">
+        <svg
+          width={width}
+          height={height}
+          viewBox={`0 0 ${width} ${height}`}
+          className="block w-full"
+          onMouseMove={handleChartMouseMove}
+          onMouseLeave={() => setHoverIndex(null)}
+        >
           <rect x={0} y={0} width={width} height={height} fill={bgColor} />
           {visibleRects}
+          {invisibleDayOverlays}
           {gridLines}
 
           <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + chartHeight} stroke={darkText} strokeWidth="1" opacity="0.6" />
@@ -507,7 +563,55 @@ export default function GpPlanVisibilityReferenceChart({
             );
           })}
 
-          {visitMarkers}
+          {visitBands}
+
+          {hoverDay && hoverX !== null ? (
+            <g pointerEvents="none">
+              <line
+                x1={hoverX}
+                y1={padding.top}
+                x2={hoverX}
+                y2={padding.top + chartHeight}
+                stroke="#334155"
+                strokeWidth="0.9"
+                strokeDasharray="3 3"
+                opacity="0.45"
+              />
+              {(() => {
+                const tooltipWidth = 176;
+                const tooltipHeight = 48;
+                const tooltipX = Math.min(
+                  width - padding.right - tooltipWidth - 2,
+                  Math.max(padding.left + 2, hoverX + 10),
+                );
+                const tooltipY = padding.top + 4;
+                return (
+                  <g>
+                    <rect
+                      x={tooltipX}
+                      y={tooltipY}
+                      width={tooltipWidth}
+                      height={tooltipHeight}
+                      rx="6"
+                      fill="var(--tooltip-bg)"
+                      stroke="var(--tooltip-border)"
+                      strokeWidth="1"
+                    />
+                    <text x={tooltipX + 8} y={tooltipY + 14} fill="var(--tooltip-title)" fontSize="10" fontWeight="600">
+                      {hoverDay.date}
+                    </text>
+                    <text x={tooltipX + 8} y={tooltipY + 28} fill="var(--tooltip-sun)" fontSize="10">
+                      Sun: {hoverDay.sunAngle.toFixed(2)}°
+                    </text>
+                    <text x={tooltipX + 8} y={tooltipY + 41} fill="var(--tooltip-moon)" fontSize="10">
+                      Moon: {hoverDay.moonAngle.toFixed(2)}°
+                    </text>
+                  </g>
+                );
+              })()}
+            </g>
+          ) : null}
+
           {dateLabels}
         </svg>
       </div>
@@ -527,10 +631,10 @@ export default function GpPlanVisibilityReferenceChart({
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-            V marker = visible
+            V band = visit window
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
-            blocked = outside window
+            red V band = blocked visit
           </span>
         </div>
       </div>

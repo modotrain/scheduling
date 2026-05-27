@@ -1836,7 +1836,7 @@ export default function TooManagementDetailPage() {
               </p>
             </div>
 
-            <div className="max-h-[70vh] overflow-auto px-6 py-4">
+            <div className="max-h-[70vh] overflow-auto px-6 py-4 [scrollbar-width:thin] [scrollbar-color:#94a3b8_transparent] dark:[scrollbar-color:#475569_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300/85 hover:[&::-webkit-scrollbar-thumb]:bg-slate-400/90 dark:[&::-webkit-scrollbar-thumb]:bg-slate-600/85 dark:hover:[&::-webkit-scrollbar-thumb]:bg-slate-500/90">
               {/* ── First Visit Range + Pool Load ── */}
               <div className="mt-4 flex items-stretch gap-4">
                 <div className="min-w-0 flex-1">
@@ -2090,7 +2090,7 @@ export default function TooManagementDetailPage() {
                         Visit Preview
                       </div>
                       {visitPreviews.length > 0 ? (
-                        <div className="flex-1 overflow-y-auto">
+                        <div className="flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#94a3b8_transparent] dark:[scrollbar-color:#475569_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300/85 hover:[&::-webkit-scrollbar-thumb]:bg-slate-400/90 dark:[&::-webkit-scrollbar-thumb]:bg-slate-600/85 dark:hover:[&::-webkit-scrollbar-thumb]:bg-slate-500/90">
                           <table className="min-w-full text-xs">
                             <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/60">
                               <tr>
