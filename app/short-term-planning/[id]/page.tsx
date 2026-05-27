@@ -415,16 +415,19 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   const [cycle2Rows, setCycle2Rows] = useState<SourceRow[]>([]);
   const [cycle2Stats, setCycle2Stats] = useState<SourceStats | null>(null);
   const [cycle2Loading, setCycle2Loading] = useState(false);
+  const [cycle2Loaded, setCycle2Loaded] = useState(false);
   const [excludedCycle2, setExcludedCycle2] = useState<Set<number>>(new Set());
 
   const [gfRows, setGfRows] = useState<SourceRow[]>([]);
   const [gfStats, setGfStats] = useState<SourceStats | null>(null);
   const [gfLoading, setGfLoading] = useState(false);
+  const [gfLoaded, setGfLoaded] = useState(false);
   const [excludedGf, setExcludedGf] = useState<Set<number>>(new Set());
 
   const [tooGpRows, setTooGpRows] = useState<TooGpSourceRow[]>([]);
   const [tooGpStats, setTooGpStats] = useState<SourceStats | null>(null);
   const [tooGpLoading, setTooGpLoading] = useState(false);
+  const [tooGpLoaded, setTooGpLoaded] = useState(false);
   const [excludedTooGp, setExcludedTooGp] = useState<Set<number>>(new Set());
 
   // Post-confirm
@@ -457,6 +460,15 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
       const data = (await res.json()) as { session: PlanSession };
       const s = data.session;
       setSession(s);
+      setCycle2Rows([]);
+      setGfRows([]);
+      setTooGpRows([]);
+      setCycle2Stats(null);
+      setGfStats(null);
+      setTooGpStats(null);
+      setCycle2Loaded(false);
+      setGfLoaded(false);
+      setTooGpLoaded(false);
       setExcludedCycle2(new Set(s.excludedCycle2Ids));
       setExcludedGf(new Set(s.excludedGfIds));
       setExcludedTooGp(new Set(s.excludedTooGpIds ?? []));
@@ -501,7 +513,10 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
           setExcludedCycle2(new Set(session.excludedCycle2Ids));
         })
         .catch(console.error)
-        .finally(() => setCycle2Loading(false));
+        .finally(() => {
+          setCycle2Loading(false);
+          setCycle2Loaded(true);
+        });
     }
   }, [currentStep, session, cycle2Rows.length]);
 
@@ -516,7 +531,10 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
           setExcludedGf(new Set(session.excludedGfIds));
         })
         .catch(console.error)
-        .finally(() => setGfLoading(false));
+        .finally(() => {
+          setGfLoading(false);
+          setGfLoaded(true);
+        });
     }
   }, [currentStep, session, gfRows.length]);
 
@@ -561,7 +579,10 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
           setExcludedTooGp(new Set(session.excludedTooGpIds ?? []));
         })
         .catch(console.error)
-        .finally(() => setTooGpLoading(false));
+        .finally(() => {
+          setTooGpLoading(false);
+          setTooGpLoaded(true);
+        });
     }
   }, [currentStep, session, tooGpRows.length]);
 
@@ -757,9 +778,18 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
       });
     }
     // Force reload of source data
-    if (step === 1) setCycle2Rows([]);
-    if (step === 2) setGfRows([]);
-    if (step === 3) setTooGpRows([]);
+    if (step === 1) {
+      setCycle2Rows([]);
+      setCycle2Loaded(false);
+    }
+    if (step === 2) {
+      setGfRows([]);
+      setGfLoaded(false);
+    }
+    if (step === 3) {
+      setTooGpRows([]);
+      setTooGpLoaded(false);
+    }
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -802,6 +832,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   const gfExpS = calcExpS(gfIncluded);
   const tooGpExpS = tooGpIncluded.reduce((sum, r) => sum + (r.reviewedSingleExposureTimeSnapshot ?? 0), 0);
   const mergedExpS = cycle2ExpS + gfExpS + tooGpExpS;
+  const overviewCardsLoading = currentStep === 4 && (!cycle2Loaded || !gfLoaded || !tooGpLoaded);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-8 dark:from-slate-950 dark:to-slate-900 md:px-8">
@@ -914,6 +945,9 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
               <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">Step 5: Overview & Confirm</h2>
 
               {/* Stats summary */}
+              {overviewCardsLoading && (
+                <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">Loading source summary…</p>
+              )}
               <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
                 {[
                   { label: "Total Sources", value: mergedAll.length + tooGpIncluded.length },
@@ -926,7 +960,11 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                 ].map((stat) => (
                   <div key={stat.label} className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
                     <p className="text-xs text-slate-500 dark:text-slate-400">{stat.label}</p>
-                    <p className="mt-0.5 text-xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
+                    <p className="mt-0.5 text-xl font-bold text-slate-900 dark:text-white">
+                      {overviewCardsLoading ? (
+                        <span className="inline-block h-7 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                      ) : stat.value}
+                    </p>
                   </div>
                 ))}
               </div>
