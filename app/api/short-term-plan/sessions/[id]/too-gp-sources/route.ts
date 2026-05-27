@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
@@ -54,12 +54,23 @@ export async function GET(_req: Request, { params }: RouteParams) {
         reviewedSingleExposureTimeSnapshot: tooToGpSchedule.reviewedSingleExposureTimeSnapshot,
         reviewedTotalExposureTimeSnapshot: tooToGpSchedule.reviewedTotalExposureTimeSnapshot,
         status: tooToGpSchedule.status,
+        // Same scheduledStatus logic as /api/tootogp-schedule/route.ts
+        scheduledStatus: sql<"scheduled" | "queued">`
+          CASE
+            WHEN EXISTS (
+              SELECT 1 FROM obs_wp o
+              WHERE POSITION(${tooToGpSchedule.generatedEpDbObjectId} IN COALESCE(o.ep_db_object_id, '')) > 0
+            ) THEN 'scheduled'
+            ELSE 'queued'
+          END
+        `,
       })
       .from(tooToGpSchedule)
       .innerJoin(approvedToO, eq(approvedToO.id, tooToGpSchedule.approvedTooId));
 
-    // Filter: matching week number only (week ID match is sufficient — stored status != scheduledStatus)
+    // Filter: matching week number AND scheduledStatus = 'queued' (mirrors the tootogp-schedule page filter)
     const filtered = allRows.filter((r) => {
+      if (r.scheduledStatus !== "queued") return false;
       const rowWeekNum = getWeekNumFromDate(r.plannedStartTime);
       return rowWeekNum !== null && rowWeekNum === sessionWeekNum;
     });
