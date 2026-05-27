@@ -226,7 +226,8 @@ export function evaluateGpVisibility({
   const chartEnd = visits.reduce((latest, visit) => {
     return visit.end > latest ? visit.end : latest;
   }, plannedEnd || plannedStart);
-  const totalDays = Math.max(1, Math.ceil(dateDiffDays(plannedStart, chartEnd)));
+  // +1 so the end date itself is included as a data point (e.g. May 12–14 → 3 pts)
+  const totalDays = Math.max(1, Math.ceil(dateDiffDays(plannedStart, chartEnd)) + 1);
 
   const daySeries: DaySample[] = Array.from({ length: totalDays }, (_value, index) => {
     const date = addDays(plannedStart, index);
@@ -429,32 +430,41 @@ export default function GpPlanVisibilityReferenceChart({
   const sunPath = state.daySeries.map((day, index) => `${index === 0 ? "M" : "L"} ${xForIndex(index)} ${yForAngle(day.sunAngle)}`).join(" ");
   const moonPath = state.daySeries.map((day, index) => `${index === 0 ? "M" : "L"} ${xForIndex(index)} ${yForAngle(day.moonAngle)}`).join(" ");
 
-  const visitBands = state.visitPreviews.map((visit) => {
+  // Rects rendered BEFORE the invisible masks so masks fully cover them in blocked regions.
+  const visitBandRects = state.visitPreviews.map((visit) => {
+    const left = xForDate(visit.start, false);
+    const right = xForDate(visit.end, true);
+    const bandWidth = Math.max(2, right - left);
+    const tone = visit.visible
+      ? { fill: "var(--visit-band-fill)", stroke: "var(--visit-band-stroke)" }
+      : { fill: "var(--blocked-band-fill)", stroke: "var(--blocked-band-stroke)" };
+    return (
+      <rect
+        key={`visit-rect-${visit.visitNo}`}
+        x={left}
+        y={padding.top}
+        width={bandWidth}
+        height={chartHeight}
+        fill={tone.fill}
+        opacity="0.16"
+        stroke={tone.stroke}
+        strokeOpacity="0.28"
+        strokeWidth="0.8"
+      />
+    );
+  });
+
+  // Labels rendered AFTER the invisible masks so they are always readable.
+  const visitBandLabels = state.visitPreviews.map((visit) => {
     const left = xForDate(visit.start, false);
     const right = xForDate(visit.end, true);
     const bandWidth = Math.max(2, right - left);
     const centerX = left + bandWidth / 2;
-    const tone = visit.visible
-      ? { fill: "var(--visit-band-fill)", stroke: "var(--visit-band-stroke)", text: "var(--visit-band-text)" }
-      : { fill: "var(--blocked-band-fill)", stroke: "var(--blocked-band-stroke)", text: "var(--blocked-band-text)" };
-
+    const textColor = visit.visible ? "var(--visit-band-text)" : "var(--blocked-band-text)";
     return (
-      <g key={`visit-${visit.visitNo}`}>
-        <rect
-          x={left}
-          y={padding.top}
-          width={bandWidth}
-          height={chartHeight}
-          fill={tone.fill}
-          opacity="0.16"
-          stroke={tone.stroke}
-          strokeOpacity="0.28"
-          strokeWidth="0.8"
-        />
-        <text x={centerX} y={padding.top + 11} textAnchor="middle" fontSize="12" fill={tone.text} fontWeight="700">
-          V{visit.visitNo}
-        </text>
-      </g>
+      <text key={`visit-label-${visit.visitNo}`} x={centerX} y={padding.top + 11} textAnchor="middle" fontSize="12" fill={textColor} fontWeight="700">
+        V{visit.visitNo}
+      </text>
     );
   });
 
@@ -563,6 +573,7 @@ export default function GpPlanVisibilityReferenceChart({
         >
           <rect x={0} y={0} width={width} height={height} fill={bgColor} />
           {visibleRects}
+          {visitBandRects}
           {invisibleDayOverlays}
           {gridLines}
           {breakBoundaryLines}
@@ -584,8 +595,6 @@ export default function GpPlanVisibilityReferenceChart({
               </g>
             );
           })}
-
-          {visitBands}
 
           {hoverDay && hoverX !== null ? (
             <g pointerEvents="none">
@@ -635,6 +644,7 @@ export default function GpPlanVisibilityReferenceChart({
           ) : null}
 
           {dateLabels}
+          {visitBandLabels}
         </svg>
       </div>
 
