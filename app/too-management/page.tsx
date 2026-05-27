@@ -155,17 +155,25 @@ export default function TooManagementPage() {
   const [userRole, setUserRole] = useState<'viewer' | 'operator' | 'admin'>('viewer');
   const [concludingId, setConcludingId] = useState<number | null>(null);
   const [confirmConcludeId, setConfirmConcludeId] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<"all" | "need_action" | "in_progress">("need_action");
+  const [viewMode, setViewMode] = useState<"all" | "need_action" | "active">("need_action");
 
   useEffect(() => {
     const urlView = new URLSearchParams(window.location.search).get("view");
-    if (urlView === "all" || urlView === "need_action" || urlView === "in_progress") {
+    if (urlView === "all" || urlView === "need_action" || urlView === "active") {
       setViewMode(urlView);
       return;
     }
+    if (urlView === "in_progress") {
+      setViewMode("active");
+      return;
+    }
     const stored = localStorage.getItem(TOO_MANAGEMENT_VIEW_KEY);
-    if (stored === "all" || stored === "need_action" || stored === "in_progress") {
+    if (stored === "all" || stored === "need_action" || stored === "active") {
       setViewMode(stored);
+      return;
+    }
+    if (stored === "in_progress") {
+      setViewMode("active");
     }
   }, []);
 
@@ -246,7 +254,7 @@ export default function TooManagementPage() {
     }));
   }
 
-  function handleViewModeChange(next: "all" | "need_action" | "in_progress") {
+  function handleViewModeChange(next: "all" | "need_action" | "active") {
     setViewMode(next);
     localStorage.setItem(TOO_MANAGEMENT_VIEW_KEY, next);
     const url = new URL(window.location.href);
@@ -259,7 +267,7 @@ export default function TooManagementPage() {
     const filtered = rows.filter((row) => {
       if (stpFilter !== null && row.stp !== stpFilter) return false;
       if (viewMode === "need_action" && !NEED_ACTION_STATUSES.includes(row.scheduledStatus)) return false;
-      if (viewMode === "in_progress" && row.scheduledStatus !== "in_progress") return false;
+      if (viewMode === "active" && row.scheduledStatus !== "planned" && row.scheduledStatus !== "in_progress") return false;
       if (query && !Object.values(row).some(
         (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(query),
       )) return false;
@@ -309,18 +317,18 @@ export default function TooManagementPage() {
     return <span className="ml-1 text-primary">{sortConfig.dir === "asc" ? "↑" : "↓"}</span>;
   }
 
-  function getViewModeButtonClass(mode: "need_action" | "in_progress" | "all") {
+  function getViewModeButtonClass(mode: "need_action" | "active" | "all") {
     const isActive = viewMode === mode;
 
     const activeClasses = {
       need_action: "bg-primary text-white",
-      in_progress: "bg-primary text-white",
+      active: "bg-primary text-white",
       all: "bg-primary text-white",
     } as const;
 
     const inactiveClasses = {
       need_action: "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
-      in_progress: "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
+      active: "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
       all: "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
     } as const;
 
@@ -384,10 +392,10 @@ export default function TooManagementPage() {
             </button>
             <button
               type="button"
-              onClick={() => handleViewModeChange("in_progress")}
-              className={getViewModeButtonClass("in_progress")}
+              onClick={() => handleViewModeChange("active")}
+              className={getViewModeButtonClass("active")}
             >
-              In Progress
+              Active
             </button>
             <button
               type="button"
