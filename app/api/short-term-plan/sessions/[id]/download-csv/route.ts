@@ -175,16 +175,25 @@ export async function GET(request: Request, { params }: RouteParams) {
           reviewedTotalExposureTimeSnapshot: tooToGpSchedule.reviewedTotalExposureTimeSnapshot,
           reviewedNumberOfVisitsSnapshot: tooToGpSchedule.reviewedNumberOfVisitsSnapshot,
           status: tooToGpSchedule.status,
+          scheduledStatus: sql<"scheduled" | "queued">`
+            CASE
+              WHEN EXISTS (
+                SELECT 1 FROM obs_wp o
+                WHERE POSITION(${tooToGpSchedule.generatedEpDbObjectId} IN COALESCE(o.ep_db_object_id, '')) > 0
+              ) THEN 'scheduled'
+              ELSE 'queued'
+            END
+          `,
         })
         .from(tooToGpSchedule)
         .innerJoin(approvedToO, eq(approvedToO.id, tooToGpSchedule.approvedTooId)),
     ]);
 
-    // Filter tooGp: matching week + not excluded (skip status filter for CSV — respect exclusion only)
+    // Filter tooGp: match week + scheduledStatus=queued + not excluded
     const tooGpRows = tooGpAllRows
       .filter((r) => {
         const rowWeekNum = getWeekNumFromDate(r.plannedStartTime);
-        return rowWeekNum !== null && rowWeekNum === sessionWeekNum && !excludedTooGp.has(r.id);
+        return rowWeekNum !== null && rowWeekNum === sessionWeekNum && r.scheduledStatus === "queued" && !excludedTooGp.has(r.id);
       })
       .map((r): SourceRow => ({
         id: r.id,
