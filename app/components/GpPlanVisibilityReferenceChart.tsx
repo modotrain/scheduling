@@ -430,29 +430,51 @@ export default function GpPlanVisibilityReferenceChart({
   const sunPath = state.daySeries.map((day, index) => `${index === 0 ? "M" : "L"} ${xForIndex(index)} ${yForAngle(day.sunAngle)}`).join(" ");
   const moonPath = state.daySeries.map((day, index) => `${index === 0 ? "M" : "L"} ${xForIndex(index)} ${yForAngle(day.moonAngle)}`).join(" ");
 
-  // Rects rendered BEFORE the invisible masks so masks fully cover them in blocked regions.
-  const visitBandRects = state.visitPreviews.map((visit) => {
-    const left = xForDate(visit.start, false);
-    const right = xForDate(visit.end, true);
-    const bandWidth = Math.max(2, right - left);
-    const tone = visit.visible
-      ? { fill: "var(--visit-band-fill)", stroke: "var(--visit-band-stroke)" }
-      : { fill: "var(--blocked-band-fill)", stroke: "var(--blocked-band-stroke)" };
-    return (
-      <rect
-        key={`visit-rect-${visit.visitNo}`}
-        x={left}
-        y={padding.top}
-        width={bandWidth}
-        height={chartHeight}
-        fill={tone.fill}
-        opacity="0.16"
-        stroke={tone.stroke}
-        strokeOpacity="0.28"
-        strokeWidth="0.8"
-      />
-    );
-  });
+  // Visible visit rects — rendered BEFORE masks so they are covered in blocked regions (correct).
+  const visitBandVisibleRects = state.visitPreviews
+    .filter((v) => v.visible)
+    .map((visit) => {
+      const left = xForDate(visit.start, false);
+      const right = xForDate(visit.end, true);
+      const bandWidth = Math.max(2, right - left);
+      return (
+        <rect
+          key={`visit-rect-${visit.visitNo}`}
+          x={left}
+          y={padding.top}
+          width={bandWidth}
+          height={chartHeight}
+          fill="var(--visit-band-fill)"
+          opacity="0.16"
+          stroke="var(--visit-band-stroke)"
+          strokeOpacity="0.28"
+          strokeWidth="0.8"
+        />
+      );
+    });
+
+  // Blocked visit rects — rendered AFTER masks so the red tint shows on top of the mask.
+  const visitBandBlockedRects = state.visitPreviews
+    .filter((v) => !v.visible)
+    .map((visit) => {
+      const left = xForDate(visit.start, false);
+      const right = xForDate(visit.end, true);
+      const bandWidth = Math.max(2, right - left);
+      return (
+        <rect
+          key={`visit-rect-${visit.visitNo}`}
+          x={left}
+          y={padding.top}
+          width={bandWidth}
+          height={chartHeight}
+          fill="var(--blocked-band-fill)"
+          opacity="0.22"
+          stroke="var(--blocked-band-stroke)"
+          strokeOpacity="0.45"
+          strokeWidth="0.8"
+        />
+      );
+    });
 
   // Labels rendered AFTER the invisible masks so they are always readable.
   const visitBandLabels = state.visitPreviews.map((visit) => {
@@ -573,8 +595,9 @@ export default function GpPlanVisibilityReferenceChart({
         >
           <rect x={0} y={0} width={width} height={height} fill={bgColor} />
           {visibleRects}
-          {visitBandRects}
+          {visitBandVisibleRects}
           {invisibleDayOverlays}
+          {visitBandBlockedRects}
           {gridLines}
           {breakBoundaryLines}
 
