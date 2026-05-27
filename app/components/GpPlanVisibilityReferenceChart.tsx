@@ -343,9 +343,9 @@ export default function GpPlanVisibilityReferenceChart({
     [plannedEnd, plannedStart, sourceDec, sourceRa, visitPreviews],
   );
 
-  const width = 1100;
-  const height = 260;
-  const padding = { top: 18, right: 24, bottom: 44, left: 48 };
+  const width = 980;
+  const height = 208;
+  const padding = { top: 12, right: 16, bottom: 34, left: 40 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
   const bgColor = "#f8fafc";
@@ -353,6 +353,7 @@ export default function GpPlanVisibilityReferenceChart({
   const gridColor = "#cbd5e1";
   const sunColor = "#b91c1c";
   const moonColor = "#0056b3";
+  const pointRadius = state.daySeries.length > 60 ? 2.2 : state.daySeries.length > 28 ? 2.6 : 2.9;
 
   const maxAngle = 180;
   const minAngle = 0;
@@ -385,13 +386,13 @@ export default function GpPlanVisibilityReferenceChart({
     );
   });
 
-  const gridLines = Array.from({ length: 5 }, (_value, index) => {
-    const angle = maxAngle - (maxAngle / 4) * index;
+  const gridAngles = [180, 135, 90, 45, 0];
+  const gridLines = gridAngles.map((angle) => {
     const y = yForAngle(angle);
     return (
       <g key={`grid-${angle}`}>
         <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke={gridColor} strokeWidth="0.75" opacity="0.7" />
-        <text x={padding.left - 8} y={y + 4} fontSize="11" fill={darkText} textAnchor="end">
+        <text x={padding.left - 6} y={y + 3.5} fontSize="10" fill={darkText} textAnchor="end" opacity="0.92">
           {angle.toFixed(0)}°
         </text>
       </g>
@@ -407,16 +408,16 @@ export default function GpPlanVisibilityReferenceChart({
       Math.max(0, state.daySeries.length - 1),
     );
     const x = xForIndex(index);
-    const y = padding.top + chartHeight - 16;
+    const y = padding.top + chartHeight - 12;
     const tone = visit.visible
       ? { fill: "#16a34a", stroke: "#14532d" }
       : { fill: "#ef4444", stroke: "#7f1d1d" };
 
     return (
       <g key={`visit-${visit.visitNo}`}>
-        <line x1={x} y1={padding.top + chartHeight} x2={x} y2={y} stroke={tone.fill} strokeWidth="2" opacity="0.8" />
+        <line x1={x} y1={padding.top + chartHeight} x2={x} y2={y} stroke={tone.fill} strokeWidth="1.8" opacity="0.8" />
         <circle cx={x} cy={y} r="5" fill={tone.fill} stroke={tone.stroke} strokeWidth="1.5" />
-        <text x={x} y={y - 9} textAnchor="middle" fontSize="10" fill={tone.fill} fontWeight="600">
+        <text x={x} y={y - 9} textAnchor="middle" fontSize="12" fill={tone.fill} fontWeight="700">
           V{visit.visitNo}
         </text>
       </g>
@@ -424,21 +425,27 @@ export default function GpPlanVisibilityReferenceChart({
   });
 
   const dateLabels = state.daySeries.length > 0
-    ? [0, Math.floor((state.daySeries.length - 1) / 2), state.daySeries.length - 1]
+    ? [
+        0,
+        Math.floor((state.daySeries.length - 1) * 0.33),
+        Math.floor((state.daySeries.length - 1) * 0.66),
+        state.daySeries.length - 1,
+      ]
         .filter((value, index, array) => array.indexOf(value) === index)
         .map((index) => {
           const day = state.daySeries[index]!;
           const x = xForIndex(index);
+          const shortDate = day.date.slice(5);
           return (
             <text
               key={`date-${day.date}`}
               x={x}
-              y={height - 14}
+              y={height - 12}
               textAnchor={index === 0 ? "start" : index === state.daySeries.length - 1 ? "end" : "middle"}
-              fontSize="11"
+              fontSize="10"
               fill={darkText}
             >
-              {day.date}
+              {shortDate}
             </text>
           );
         })
@@ -446,11 +453,11 @@ export default function GpPlanVisibilityReferenceChart({
 
   if (!state.hasGeometry) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
+      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/40">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-slate-900 dark:text-white">Visibility Reference</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
               Enter a start date, source coordinates, and visit count to preview visibility.
             </p>
           </div>
@@ -463,11 +470,11 @@ export default function GpPlanVisibilityReferenceChart({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-800/40">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900 dark:text-white">Visibility Reference</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             Green bands indicate daily visibility windows. Visit markers are colored by the same constraint check used for saving.
           </p>
         </div>
@@ -485,8 +492,8 @@ export default function GpPlanVisibilityReferenceChart({
           <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + chartHeight} stroke={darkText} strokeWidth="1" opacity="0.6" />
           <line x1={padding.left} y1={padding.top + chartHeight} x2={width - padding.right} y2={padding.top + chartHeight} stroke={darkText} strokeWidth="1" opacity="0.6" />
 
-          <path d={sunPath} fill="none" stroke={sunColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
-          <path d={moonPath} fill="none" stroke={moonColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+          <path d={sunPath} fill="none" stroke={sunColor} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" opacity="0.92" />
+          <path d={moonPath} fill="none" stroke={moonColor} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" opacity="0.92" />
 
           {state.daySeries.map((day, index) => {
             const x = xForIndex(index);
@@ -494,8 +501,8 @@ export default function GpPlanVisibilityReferenceChart({
             const yMoon = yForAngle(day.moonAngle);
             return (
               <g key={day.date}>
-                <circle cx={x} cy={ySun} r="3.25" fill={sunColor} stroke="#fff" strokeWidth="1" />
-                <circle cx={x} cy={yMoon} r="3.25" fill={moonColor} stroke="#fff" strokeWidth="1" />
+                <circle cx={x} cy={ySun} r={pointRadius} fill={sunColor} stroke="#fff" strokeWidth="0.9" />
+                <circle cx={x} cy={yMoon} r={pointRadius} fill={moonColor} stroke="#fff" strokeWidth="0.9" />
               </g>
             );
           })}
@@ -505,7 +512,7 @@ export default function GpPlanVisibilityReferenceChart({
         </svg>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-600 dark:text-slate-300">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-slate-600 dark:text-slate-300">
         <div className="flex items-center gap-2">
           <span className="h-3 w-8 rounded-sm bg-emerald-500/20 ring-1 ring-emerald-500/30" />
           <span>Visible window</span>

@@ -588,7 +588,6 @@ export default function TooManagementDetailPage() {
 
   const visitPreviews = useMemo(() => {
     if (
-      !editingPlanningId &&
       planningNumberOfVisitsNumeric !== null &&
       planningNumberOfVisitsNumeric > 0 &&
       plannedStartInput
@@ -602,7 +601,7 @@ export default function TooManagementDetailPage() {
       );
     }
     return [];
-  }, [editingPlanningId, planningNumberOfVisitsNumeric, plannedStartInput, plannedEndInput, cadenceNumeric, planningCadenceUnit]);
+  }, [planningNumberOfVisitsNumeric, plannedStartInput, plannedEndInput, cadenceNumeric, planningCadenceUnit]);
 
   const visibilityReference = useMemo(() => {
     return evaluateGpVisibility({
@@ -1068,7 +1067,9 @@ export default function TooManagementDetailPage() {
     setPlanningSingleExposureTime(
       item.reviewedSingleExposureTimeSnapshot === null ? "" : String(item.reviewedSingleExposureTimeSnapshot),
     );
-    setPlanningNumberOfVisits("1");
+    setPlanningNumberOfVisits(
+      item.reviewedNumberOfVisitsSnapshot === null ? "1" : String(item.reviewedNumberOfVisitsSnapshot),
+    );
     setPlanningNotes(item.notes ?? "");
   }
 

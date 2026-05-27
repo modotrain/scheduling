@@ -143,7 +143,7 @@ export default function ObsWpDetailPage() {
                   <div key={currentRow.id} className="px-5 py-4">
                     {rows.length > 1 ? (
                       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary">
-                        Match {rowIndex + 1} / {rows.length}
+                        Matched Observation {rowIndex + 1} / {rows.length}
                       </p>
                     ) : null}
 
