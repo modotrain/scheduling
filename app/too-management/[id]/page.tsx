@@ -4,6 +4,10 @@ import { SubmitEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getCycleWeekLabel, getWeekKey } from "@/app/lib/week-utils";
+import GpPlanVisibilityReferenceChart, {
+  buildGpPlanVisitPreviews,
+  evaluateGpVisibility,
+} from "@/app/components/GpPlanVisibilityReferenceChart";
 
 type ApprovedTooRow = {
   id: number;
@@ -582,6 +586,34 @@ export default function TooManagementDetailPage() {
       ? singleExposureNumeric * planningNumberOfVisitsNumeric
       : null;
 
+  const visitPreviews = useMemo(() => {
+    if (
+      !editingPlanningId &&
+      planningNumberOfVisitsNumeric !== null &&
+      planningNumberOfVisitsNumeric > 0 &&
+      plannedStartInput
+    ) {
+      return buildGpPlanVisitPreviews(
+        plannedStartInput,
+        plannedEndInput,
+        planningNumberOfVisitsNumeric,
+        cadenceNumeric ?? 0,
+        planningCadenceUnit,
+      );
+    }
+    return [];
+  }, [editingPlanningId, planningNumberOfVisitsNumeric, plannedStartInput, plannedEndInput, cadenceNumeric, planningCadenceUnit]);
+
+  const visibilityReference = useMemo(() => {
+    return evaluateGpVisibility({
+      sourceRa: row?.ra ?? null,
+      sourceDec: row?.dec ?? null,
+      plannedStart: plannedStartInput,
+      plannedEnd: plannedEndInput,
+      visitPreviews,
+    });
+  }, [plannedEndInput, plannedStartInput, row?.dec, row?.ra, visitPreviews]);
+
   const planningValidationErrors = useMemo(() => {
     const errors: string[] = [];
 
@@ -618,6 +650,11 @@ export default function TooManagementDetailPage() {
       }
     }
 
+    if (visibilityReference.blockedVisits.length > 0) {
+      const blockedText = visibilityReference.blockedVisits.map((visit) => `Visit ${visit.visitNo}`).join(", ");
+      errors.push(`${blockedText} fall outside the visible window.`);
+    }
+
     const reviewedN = Number(row?.reviewedNumberOfVisits ?? "0");
     if (planningNumberOfVisitsNumeric === null || planningNumberOfVisitsNumeric < 1) {
       errors.push("Number of GP Visits must be at least 1.");
@@ -626,32 +663,17 @@ export default function TooManagementDetailPage() {
     }
 
     return errors;
-  }, [planningWindowOptions, plannedStartInput, plannedEndInput, cadenceNumeric, planningCadenceUnit, singleExposureNumeric, planningNumberOfVisitsNumeric, row]);
-
-  const visitPreviews = useMemo(() => {
-    if (
-      !editingPlanningId &&
-      planningNumberOfVisitsNumeric !== null &&
-      planningNumberOfVisitsNumeric > 0 &&
-      plannedStartInput
-    ) {
-      const count = Math.min(planningNumberOfVisitsNumeric, 52);
-      const windows = computeAllVisitWindowsFE(
-        plannedStartInput,
-        plannedEndInput,
-        count,
-        cadenceNumeric ?? 0,
-        planningCadenceUnit,
-      );
-      return windows.map((w, i) => ({
-        visitNo: i + 1,
-        start: w.start,
-        end: w.end,
-        weekId: getCycleWeekLabel(w.weekStart),
-      }));
-    }
-    return [];
-  }, [editingPlanningId, planningNumberOfVisitsNumeric, plannedStartInput, plannedEndInput, cadenceNumeric, planningCadenceUnit]);
+  }, [
+    planningWindowOptions,
+    plannedStartInput,
+    plannedEndInput,
+    cadenceNumeric,
+    planningCadenceUnit,
+    singleExposureNumeric,
+    planningNumberOfVisitsNumeric,
+    row,
+    visibilityReference.blockedVisits,
+  ]);
 
   const modalWeeklyExposure = useMemo(() => {
     // Always produce exactly 6 buckets matching the dropdown week options
@@ -1992,6 +2014,16 @@ export default function TooManagementDetailPage() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="mt-4">
+                <GpPlanVisibilityReferenceChart
+                  sourceRa={row?.ra ?? null}
+                  sourceDec={row?.dec ?? null}
+                  plannedStart={plannedStartInput}
+                  plannedEnd={plannedEndInput}
+                  visitPreviews={visitPreviews}
+                />
               </div>
 
               {/* ── Add mode: read-only params + prominent visit count ── */}
