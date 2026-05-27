@@ -4,13 +4,29 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
 import {
+  approvedToO,
   longTermObservationListCycle2,
   longTermObservationListCycle2GF,
   shortTermPlanSessions,
+  tooToGpSchedule,
 } from "@/src/db/schema";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
 
 type RouteParams = { params: Promise<{ id: string }> };
+
+// Mirror of week-utils.ts CYCLE2_EPOCH logic
+const CYCLE2_EPOCH = "2025-08-12";
+function getWeekNumFromDate(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  const normalized = dateStr.includes("T") ? dateStr.split("T")[0]! : dateStr.split(" ")[0]!;
+  const d = new Date(`${normalized}T00:00:00Z`);
+  if (isNaN(d.getTime())) return null;
+  const dayOfWeek = d.getUTCDay();
+  const daysSinceTuesday = (dayOfWeek + 7 - 2) % 7;
+  const tuesdayMs = d.getTime() - daysSinceTuesday * 86_400_000;
+  const epochMs = new Date(`${CYCLE2_EPOCH}T00:00:00Z`).getTime();
+  return Math.floor((tuesdayMs - epochMs) / (7 * 86_400_000)) + 1;
+}
 
 type SourceRow = {
   id: number;
@@ -133,9 +149,11 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const excludedCycle2 = new Set<number>(planSession.excludedCycle2Ids);
     const excludedGf = new Set<number>(planSession.excludedGfIds);
+    const excludedTooGp = new Set<number>(planSession.excludedTooGpIds ?? []);
+    const sessionWeekNum = parseInt(planSession.weekId.replace(/\D/g, ""), 10);
 
     // Fetch sources for the session's week
-    const [cycle2Rows, gfRows] = await Promise.all([
+    const [cycle2Rows, gfRows, tooGpAllRows] = await Promise.all([
       db
         .select()
         .from(longTermObservationListCycle2)
@@ -144,11 +162,75 @@ export async function GET(request: Request, { params }: RouteParams) {
         .select()
         .from(longTermObservationListCycle2GF)
         .where(eq(longTermObservationListCycle2GF.weekId, planSession.weekId)),
+      db
+        .select({
+          id: tooToGpSchedule.id,
+          sourceName: approvedToO.sourceName,
+          ra: approvedToO.ra,
+          dec: approvedToO.dec,
+          generatedEpDbObjectId: tooToGpSchedule.generatedEpDbObjectId,
+          plannedStartTime: tooToGpSchedule.plannedStartTime,
+          plannedEndTime: tooToGpSchedule.plannedEndTime,
+          reviewedSingleExposureTimeSnapshot: tooToGpSchedule.reviewedSingleExposureTimeSnapshot,
+          reviewedTotalExposureTimeSnapshot: tooToGpSchedule.reviewedTotalExposureTimeSnapshot,
+          reviewedNumberOfVisitsSnapshot: tooToGpSchedule.reviewedNumberOfVisitsSnapshot,
+          status: tooToGpSchedule.status,
+        })
+        .from(tooToGpSchedule)
+        .innerJoin(approvedToO, eq(approvedToO.id, tooToGpSchedule.approvedTooId)),
     ]);
+
+    // Filter tooGp: matching week + not excluded (skip status filter for CSV — respect exclusion only)
+    const tooGpRows = tooGpAllRows
+      .filter((r) => {
+        const rowWeekNum = getWeekNumFromDate(r.plannedStartTime);
+        return rowWeekNum !== null && rowWeekNum === sessionWeekNum && !excludedTooGp.has(r.id);
+      })
+      .map((r): SourceRow => ({
+        id: r.id,
+        sourceId: r.generatedEpDbObjectId,
+        proposalId: null,
+        proposalNo: null,
+        epDbObjectId: r.generatedEpDbObjectId,
+        pi: null,
+        groupName: null,
+        sourceName: r.sourceName ?? null,
+        obsType: "ToO-GP",
+        ra: r.ra ?? null,
+        dec: r.dec ?? null,
+        totalExposureTime: r.reviewedSingleExposureTimeSnapshot?.toString() ?? null,
+        totalExposureTimeAll: r.reviewedTotalExposureTimeSnapshot?.toString() ?? null,
+        exposureTimeUnit: "s",
+        continousExposure: null,
+        visitNumber: r.reviewedNumberOfVisitsSnapshot?.toString() ?? null,
+        exposurePerVistMin: null,
+        exposurePerVistMax: null,
+        completeness: null,
+        cadence: null,
+        cadenceUnit: null,
+        precision: null,
+        precisionUnit: null,
+        startTime: r.plannedStartTime,
+        endTime: r.plannedEndTime,
+        sourcePriority: null,
+        fxt1WindowMode: null,
+        fxt1Filter: null,
+        fxt2WindowMode: null,
+        fxt2Filter: null,
+        isUpdated: null,
+        payload: null,
+        wxtCmos: null,
+        wxtCmosX: null,
+        wxtCmosY: null,
+        fxtCmr: null,
+        fxtX: null,
+        fxtY: null,
+        isForDisrupted: null,
+      }));
 
     const selectedCycle2 = cycle2Rows.filter((r) => !excludedCycle2.has(r.id));
     const selectedGf = gfRows.filter((r) => !excludedGf.has(r.id));
-    const allRows: SourceRow[] = [...selectedCycle2, ...selectedGf];
+    const allRows: SourceRow[] = [...selectedCycle2, ...selectedGf, ...tooGpRows];
 
     // Determine the week date range for column headers
     // Try to derive from start_time of sources, fallback to a calculated estimate

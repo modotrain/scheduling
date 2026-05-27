@@ -10,14 +10,29 @@ type PlanSession = {
   id: number;
   weekId: string;
   status: string;
+  currentStep: number;
   operatorName: string | null;
   excludedCycle2Ids: number[];
   excludedGfIds: number[];
+  excludedTooGpIds: number[];
   mergedCsvText: string | null;
   uploadedObsPlanText: string | null;
   unscheduledEpDbIds: string[];
   createdAt: string;
   updatedAt: string;
+};
+
+type TooGpSourceRow = {
+  id: number;
+  sourceName: string | null;
+  generatedEpDbObjectId: string | null;
+  parentEpDbObjectId: string | null;
+  plannedStartTime: string | null;
+  plannedEndTime: string | null;
+  reviewedSingleExposureTimeSnapshot: number | null;
+  reviewedNumberOfVisitsSnapshot: number | null;
+  status: string | null;
+  isExcluded: boolean;
 };
 
 type SourceRow = {
@@ -89,7 +104,7 @@ function formatWeekId(weekId: string): string {
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
-const STEPS = ["Select Week", "Cycle2 Sources", "GF Sources", "Overview"];
+const STEPS = ["Select Week", "Cycle2 Sources", "GF Sources", "ToO-GP Sources", "Overview"];
 
 function StepBar({ current }: { current: number }) {
   return (
@@ -265,6 +280,128 @@ function SourceTable({
   );
 }
 
+// ── TooGP source table ────────────────────────────────────────────────────────
+
+function TooGpSourceTable({
+  rows,
+  excludedIds,
+  onSelectionChange,
+  stats,
+  loading,
+}: {
+  rows: TooGpSourceRow[];
+  excludedIds: Set<number>;
+  onSelectionChange: (newExcluded: Set<number>) => void;
+  stats: SourceStats | null;
+  loading: boolean;
+}) {
+  const allIds = rows.map((r) => r.id);
+  const selectedIds = new Set(allIds.filter((id) => !excludedIds.has(id)));
+  const allSelected = rows.length > 0 && selectedIds.size === rows.length;
+  const someSelected = selectedIds.size > 0 && !allSelected;
+
+  const toggleAll = () => {
+    if (allSelected) onSelectionChange(new Set(allIds));
+    else onSelectionChange(new Set());
+  };
+
+  const toggleRow = (id: number) => {
+    const next = new Set(excludedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onSelectionChange(next);
+  };
+
+  if (loading) {
+    return <div className="flex h-48 items-center justify-center text-slate-400">Loading sources…</div>;
+  }
+
+  if (rows.length === 0) {
+    return <div className="flex h-48 items-center justify-center text-slate-400">No ToO-GP sources found for this week.</div>;
+  }
+
+  return (
+    <div>
+      {stats && (
+        <div className="mb-3 flex flex-wrap items-center gap-4 text-sm">
+          <span className="text-slate-600 dark:text-slate-300">
+            <strong className="text-slate-900 dark:text-white">{stats.count}</strong> / {stats.totalCount} sources selected
+          </span>
+          <span className="text-slate-600 dark:text-slate-300">
+            Total exposure: <strong className="text-slate-900 dark:text-white">{fmtKs(stats.totalExposureS)}</strong>
+          </span>
+          <button
+            onClick={toggleAll}
+            className="ml-auto text-xs text-primary underline-offset-2 hover:underline"
+          >
+            {allSelected ? "Deselect All" : "Select All"}
+          </button>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
+              <th className="w-9 px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                  onChange={toggleAll}
+                  className="cursor-pointer accent-primary"
+                />
+              </th>
+              <th className="px-3 py-2">Source Name</th>
+              <th className="px-3 py-2">EP DB Object ID</th>
+              <th className="px-3 py-2">Planned Window</th>
+              <th className="px-3 py-2 text-right">Exp.</th>
+              <th className="px-3 py-2 text-right">Visits</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {rows.map((row) => {
+              const isSelected = !excludedIds.has(row.id);
+              return (
+                <tr
+                  key={row.id}
+                  onClick={() => toggleRow(row.id)}
+                  className={`cursor-pointer transition-colors ${
+                    isSelected
+                      ? "hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+                      : "bg-slate-50/60 text-slate-400 line-through dark:bg-slate-900/40 dark:text-slate-600"
+                  }`}
+                >
+                  <td className="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleRow(row.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="cursor-pointer accent-primary"
+                    />
+                  </td>
+                  <td className="max-w-[160px] truncate px-3 py-2 font-medium">{row.sourceName ?? "—"}</td>
+                  <td className="px-3 py-2 font-mono text-[11px] text-slate-500">{row.generatedEpDbObjectId ?? "—"}</td>
+                  <td className="px-3 py-2 text-[11px]">
+                    {row.plannedStartTime ?? "—"} → {row.plannedEndTime ?? "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    {row.reviewedSingleExposureTimeSnapshot != null
+                      ? fmtKs(row.reviewedSingleExposureTimeSnapshot)
+                      : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right">{row.reviewedNumberOfVisitsSnapshot ?? "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function WizardPage({ params }: { params: Promise<{ id: string }> }) {
@@ -284,6 +421,11 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   const [gfStats, setGfStats] = useState<SourceStats | null>(null);
   const [gfLoading, setGfLoading] = useState(false);
   const [excludedGf, setExcludedGf] = useState<Set<number>>(new Set());
+
+  const [tooGpRows, setTooGpRows] = useState<TooGpSourceRow[]>([]);
+  const [tooGpStats, setTooGpStats] = useState<SourceStats | null>(null);
+  const [tooGpLoading, setTooGpLoading] = useState(false);
+  const [excludedTooGp, setExcludedTooGp] = useState<Set<number>>(new Set());
 
   // Post-confirm
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
@@ -317,11 +459,15 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
       setSession(s);
       setExcludedCycle2(new Set(s.excludedCycle2Ids));
       setExcludedGf(new Set(s.excludedGfIds));
+      setExcludedTooGp(new Set(s.excludedTooGpIds ?? []));
 
-      // Restore step from status
-      if (s.status === "uploaded" || s.status === "completed") setCurrentStep(3);
-      else if (s.status === "confirmed") setCurrentStep(3);
-      else setCurrentStep(0);
+      // Restore step from status (confirmed/uploaded/completed always go to overview)
+      // For active sessions, restore the persisted step from DB
+      if (s.status === "uploaded" || s.status === "completed" || s.status === "confirmed") {
+        setCurrentStep(4);
+      } else {
+        setCurrentStep(s.currentStep ?? 0);
+      }
 
       // Restore upload result if session has unscheduled sources
       if ((s.status === "uploaded" || s.status === "completed") && s.unscheduledEpDbIds.length >= 0 && s.uploadedObsPlanText) {
@@ -345,7 +491,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   // ── Load sources on step change ──────────────────────────────────────────
 
   useEffect(() => {
-    if ((currentStep === 1 || currentStep === 3) && session && cycle2Rows.length === 0) {
+    if ((currentStep === 1 || currentStep === 4) && session && cycle2Rows.length === 0) {
       setCycle2Loading(true);
       fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=cycle2`)
         .then((r) => r.json())
@@ -360,7 +506,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   }, [currentStep, session, cycle2Rows.length]);
 
   useEffect(() => {
-    if ((currentStep === 2 || currentStep === 3) && session && gfRows.length === 0) {
+    if ((currentStep === 2 || currentStep === 4) && session && gfRows.length === 0) {
       setGfLoading(true);
       fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=gf`)
         .then((r) => r.json())
@@ -396,6 +542,28 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     }, 0);
     setGfStats({ count: included.length, totalCount: gfRows.length, totalExposureS: Math.round(totalExposureS) });
   }, [excludedGf, gfRows]);
+
+  useEffect(() => {
+    if (!tooGpRows.length) return;
+    const included = tooGpRows.filter((r) => !excludedTooGp.has(r.id));
+    const totalExposureS = included.reduce((sum, r) => sum + (r.reviewedSingleExposureTimeSnapshot ?? 0), 0);
+    setTooGpStats({ count: included.length, totalCount: tooGpRows.length, totalExposureS });
+  }, [excludedTooGp, tooGpRows]);
+
+  useEffect(() => {
+    if ((currentStep === 3 || currentStep === 4) && session && tooGpRows.length === 0) {
+      setTooGpLoading(true);
+      fetch(`/api/short-term-plan/sessions/${session.id}/too-gp-sources`)
+        .then((r) => r.json())
+        .then((d: { rows: TooGpSourceRow[]; stats: SourceStats }) => {
+          setTooGpRows(d.rows ?? []);
+          setTooGpStats(d.stats);
+          setExcludedTooGp(new Set(session.excludedTooGpIds ?? []));
+        })
+        .catch(console.error)
+        .finally(() => setTooGpLoading(false));
+    }
+  }, [currentStep, session, tooGpRows.length]);
 
   // ── Load unscheduled if session was already uploaded ──────────────────────
 
@@ -440,13 +608,19 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     setSaving(true);
     try {
       if (currentStep === 0) {
-        // Just save operator name if changed
+        // Save step advance (no source data to persist yet)
+        const res = await fetch(`/api/short-term-plan/sessions/${session.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ currentStep: 1 }),
+        });
+        if (!res.ok) { alert("Failed to save. Please try again."); return; }
         setCurrentStep(1);
       } else if (currentStep === 1) {
         const res = await fetch(`/api/short-term-plan/sessions/${session.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ excludedCycle2Ids: [...excludedCycle2] }),
+          body: JSON.stringify({ excludedCycle2Ids: [...excludedCycle2], currentStep: 2 }),
         });
         if (!res.ok) { alert("Failed to save. Please try again."); return; }
         setCurrentStep(2);
@@ -454,10 +628,18 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
         const res = await fetch(`/api/short-term-plan/sessions/${session.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ excludedGfIds: [...excludedGf] }),
+          body: JSON.stringify({ excludedGfIds: [...excludedGf], currentStep: 3 }),
         });
         if (!res.ok) { alert("Failed to save. Please try again."); return; }
         setCurrentStep(3);
+      } else if (currentStep === 3) {
+        const res = await fetch(`/api/short-term-plan/sessions/${session.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ excludedTooGpIds: [...excludedTooGp], currentStep: 4 }),
+        });
+        if (!res.ok) { alert("Failed to save. Please try again."); return; }
+        setCurrentStep(4);
       }
     } finally {
       setSaving(false);
@@ -490,6 +672,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
       body: JSON.stringify({
         excludedCycle2Ids: [...excludedCycle2],
         excludedGfIds: [...excludedGf],
+        excludedTooGpIds: [...excludedTooGp],
       }),
     });
     const link = document.createElement("a");
@@ -563,12 +746,20 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     }
   }
 
-  // Allow re-editing step 2 or 3 from overview
+  // Allow re-editing steps 2/3/4 from overview
   function goBackToStep(step: number) {
     setCurrentStep(step);
+    if (session) {
+      void fetch(`/api/short-term-plan/sessions/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentStep: step }),
+      });
+    }
     // Force reload of source data
     if (step === 1) setCycle2Rows([]);
     if (step === 2) setGfRows([]);
+    if (step === 3) setTooGpRows([]);
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -594,9 +785,10 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   const isUploaded = session.status === "uploaded" || session.status === "completed";
   const isCompleted = session.status === "completed";
 
-  // Merged stats for step 4
+  // Merged stats for step 5 (Overview)
   const cycle2Included = cycle2Rows.filter((r) => !excludedCycle2.has(r.id));
   const gfIncluded = gfRows.filter((r) => !excludedGf.has(r.id));
+  const tooGpIncluded = tooGpRows.filter((r) => !excludedTooGp.has(r.id));
   const mergedAll = [...cycle2Included, ...gfIncluded];
 
   function calcExpS(rows: SourceRow[]) {
@@ -608,7 +800,8 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   }
   const cycle2ExpS = calcExpS(cycle2Included);
   const gfExpS = calcExpS(gfIncluded);
-  const mergedExpS = cycle2ExpS + gfExpS;
+  const tooGpExpS = tooGpIncluded.reduce((sum, r) => sum + (r.reviewedSingleExposureTimeSnapshot ?? 0), 0);
+  const mergedExpS = cycle2ExpS + gfExpS + tooGpExpS;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-8 dark:from-slate-950 dark:to-slate-900 md:px-8">
@@ -698,19 +891,38 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
             </div>
           )}
 
-          {/* Step 4: Overview */}
+          {/* Step 4: ToO-GP sources */}
           {currentStep === 3 && (
             <div>
-              <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">Step 4: Overview & Confirm</h2>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">Step 4: ToO-GP Sources</h2>
+                <span className="text-xs text-slate-500">Week: {formatWeekId(session.weekId)}</span>
+              </div>
+              <TooGpSourceTable
+                rows={tooGpRows}
+                excludedIds={excludedTooGp}
+                onSelectionChange={setExcludedTooGp}
+                stats={tooGpStats}
+                loading={tooGpLoading}
+              />
+            </div>
+          )}
+
+          {/* Step 5: Overview */}
+          {currentStep === 4 && (
+            <div>
+              <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">Step 5: Overview & Confirm</h2>
 
               {/* Stats summary */}
-              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
                 {[
-                  { label: "Total Sources", value: mergedAll.length },
+                  { label: "Total Sources", value: mergedAll.length + tooGpIncluded.length },
                   { label: "Cycle2 Sources", value: cycle2Included.length },
                   { label: "GF Sources", value: gfIncluded.length },
+                  { label: "ToO-GP Sources", value: tooGpIncluded.length },
                   { label: "Cycle2 Exposure", value: fmtKs(cycle2ExpS) },
                   { label: "GF Exposure", value: fmtKs(gfExpS) },
+                  { label: "ToO-GP Exposure", value: fmtKs(tooGpExpS) },
                 ].map((stat) => (
                   <div key={stat.label} className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
                     <p className="text-xs text-slate-500 dark:text-slate-400">{stat.label}</p>
@@ -720,25 +932,28 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
               </div>
 
               {/* Modify selections links */}
-              <div className="mb-4 flex gap-3">
+              <div className="mb-4 flex flex-wrap gap-3">
                 <button onClick={() => goBackToStep(1)} className="text-xs text-primary underline-offset-2 hover:underline">
                   ✏ Modify Cycle2 selection
                 </button>
                 <button onClick={() => goBackToStep(2)} className="text-xs text-primary underline-offset-2 hover:underline">
                   ✏ Modify GF selection
                 </button>
+                <button onClick={() => goBackToStep(3)} className="text-xs text-primary underline-offset-2 hover:underline">
+                  ✏ Modify ToO-GP selection
+                </button>
               </div>
 
-              {/* Merged table preview (first 20 rows) */}
+              {/* Merged table preview (first 50 rows) */}
               <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
-                      <th className="px-3 py-2">Cycle</th>
+                      <th className="px-3 py-2">Type</th>
                       <th className="px-3 py-2">Source ID</th>
                       <th className="px-3 py-2">Name</th>
                       <th className="px-3 py-2">PI</th>
-                      <th className="px-3 py-2">Type</th>
+                      <th className="px-3 py-2">Obs Type</th>
                       <th className="px-3 py-2">Priority</th>
                       <th className="px-3 py-2 text-right">Exp.</th>
                     </tr>
@@ -769,10 +984,25 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                         <td className="px-3 py-1.5 text-right">{row.totalExposureTimeAll ?? row.totalExposureTime ?? "—"} {row.exposureTimeUnit ?? ""}</td>
                       </tr>
                     ))}
+                    {tooGpIncluded.map((row) => (
+                      <tr key={`too-gp-${row.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                        <td className="px-3 py-1.5">
+                          <span className="rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">ToGP</span>
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-[11px]">{row.generatedEpDbObjectId ?? "—"}</td>
+                        <td className="max-w-[130px] truncate px-3 py-1.5">{row.sourceName ?? "—"}</td>
+                        <td className="px-3 py-1.5">—</td>
+                        <td className="px-3 py-1.5 text-[10px]">ToO-GP</td>
+                        <td className="px-3 py-1.5">—</td>
+                        <td className="px-3 py-1.5 text-right">
+                          {row.reviewedSingleExposureTimeSnapshot != null ? fmtKs(row.reviewedSingleExposureTimeSnapshot) : "—"}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
-                {mergedAll.length > 50 && (
-                  <p className="px-3 py-2 text-center text-xs text-slate-400">… and {mergedAll.length - 50} more rows in the downloaded CSV</p>
+                {(mergedAll.length + tooGpIncluded.length) > 50 && mergedAll.length >= 50 && (
+                  <p className="px-3 py-2 text-center text-xs text-slate-400">… and {mergedAll.length + tooGpIncluded.length - 50} more rows in the downloaded CSV</p>
                 )}
               </div>
 
@@ -812,7 +1042,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
           >
             ← Previous
           </button>
-          {currentStep < 3 && (
+          {currentStep < 4 && (
             <button
               onClick={() => void saveAndNext()}
               disabled={saving}
@@ -824,7 +1054,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
         </div>
 
         {/* ── Post-confirm section ─────────────────────────────────────────────── */}
-        {isConfirmed && currentStep === 3 && (
+        {isConfirmed && currentStep === 4 && (
           <div className="mt-6 space-y-4">
             {/* Upload / Scheduler panel */}
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">

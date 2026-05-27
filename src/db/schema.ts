@@ -831,9 +831,11 @@ export const shortTermPlanSessions = pgTable("short_term_plan_sessions", {
   weekId: varchar("week_id", { length: 32 }).notNull(),
   // active | confirmed | uploaded | completed | cancelled
   status: varchar("status", { length: 32 }).notNull().default("active"),
+  currentStep: integer("current_step").notNull().default(0),
   operatorName: varchar("operator_name", { length: 255 }),
   excludedCycle2Ids: json("excluded_cycle2_ids").notNull().default([]).$type<number[]>(),
   excludedGfIds: json("excluded_gf_ids").notNull().default([]).$type<number[]>(),
+  excludedTooGpIds: json("excluded_too_gp_ids").notNull().default([]).$type<number[]>(),
   mergedCsvText: text("merged_csv_text"),
   uploadedObsPlanText: text("uploaded_obs_plan_text"),
   unscheduledEpDbIds: json("unscheduled_ep_db_ids").notNull().default([]).$type<string[]>(),

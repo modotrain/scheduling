@@ -46,8 +46,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const body = (await request.json()) as Partial<{
       status: string;
       operatorName: string;
+      currentStep: number;
       excludedCycle2Ids: number[];
       excludedGfIds: number[];
+      excludedTooGpIds: number[];
       mergedCsvText: string;
     }>;
 
@@ -56,8 +58,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     };
     if (body.status !== undefined) updateData.status = body.status;
     if (body.operatorName !== undefined) updateData.operatorName = body.operatorName;
+    if (body.currentStep !== undefined) updateData.currentStep = body.currentStep;
     if (body.excludedCycle2Ids !== undefined) updateData.excludedCycle2Ids = body.excludedCycle2Ids;
     if (body.excludedGfIds !== undefined) updateData.excludedGfIds = body.excludedGfIds;
+    if (body.excludedTooGpIds !== undefined) updateData.excludedTooGpIds = body.excludedTooGpIds;
     if (body.mergedCsvText !== undefined) updateData.mergedCsvText = body.mergedCsvText;
 
     const [updated] = await db
