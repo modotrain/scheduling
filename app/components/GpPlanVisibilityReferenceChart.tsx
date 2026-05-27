@@ -1,6 +1,6 @@
 "use client";
 
-import { MouseEvent as ReactMouseEvent, useMemo, useState } from "react";
+import { MouseEvent as ReactMouseEvent, ReactElement, useMemo, useState } from "react";
 import * as Astronomy from "astronomy-engine";
 
 import { getCycleWeekLabel } from "@/app/lib/week-utils";
@@ -392,6 +392,27 @@ export default function GpPlanVisibilityReferenceChart({
     );
   });
 
+  const breakBoundaryLines: ReactElement[] = [];
+  if (segmentFlags.length > 1) {
+    for (let i = 0; i < segmentFlags.length - 1; i += 1) {
+      const left = segmentFlags[i]!;
+      const right = segmentFlags[i + 1]!;
+      if (left.blocked === right.blocked) continue;
+      breakBoundaryLines.push(
+        <line
+          key={`break-boundary-${i + 1}`}
+          x1={xForIndex(i + 1)}
+          y1={padding.top}
+          x2={xForIndex(i + 1)}
+          y2={padding.top + chartHeight}
+          stroke="var(--breakline-color)"
+          strokeWidth="0.8"
+          opacity="0.42"
+        />,
+      );
+    }
+  }
+
   const gridAngles = [180, 135, 90, 45, 0];
   const gridLines = gridAngles.map((angle) => {
     const y = yForAngle(angle);
@@ -518,7 +539,7 @@ export default function GpPlanVisibilityReferenceChart({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/40 [--chart-bg:#f8fafc] [--chart-mask:#f8fafc] [--axis-text:#334155] [--grid-color:#cbd5e1] [--sun-color:#b91c1c] [--moon-color:#0056b3] [--visit-band-fill:#0284c7] [--visit-band-stroke:#0c4a6e] [--visit-band-text:#0c4a6e] [--blocked-band-fill:#ef4444] [--blocked-band-stroke:#7f1d1d] [--blocked-band-text:#991b1b] [--tooltip-bg:#ffffff] [--tooltip-border:#cbd5e1] [--tooltip-title:#0f172a] [--tooltip-sun:#991b1b] [--tooltip-moon:#1d4ed8] dark:[--chart-bg:#0b1220] dark:[--chart-mask:#0b1220] dark:[--axis-text:#cbd5e1] dark:[--grid-color:#334155] dark:[--sun-color:#fca5a5] dark:[--moon-color:#93c5fd] dark:[--visit-band-fill:#38bdf8] dark:[--visit-band-stroke:#7dd3fc] dark:[--visit-band-text:#bae6fd] dark:[--blocked-band-fill:#fb7185] dark:[--blocked-band-stroke:#fda4af] dark:[--blocked-band-text:#fecdd3] dark:[--tooltip-bg:#0f172a] dark:[--tooltip-border:#334155] dark:[--tooltip-title:#e2e8f0] dark:[--tooltip-sun:#fecaca] dark:[--tooltip-moon:#bfdbfe]">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-800/40 [--chart-bg:#f8fafc] [--chart-mask:#f8fafc] [--axis-text:#334155] [--grid-color:#cbd5e1] [--sun-color:#b91c1c] [--moon-color:#0056b3] [--visit-band-fill:#16a34a] [--visit-band-stroke:#166534] [--visit-band-text:#14532d] [--blocked-band-fill:#ef4444] [--blocked-band-stroke:#7f1d1d] [--blocked-band-text:#991b1b] [--breakline-color:#94a3b8] [--tooltip-bg:#ffffff] [--tooltip-border:#cbd5e1] [--tooltip-title:#0f172a] [--tooltip-sun:#991b1b] [--tooltip-moon:#1d4ed8] dark:[--chart-bg:#0b1220] dark:[--chart-mask:#0b1220] dark:[--axis-text:#cbd5e1] dark:[--grid-color:#334155] dark:[--sun-color:#fca5a5] dark:[--moon-color:#93c5fd] dark:[--visit-band-fill:#22c55e] dark:[--visit-band-stroke:#4ade80] dark:[--visit-band-text:#bbf7d0] dark:[--blocked-band-fill:#fb7185] dark:[--blocked-band-stroke:#fda4af] dark:[--blocked-band-text:#fecdd3] dark:[--breakline-color:#64748b] dark:[--tooltip-bg:#0f172a] dark:[--tooltip-border:#334155] dark:[--tooltip-title:#e2e8f0] dark:[--tooltip-sun:#fecaca] dark:[--tooltip-moon:#bfdbfe]">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900 dark:text-white">Visibility Reference</p>
@@ -544,6 +565,7 @@ export default function GpPlanVisibilityReferenceChart({
           {visibleRects}
           {invisibleDayOverlays}
           {gridLines}
+          {breakBoundaryLines}
 
           <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + chartHeight} stroke={darkText} strokeWidth="1" opacity="0.6" />
           <line x1={padding.left} y1={padding.top + chartHeight} x2={width - padding.right} y2={padding.top + chartHeight} stroke={darkText} strokeWidth="1" opacity="0.6" />
