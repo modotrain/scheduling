@@ -249,7 +249,7 @@ export default function GpCalDetailPage() {
 
   const pathname = usePathname();
   const id = pathname?.split("/").at(-1) ?? "";
-  const { cycle, label: cycleLabel, query: cycleQuery } = useCycle();
+  const { cycle, label: cycleLabel, query: cycleQuery, isReady } = useCycle();
 
   // obs list state
   const [obsList, setObsList] = useState<ObsListRow[]>([]);
@@ -422,6 +422,7 @@ export default function GpCalDetailPage() {
       if (data.row) {
         setRow(data.row);
         setInput(rowToInput(data.row));
+        setMessage("");
       }
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Failed to load", "error");
@@ -431,10 +432,11 @@ export default function GpCalDetailPage() {
   }, [id, cycleQuery]);
 
   useEffect(() => {
+    if (!isReady) return;
     void loadRow();
     void loadPlannedList();
     void loadObsList();
-  }, [loadRow, loadPlannedList, loadObsList]);
+  }, [isReady, loadRow, loadPlannedList, loadObsList]);
 
   useEffect(() => {
     if (!row?.sourceName) return;
