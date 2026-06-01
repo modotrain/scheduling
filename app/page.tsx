@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import Image from "next/image";
-
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
 import CyclePlanningTabs from "@/app/components/CyclePlanningTabs";
+import HomeLogo from "@/app/components/HomeLogo";
 
 export default async function HomePage() {
   const cookieStore = await cookies();
@@ -14,27 +13,8 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_15%_20%,rgba(101,170,221,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(0,93,151,0.16),transparent_32%),linear-gradient(180deg,#f8fbff_0%,#eef4fb_55%,#e8f0f9_100%)] px-4 py-10 text-slate-900 dark:bg-[radial-gradient(circle_at_20%_20%,rgba(101,170,221,0.18),transparent_40%),radial-gradient(circle_at_80%_10%,rgba(0,93,151,0.2),transparent_34%),linear-gradient(180deg,#020617_0%,#061426_100%)] dark:text-slate-100 md:px-8">
       <section className="mx-auto mt-24 max-w-6xl md:mt-36">
-        <div className="fixed left-0 top-0 z-40">
-          <Image
-            src="/ep-vi-logo-3-25.svg"
-            alt="Einstein Probe VI Logo"
-            width={540}
-            height={156}
-            priority
-            sizes="(min-width: 768px) 540px, 420px"
-            className="h-[121px] w-[420px] dark:hidden md:h-[156px] md:w-[540px]"
-          />
-          <Image
-            src="/ep-vi-logo-3-26.svg"
-            alt="Einstein Probe Logo"
-            width={540}
-            height={156}
-            priority
-            sizes="(min-width: 768px) 540px, 420px"
-            className="hidden h-[121px] w-[420px] dark:block md:h-[156px] md:w-[540px]"
-          />
-        </div>
-        <div className="rounded-2xl border border-white/70 bg-white/75 p-6 shadow-[0_20px_50px_rgba(0,41,69,0.14)] backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-900/70 md:p-8">
+        <HomeLogo />
+        <div data-scroll-card className="rounded-2xl border border-white/70 bg-white/75 p-6 shadow-[0_20px_50px_rgba(0,41,69,0.14)] backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-900/70 md:p-8">
           <p className="text-xs uppercase tracking-[0.26em] text-primary">Einstein Probe Operations</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 dark:text-white md:text-4xl">
             Scheduling Control Center
