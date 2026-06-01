@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
+import { useCycle } from "@/app/lib/useCycle";
 import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "./detail-title-cache";
 
 type LongTermRow = {
@@ -114,6 +115,7 @@ const COL_LABELS: Partial<Record<keyof LongTermRow, string>> = {
 };
 
 export default function Cycle2LongTermPage() {
+  const { cycle, label: cycleLabel, query: cycleQuery } = useCycle();
   const [rows, setRows] = useState<LongTermRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -125,7 +127,7 @@ export default function Cycle2LongTermPage() {
   const loadRows = useCallback(async () => {
     setLoading(true);
     try {
-      const rawCache = sessionStorage.getItem(CACHE_KEY);
+      const rawCache = sessionStorage.getItem(`${CACHE_KEY}:cycle${cycle}`);
       if (rawCache) {
         const parsed = JSON.parse(rawCache) as LongTermCachePayload;
         if (Date.now() - parsed.ts < CACHE_TTL_MS) {
@@ -135,7 +137,7 @@ export default function Cycle2LongTermPage() {
         }
       }
 
-      const response = await fetch("/api/cycle2-long-term", { cache: "no-store" });
+      const response = await fetch(`/api/cycle2-long-term${cycleQuery}`, { cache: "no-store" });
       const data = (await response.json()) as { rows?: LongTermRow[]; error?: string };
       if (!response.ok) {
         throw new Error(data.error ?? "Failed to load cycle2 long-term list");
@@ -143,14 +145,14 @@ export default function Cycle2LongTermPage() {
 
       const nextRows = data.rows ?? [];
       setRows(nextRows);
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), rows: nextRows }));
+      sessionStorage.setItem(`${CACHE_KEY}:cycle${cycle}`, JSON.stringify({ ts: Date.now(), rows: nextRows }));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to load cycle2 long-term list");
       setMessageTone("error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cycle, cycleQuery]);
 
   useEffect(() => {
     void loadRows();
@@ -249,14 +251,14 @@ export default function Cycle2LongTermPage() {
       <div className="mx-auto max-w-screen-2xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">Cycle 2 Long-Term</h1>
+            <h1 className="text-2xl font-semibold">{cycleLabel} Long-Term</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               Weekly long-term scheduling records.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/cycle2-long-term/skymap"
+              href={`/cycle2-long-term/skymap${cycleQuery}`}
               // target="_blank"
               rel="noopener noreferrer"
               className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark"
@@ -264,10 +266,10 @@ export default function Cycle2LongTermPage() {
               Sky Map View
             </Link>
             <Link
-              href="/gp-cycle2"
+              href={`/gp-cycle2${cycleQuery}`}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              GP Cycle 2
+              GP {cycleLabel}
             </Link>
             <Link
               href="/"
@@ -362,7 +364,7 @@ export default function Cycle2LongTermPage() {
                     ))}
                     <td className="px-3 py-2">
                       <Link
-                        href={`/cycle2-long-term/${row.id}`}
+                        href={`/cycle2-long-term/${row.id}${cycleQuery}`}
                         onClick={() => cacheDetailSourceName(row.id, row.sourceName)}
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >

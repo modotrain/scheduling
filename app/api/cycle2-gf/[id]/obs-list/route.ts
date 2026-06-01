@@ -2,9 +2,15 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/db/client";
 import { sql } from "drizzle-orm";
 
+import { CYCLE_TABLE_NAME } from "@/src/db/cycle-tables";
+import { resolveCycleFromRequest } from "@/app/lib/cycles";
+
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
+  const cycle = resolveCycleFromRequest(request);
+  // `cycle` is a validated integer, so this table identifier is injection-safe.
+  const gfTable = CYCLE_TABLE_NAME(cycle).gf;
   const { id } = await params;
   const numId = parseInt(id, 10);
   if (isNaN(numId)) {
@@ -26,7 +32,7 @@ export async function GET(_req: Request, { params }: Params) {
         obs_wp.end_date,
         obs_wp.requested_obs_duration_in_seconds,
         COALESCE(obslogtest.valid_secs, 0) AS valid_secs
-      FROM cycle2_gf g
+      FROM ${sql.raw(gfTable)} g
       JOIN obs_wp
         ON obs_wp.source_id = g.source_id
       LEFT JOIN obslogtest
@@ -53,7 +59,7 @@ export async function GET(_req: Request, { params }: Params) {
           o.qc,
           o.start_date,
           t.valid_secs
-        FROM cycle2_gf g
+        FROM ${sql.raw(gfTable)} g
         JOIN obs_wp o ON o.source_id = g.source_id
         LEFT JOIN obslogtest t ON t.obs_id_hex = SUBSTRING(o.obs_id_number FROM 3)
         WHERE g.id = ${numId}

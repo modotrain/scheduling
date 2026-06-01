@@ -20,6 +20,7 @@ interface ChartData {
 interface SourceReportChartProps {
   sourceId: string | null;
   dataset?: string;
+  cycle?: number;
   isDarkMode?: boolean;
   embedded?: boolean;
   apiBase?: string;
@@ -42,6 +43,7 @@ interface TooltipData {
 export default function SourceReportChart({
   sourceId,
   dataset,
+  cycle,
   isDarkMode = false,
   embedded = false,
   apiBase = "/api/gp-cycle2",
@@ -164,6 +166,7 @@ export default function SourceReportChart({
         setError(null);
         const params = new URLSearchParams({ sourceId });
         if (dataset) params.set("dataset", dataset);
+        if (cycle !== undefined) params.set("cycle", String(cycle));
         const res = await fetch(`${apiBase}/source-report?${params.toString()}`);
         if (allowMissingPlan && res.status === 404) {
           setChartData(null);
@@ -183,7 +186,7 @@ export default function SourceReportChart({
     };
 
     fetchData();
-  }, [sourceId, apiBase, allowMissingPlan]);
+  }, [sourceId, apiBase, allowMissingPlan, dataset, cycle]);
 
   // Preload schedule preview text as soon as sourceId is available.
   useEffect(() => {
@@ -204,6 +207,7 @@ export default function SourceReportChart({
         setPreviewText("");
         const params = new URLSearchParams({ sourceId });
         if (dataset) params.set("dataset", dataset);
+        if (cycle !== undefined) params.set("cycle", String(cycle));
         const res = await fetch(`${apiBase}/source-reports/download?${params.toString()}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
@@ -223,7 +227,7 @@ export default function SourceReportChart({
     return () => {
       disposed = true;
     };
-  }, [sourceId, apiBase, disablePreview]);
+  }, [sourceId, apiBase, disablePreview, dataset, cycle]);
 
   const handlePreviewClick = () => {
     setPreviewOpen((prev) => !prev);
@@ -534,7 +538,7 @@ export default function SourceReportChart({
             </button>
 
             <a
-              href={`${apiBase}/source-reports/download?sourceId=${sourceId}`}
+              href={`${apiBase}/source-reports/download?sourceId=${sourceId}${dataset ? `&dataset=${dataset}` : ""}${cycle !== undefined ? `&cycle=${cycle}` : ""}`}
               download
               className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-dark transition-colors"
             >

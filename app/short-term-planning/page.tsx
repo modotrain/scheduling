@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { ACTIVE_CYCLE, getCycleLabel } from "@/app/lib/cycles";
+
 type SessionSummary = {
   id: number;
   weekId: string;
@@ -46,6 +48,7 @@ function formatWeekId(weekId: string): string {
 
 export default function ShortTermPlanningPage() {
   const router = useRouter();
+  const cycleLabel = getCycleLabel(ACTIVE_CYCLE);
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [weeks, setWeeks] = useState<WeekOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +129,7 @@ export default function ShortTermPlanningPage() {
             <Link href="/" className="mb-2 inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
               ← Home
             </Link>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Cycle-2 Short-Term Planning</h1>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">{cycleLabel} Short-Term Planning</h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Manage weekly source list preparation and scheduling integration.
             </p>

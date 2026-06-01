@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/src/db/client";
-import { gpCycle2 } from "@/src/db/schema";
+import { getCycleTables, CYCLE_TABLE_NAME } from "@/src/db/cycle-tables";
+import { resolveCycleFromRequest } from "@/app/lib/cycles";
 import { sql } from "drizzle-orm";
 
 function toCamelCaseKey(key: string): string {
@@ -13,8 +14,11 @@ function toCamelCaseRow(row: Record<string, unknown>): Record<string, unknown> {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const cycle = resolveCycleFromRequest(request);
+    // `cycle` is a validated integer, so the table identifier is injection-safe.
+    const gpTable = CYCLE_TABLE_NAME(cycle).gp;
     const result = await db.execute(sql`
       WITH base AS (
         SELECT
@@ -26,7 +30,7 @@ export async function GET() {
           o.end_date,
           t.valid_secs,
           t.start_time
-        FROM gp_cycle2 g
+        FROM ${sql.raw(gpTable)} g
         LEFT JOIN obs_wp o
           ON g.source_id = o.source_id
         LEFT JOIN obslogtest t
@@ -100,7 +104,7 @@ export async function GET() {
               / NULLIF(NULLIF(BTRIM(g.total_exposure_time), '')::numeric, 0)
             ELSE 0
           END AS valid_time_ratio
-        FROM gp_cycle2 g
+        FROM ${sql.raw(gpTable)} g
         LEFT JOIN obs_wp o
           ON g.source_id = o.source_id
         LEFT JOIN obslogtest t
@@ -115,7 +119,7 @@ export async function GET() {
         g.*,
         COALESCE(r.last_valid_nom_ratio, 0) AS last_valid_nom_ratio,
         COALESCE(r.valid_time_ratio, 0) AS valid_time_ratio
-      FROM gp_cycle2 g
+      FROM ${sql.raw(gpTable)} g
       LEFT JOIN ratios r ON r.id = g.id
       WHERE g.obs_type = 'GP-CAL'
       ORDER BY g.id DESC;
@@ -134,6 +138,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const cycle = resolveCycleFromRequest(request);
+    const gpCycle2 = getCycleTables(cycle).gp;
     const body = (await request.json()) as Record<string, string | null>;
     const [inserted] = await db.insert(gpCycle2).values(body).returning();
     return NextResponse.json({ row: inserted }, { status: 201 });

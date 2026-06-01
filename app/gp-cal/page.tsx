@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
+import { useCycle } from "@/app/lib/useCycle";
+
 const GP_CAL_CACHE_KEY = "gp-cal:list:v1";
 const GP_CAL_CACHE_TTL_MS = 5 * 60 * 1000;
 const GP_CAL_DETAIL_TITLE_CACHE_KEY_PREFIX = "gp-cal:detail:title:";
@@ -97,6 +99,7 @@ const COL_LABELS: Partial<Record<keyof GpCycle2Row, string>> = {
 };
 
 export default function GpCalPage() {
+  const { cycle, label: cycleLabel, query: cycleQuery } = useCycle();
   const [rows, setRows] = useState<GpCycle2Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -108,14 +111,14 @@ export default function GpCalPage() {
   const loadRows = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/gp-cal", { cache: "no-store" });
+      const res = await fetch(`/api/gp-cal${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as { rows?: GpCycle2Row[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed to load");
       const nextRows = data.rows ?? [];
       setRows(nextRows);
       try {
         const payload: GpCalCache = { rows: nextRows, cachedAt: Date.now() };
-        localStorage.setItem(GP_CAL_CACHE_KEY, JSON.stringify(payload));
+        localStorage.setItem(`${GP_CAL_CACHE_KEY}:cycle${cycle}`, JSON.stringify(payload));
       } catch {
         // Ignore localStorage errors (quota/private mode) and keep runtime state.
       }
@@ -125,11 +128,11 @@ export default function GpCalPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cycle, cycleQuery]);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(GP_CAL_CACHE_KEY);
+      const raw = localStorage.getItem(`${GP_CAL_CACHE_KEY}:cycle${cycle}`);
       if (raw) {
         const cache = JSON.parse(raw) as GpCalCache;
         const fresh = Date.now() - cache.cachedAt < GP_CAL_CACHE_TTL_MS;
@@ -143,7 +146,7 @@ export default function GpCalPage() {
       // Ignore malformed cache and fall back to network fetch.
     }
     void loadRows();
-  }, [loadRows]);
+  }, [loadRows, cycle]);
 
   function handleSort(col: keyof GpCycle2Row) {
     setSortConfig((prev) => ({
@@ -224,7 +227,7 @@ export default function GpCalPage() {
       <div className="mx-auto max-w-7xl rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">GP Calibration</h1>
+            <h1 className="text-2xl font-semibold">{cycleLabel} Calibration</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               Browse GP-CAL observations. Click <strong>Details</strong> to view and edit all fields
               in a new page.
@@ -232,10 +235,10 @@ export default function GpCalPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/gp-cycle2"
+              href={`/gp-cycle2${cycleQuery}`}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              Cycle-2 Sources
+              {cycleLabel} Sources
             </Link>
             <Link
               href="/"
@@ -364,7 +367,7 @@ export default function GpCalPage() {
                     })}
                     <td className="px-2 py-2">
                       <Link
-                        href={`/gp-cal/${row.id}`}
+                        href={`/gp-cal/${row.id}${cycleQuery}`}
                         onClick={() => cacheDetailSourceName(row.id, row.sourceName)}
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >

@@ -1,13 +1,13 @@
 import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+import { ACTIVE_CYCLE, getCycleEpoch } from "@/app/lib/cycles";
 import { db } from "@/src/db/client";
 import { approvedToO, shortTermPlanSessions, tooToGpSchedule } from "@/src/db/schema";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-// Mirror of the CYCLE2_EPOCH logic in app/lib/week-utils.ts
-const CYCLE2_EPOCH = "2025-08-12"; // First Tuesday of Cycle 2
+const FALLBACK_EPOCH = "2025-08-12";
 
 function getWeekNumFromDate(dateStr: string | null): number | null {
   if (!dateStr) return null;
@@ -18,7 +18,7 @@ function getWeekNumFromDate(dateStr: string | null): number | null {
   const dayOfWeek = d.getUTCDay(); // 0=Sun,1=Mon,2=Tue,...
   const daysSinceTuesday = (dayOfWeek + 7 - 2) % 7;
   const tuesdayMs = d.getTime() - daysSinceTuesday * 86_400_000;
-  const epochMs = new Date(`${CYCLE2_EPOCH}T00:00:00Z`).getTime();
+  const epochMs = new Date(`${getCycleEpoch(ACTIVE_CYCLE) ?? FALLBACK_EPOCH}T00:00:00Z`).getTime();
   return Math.floor((tuesdayMs - epochMs) / (7 * 86_400_000)) + 1;
 }
 

@@ -2,18 +2,20 @@ import { eq, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { ACTIVE_CYCLE } from "@/app/lib/cycles";
 import { db } from "@/src/db/client";
-import {
-  longTermObservationListCycle2,
-  longTermObservationListCycle2GF,
-  shortTermPlanSessions,
-} from "@/src/db/schema";
+import { getCycleTables } from "@/src/db/cycle-tables";
+import { shortTermPlanSessions } from "@/src/db/schema";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(_request: Request, { params }: RouteParams) {
   try {
+    const cycleTables = getCycleTables(ACTIVE_CYCLE);
+    const longTermCycle = cycleTables.longTerm;
+    const longTermGf = cycleTables.longTermGf;
+
     const cookieStore = await cookies();
     const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
     const authSession = token ? await verifySessionToken(token) : null;
@@ -36,14 +38,14 @@ export async function POST(_request: Request, { params }: RouteParams) {
     for (const change of planSession.weekIdChanges) {
       if (change.table === "gf") {
         await db
-          .update(longTermObservationListCycle2GF)
+          .update(longTermGf)
           .set({ weekId: change.oldWeekId, updatedAt: sql`now()` })
-          .where(eq(longTermObservationListCycle2GF.id, change.rowId));
+          .where(eq(longTermGf.id, change.rowId));
       } else {
         await db
-          .update(longTermObservationListCycle2)
+          .update(longTermCycle)
           .set({ weekId: change.oldWeekId, updatedAt: sql`now()` })
-          .where(eq(longTermObservationListCycle2.id, change.rowId));
+          .where(eq(longTermCycle.id, change.rowId));
       }
     }
 

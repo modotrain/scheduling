@@ -2,25 +2,26 @@ import { eq, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { ACTIVE_CYCLE } from "@/app/lib/cycles";
 import { db } from "@/src/db/client";
-import {
-  longTermObservationListCycle2,
-  longTermObservationListCycle2GF,
-  shortTermPlanSessions,
-  type WeekIdChange,
-} from "@/src/db/schema";
+import { getCycleTables } from "@/src/db/cycle-tables";
+import { shortTermPlanSessions, type WeekIdChange } from "@/src/db/schema";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
 type Assignment = {
   rowId: number;
-  table: "cycle2" | "gf";
+  table: "cycle" | "cycle2" | "gf";
   newWeekId: string;
 };
 
 export async function POST(request: Request, { params }: RouteParams) {
   try {
+    const cycleTables = getCycleTables(ACTIVE_CYCLE);
+    const longTermCycle = cycleTables.longTerm;
+    const longTermGf = cycleTables.longTermGf;
+
     const cookieStore = await cookies();
     const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
     const authSession = token ? await verifySessionToken(token) : null;
@@ -49,29 +50,29 @@ export async function POST(request: Request, { params }: RouteParams) {
     for (const assignment of body.assignments) {
       if (assignment.table === "gf") {
         const [row] = await db
-          .select({ weekId: longTermObservationListCycle2GF.weekId })
-          .from(longTermObservationListCycle2GF)
-          .where(eq(longTermObservationListCycle2GF.id, assignment.rowId));
+          .select({ weekId: longTermGf.weekId })
+          .from(longTermGf)
+          .where(eq(longTermGf.id, assignment.rowId));
 
         if (row) {
           changes.push({ rowId: assignment.rowId, table: "gf", oldWeekId: row.weekId, newWeekId: assignment.newWeekId });
           await db
-            .update(longTermObservationListCycle2GF)
+            .update(longTermGf)
             .set({ weekId: assignment.newWeekId, updatedAt: sql`now()` })
-            .where(eq(longTermObservationListCycle2GF.id, assignment.rowId));
+            .where(eq(longTermGf.id, assignment.rowId));
         }
       } else {
         const [row] = await db
-          .select({ weekId: longTermObservationListCycle2.weekId })
-          .from(longTermObservationListCycle2)
-          .where(eq(longTermObservationListCycle2.id, assignment.rowId));
+          .select({ weekId: longTermCycle.weekId })
+          .from(longTermCycle)
+          .where(eq(longTermCycle.id, assignment.rowId));
 
         if (row) {
-          changes.push({ rowId: assignment.rowId, table: "cycle2", oldWeekId: row.weekId, newWeekId: assignment.newWeekId });
+          changes.push({ rowId: assignment.rowId, table: "cycle", oldWeekId: row.weekId, newWeekId: assignment.newWeekId });
           await db
-            .update(longTermObservationListCycle2)
+            .update(longTermCycle)
             .set({ weekId: assignment.newWeekId, updatedAt: sql`now()` })
-            .where(eq(longTermObservationListCycle2.id, assignment.rowId));
+            .where(eq(longTermCycle.id, assignment.rowId));
         }
       }
     }

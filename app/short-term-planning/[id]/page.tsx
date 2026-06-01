@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { ACTIVE_CYCLE, getCycleLabel } from "@/app/lib/cycles";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type PlanSession = {
@@ -53,7 +55,7 @@ type SourceRow = {
   sourcePriority: string | null;
   startTime: string | null;
   endTime: string | null;
-  sourceType: "cycle2" | "gf";
+  sourceType: "cycle" | "cycle2" | "gf";
   isExcluded: boolean;
 };
 
@@ -65,7 +67,7 @@ type SourceStats = {
 
 type UnscheduledSource = {
   rowId: number;
-  table: "cycle2" | "gf";
+  table: "cycle" | "cycle2" | "gf";
   sourceId: string | null;
   epDbObjectId: string | null;
   sourceName: string | null;
@@ -104,7 +106,7 @@ function formatWeekId(weekId: string): string {
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
-const STEPS = ["Select Week", "Cycle2 Sources", "GF Sources", "ToO-GP Sources", "Overview"];
+const STEPS = ["Select Week", "Cycle Sources", "GF Sources", "ToO-GP Sources", "Overview"];
 
 function StepBar({ current }: { current: number }) {
   return (
@@ -406,6 +408,7 @@ function TooGpSourceTable({
 
 export default function WizardPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const cycleLabel = getCycleLabel(ACTIVE_CYCLE);
   const [sessionId, setSessionId] = useState<number>(0);
   const [session, setSession] = useState<PlanSession | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -505,7 +508,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   useEffect(() => {
     if ((currentStep === 1 || currentStep === 4) && session && cycle2Rows.length === 0) {
       setCycle2Loading(true);
-      fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=cycle2`)
+      fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=cycle`)
         .then((r) => r.json())
         .then((d: { rows: SourceRow[]; stats: SourceStats }) => {
           setCycle2Rows(d.rows ?? []);
@@ -597,7 +600,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     // Reconstruct unscheduled list from cycle2 rows only (GF not tracked)
     const loadUnscheduled = async () => {
       const [c2Res, gfRes] = await Promise.all([
-        fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=cycle2`),
+        fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=cycle`),
         fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=gf`),
       ]);
       const c2Data = (await c2Res.json()) as { rows: SourceRow[] };
@@ -605,7 +608,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
       const unscheduledSet = new Set(session.unscheduledEpDbIds);
       const unscheduled: UnscheduledSource[] = [
         ...c2Data.rows.filter((r) => !r.isExcluded && r.epDbObjectId && unscheduledSet.has(r.epDbObjectId))
-          .map((r) => ({ rowId: r.id, table: "cycle2" as const, sourceId: r.sourceId, epDbObjectId: r.epDbObjectId, sourceName: r.sourceName, obsType: r.obsType })),
+          .map((r) => ({ rowId: r.id, table: "cycle" as const, sourceId: r.sourceId, epDbObjectId: r.epDbObjectId, sourceName: r.sourceName, obsType: r.obsType })),
         // GF is intentionally excluded from unscheduled tracking
       ];
       if (cycle2Rows.length === 0) { setCycle2Rows(c2Data.rows ?? []); }
@@ -883,16 +886,16 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                 </div>
               </div>
               <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                This session will load sources from <strong>Cycle2 Long-Term</strong> and <strong>Cycle2-GF</strong> tables for week <strong>{formatWeekId(session.weekId)}</strong>. Click Next to proceed.
+                This session will load sources from <strong>{cycleLabel} Long-Term</strong> and <strong>{cycleLabel}-GF</strong> tables for week <strong>{formatWeekId(session.weekId)}</strong>. Click Next to proceed.
               </p>
             </div>
           )}
 
-          {/* Step 2: Cycle2 sources */}
+          {/* Step 2: cycle sources */}
           {currentStep === 1 && (
             <div>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-slate-900 dark:text-white">Step 2: Cycle2 Long-Term Sources</h2>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">Step 2: {cycleLabel} Long-Term Sources</h2>
                 <span className="text-xs text-slate-500">Week: {formatWeekId(session.weekId)}</span>
               </div>
               <SourceTable
@@ -909,7 +912,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
           {currentStep === 2 && (
             <div>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-slate-900 dark:text-white">Step 3: Cycle2-GF Sources</h2>
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">Step 3: {cycleLabel}-GF Sources</h2>
                 <span className="text-xs text-slate-500">Week: {formatWeekId(session.weekId)}</span>
               </div>
               <SourceTable
@@ -951,10 +954,10 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
               <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
                 {[
                   { label: "Total Sources", value: mergedAll.length + tooGpIncluded.length },
-                  { label: "Cycle2 Sources", value: cycle2Included.length },
+                  { label: `${cycleLabel} Sources`, value: cycle2Included.length },
                   { label: "GF Sources", value: gfIncluded.length },
                   { label: "ToO-GP Sources", value: tooGpIncluded.length },
-                  { label: "Cycle2 Exposure", value: fmtKs(cycle2ExpS) },
+                  { label: `${cycleLabel} Exposure`, value: fmtKs(cycle2ExpS) },
                   { label: "GF Exposure", value: fmtKs(gfExpS) },
                   { label: "ToO-GP Exposure", value: fmtKs(tooGpExpS) },
                 ].map((stat) => (
@@ -972,7 +975,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
               {/* Modify selections links */}
               <div className="mb-4 flex flex-wrap gap-3">
                 <button onClick={() => goBackToStep(1)} className="text-xs text-primary underline-offset-2 hover:underline">
-                  ✏ Modify Cycle2 selection
+                  ✏ Modify {cycleLabel} selection
                 </button>
                 <button onClick={() => goBackToStep(2)} className="text-xs text-primary underline-offset-2 hover:underline">
                   ✏ Modify GF selection
@@ -1004,7 +1007,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                             row.sourceType === "gf"
                               ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                               : "bg-primary/10 text-primary"
-                          }`}>{row.sourceType === "gf" ? "GF" : "C2"}</span>
+                          }`}>{row.sourceType === "gf" ? "GF" : `C${ACTIVE_CYCLE}`}</span>
                         </td>
                         <td className="px-3 py-1.5 font-mono text-[11px]">{row.sourceId ?? "—"}</td>
                         <td className="max-w-[130px] truncate px-3 py-1.5">{row.sourceName ?? "—"}</td>

@@ -3,6 +3,7 @@
 import { SubmitEvent, useCallback, useEffect, useLayoutEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCycle } from "@/app/lib/useCycle";
 import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "../../cycle2-long-term/detail-title-cache";
 import SourceReportChart from "../../components/SourceReportChart";
 
@@ -293,6 +294,7 @@ function getScheduledCompletionTone(row: ObsListRow): "zero" | "good" | "partial
 export default function Cycle2GfDetailPage() {
   const pathname = usePathname();
   const id = pathname?.split("/").at(-1) ?? "";
+  const { cycle, query: cycleQuery } = useCycle();
 
   // obs list state
   const [obsList, setObsList] = useState<ObsListRow[]>([]);
@@ -425,7 +427,7 @@ export default function Cycle2GfDetailPage() {
   const loadObsList = useCallback(async () => {
     setObsLoading(true);
     try {
-      const res = await fetch(`/api/cycle2-gf/${id}/obs-list`, { cache: "no-store" });
+      const res = await fetch(`/api/cycle2-gf/${id}/obs-list${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as {
         rows?: Record<string, unknown>[];
         totalValidSecs?: number;
@@ -462,12 +464,12 @@ export default function Cycle2GfDetailPage() {
     } finally {
       setObsLoading(false);
     }
-  }, [id]);
+  }, [id, cycleQuery]);
 
   const loadPlannedList = useCallback(async () => {
     setPlannedLoading(true);
     try {
-      const res = await fetch(`/api/cycle2-gf/${id}/planned-list`, { cache: "no-store" });
+      const res = await fetch(`/api/cycle2-gf/${id}/planned-list${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as {
         rows?: PlannedObsRow[];
         error?: string;
@@ -479,12 +481,12 @@ export default function Cycle2GfDetailPage() {
     } finally {
       setPlannedLoading(false);
     }
-  }, [id]);
+  }, [id, cycleQuery]);
 
   const loadRow = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/cycle2-gf/${id}`, { cache: "no-store" });
+      const res = await fetch(`/api/cycle2-gf/${id}${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as { row?: Cycle2GfRow; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed to load");
       if (data.row) {
@@ -496,7 +498,7 @@ export default function Cycle2GfDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, cycleQuery]);
 
   useEffect(() => {
     void loadRow();
@@ -516,7 +518,7 @@ export default function Cycle2GfDetailPage() {
       const payload = Object.fromEntries(
         Object.entries(input).map(([k, v]) => [k, v === "" ? null : v]),
       );
-      const res = await fetch(`/api/cycle2-gf/${id}`, {
+      const res = await fetch(`/api/cycle2-gf/${id}${cycleQuery}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -584,7 +586,7 @@ export default function Cycle2GfDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/cycle2-gf"
+              href={`/cycle2-gf${cycleQuery}`}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               ← Back to list
@@ -623,6 +625,7 @@ export default function Cycle2GfDetailPage() {
               <SourceReportChart
                 sourceId={row.sourceId}
                 dataset="gf"
+                cycle={cycle}
                 embedded
                 apiBase="/api/cycle2-gf"
                 allowMissingPlan
@@ -743,7 +746,7 @@ export default function Cycle2GfDetailPage() {
                       })}
                       <td className="whitespace-nowrap px-3 py-2">
                         <Link
-                          href={`/cycle2-long-term/${planned.id}`}
+                          href={`/cycle2-long-term/${planned.id}${cycleQuery}`}
                           onClick={() => cacheLongTermDetailSourceName(planned.id, planned.sourceName)}
                           className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-dark"
                         >

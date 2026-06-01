@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useCycle } from "@/app/lib/useCycle";
 import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "../detail-title-cache";
 
 type LongTermRow = {
@@ -181,6 +182,7 @@ function formatValue(value: string | number | null | undefined) {
 export default function Cycle2LongTermDetailPage() {
   const pathname = usePathname();
   const id = pathname?.split("/").at(-1) ?? "";
+  const { label: cycleLabel, query: cycleQuery } = useCycle();
 
   const [row, setRow] = useState<LongTermRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -197,7 +199,7 @@ export default function Cycle2LongTermDetailPage() {
   const loadRow = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/cycle2-long-term/${id}`, { cache: "no-store" });
+      const response = await fetch(`/api/cycle2-long-term/${id}${cycleQuery}`, { cache: "no-store" });
       const data = (await response.json()) as { row?: LongTermRow; error?: string };
       if (!response.ok) {
         throw new Error(data.error ?? "Failed to load");
@@ -211,7 +213,7 @@ export default function Cycle2LongTermDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, cycleQuery]);
 
   useEffect(() => {
     void loadRow();
@@ -232,13 +234,13 @@ export default function Cycle2LongTermDetailPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold">
-              Cycle 2 Long-Term — {titleSourceName}
+              {cycleLabel} Long-Term — {titleSourceName}
             </h1>
             {row?.pi ? <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.pi}</p> : null}
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/cycle2-long-term"
+              href={`/cycle2-long-term${cycleQuery}`}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               ← Back to list

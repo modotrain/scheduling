@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
-import { cycle2SkymapSchedule, cycle2SkymapSources } from "@/src/db/schema";
+import { getCycleTables } from "@/src/db/cycle-tables";
+import { resolveCycleFromRequest } from "@/app/lib/cycles";
 
 type SourceDataset = "cycle2" | "gf";
 
@@ -77,8 +78,11 @@ function extractIsoDate(value: string | null): string | null {
   return match ? match[0] : null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const cycleTables = getCycleTables(resolveCycleFromRequest(request));
+    const cycle2SkymapSources = cycleTables.skymapSources;
+    const cycle2SkymapSchedule = cycleTables.skymapSchedule;
     const [sourcesRaw, scheduleRowsRaw] = await Promise.all([
       db.select().from(cycle2SkymapSources),
       db

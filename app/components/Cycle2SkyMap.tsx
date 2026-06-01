@@ -95,7 +95,8 @@ function buildPopupText(point: SkyPoint): string {
   ].join("\n");
 }
 
-export default function Cycle2SkyMap() {
+export default function Cycle2SkyMap({ cycle }: { cycle?: number } = {}) {
+  const cycleQuery = typeof cycle === "number" ? `?cycle=${cycle}` : "";
   const [data, setData] = useState<SkyPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,7 +138,7 @@ export default function Cycle2SkyMap() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch("/api/cycle2-long-term/skymap", { cache: "no-store" });
+        const response = await fetch(`/api/cycle2-long-term/skymap${cycleQuery}`, { cache: "no-store" });
         const payload = (await response.json()) as SkyPayload & { error?: string };
         if (!response.ok) {
           throw new Error(payload.error ?? "Failed to load sky map data");
@@ -151,7 +152,7 @@ export default function Cycle2SkyMap() {
     };
 
     void loadData();
-  }, []);
+  }, [cycleQuery]);
 
   useEffect(() => {
     // Check initial dark mode state

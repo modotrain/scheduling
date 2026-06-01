@@ -2,11 +2,9 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
-import {
-  longTermObservationListCycle2,
-  longTermObservationListCycle2GF,
-  shortTermPlanSessions,
-} from "@/src/db/schema";
+import { ACTIVE_CYCLE } from "@/app/lib/cycles";
+import { getCycleTables } from "@/src/db/cycle-tables";
+import { shortTermPlanSessions } from "@/src/db/schema";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -22,12 +20,17 @@ function toSeconds(value: string | null, unit: string | null): number {
 
 export async function GET(request: Request, { params }: RouteParams) {
   try {
+    const cycleTables = getCycleTables(ACTIVE_CYCLE);
+    const longTermCycle = cycleTables.longTerm;
+    const longTermGf = cycleTables.longTermGf;
+
     const { id } = await params;
     const sessionId = parseInt(id, 10);
     if (!sessionId) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get("type") ?? "cycle2";
+    const rawType = searchParams.get("type") ?? "cycle";
+    const type = rawType === "cycle2" ? "cycle" : rawType;
 
     const [planSession] = await db
       .select()
@@ -43,8 +46,8 @@ export async function GET(request: Request, { params }: RouteParams) {
     if (type === "gf") {
       const rows = await db
         .select()
-        .from(longTermObservationListCycle2GF)
-        .where(eq(longTermObservationListCycle2GF.weekId, planSession.weekId));
+        .from(longTermGf)
+        .where(eq(longTermGf.weekId, planSession.weekId));
 
       const enriched = rows.map((r) => ({
         ...r,
@@ -65,12 +68,12 @@ export async function GET(request: Request, { params }: RouteParams) {
     } else {
       const rows = await db
         .select()
-        .from(longTermObservationListCycle2)
-        .where(eq(longTermObservationListCycle2.weekId, planSession.weekId));
+        .from(longTermCycle)
+        .where(eq(longTermCycle.weekId, planSession.weekId));
 
       const enriched = rows.map((r) => ({
         ...r,
-        sourceType: "cycle2" as const,
+        sourceType: "cycle" as const,
         isExcluded: excludedIds.has(r.id),
       }));
 

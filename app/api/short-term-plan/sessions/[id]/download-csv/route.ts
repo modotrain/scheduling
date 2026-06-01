@@ -2,11 +2,11 @@ import { eq, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { ACTIVE_CYCLE, getCycleEpoch } from "@/app/lib/cycles";
 import { db } from "@/src/db/client";
+import { getCycleTables } from "@/src/db/cycle-tables";
 import {
   approvedToO,
-  longTermObservationListCycle2,
-  longTermObservationListCycle2GF,
   shortTermPlanSessions,
   tooToGpSchedule,
 } from "@/src/db/schema";
@@ -14,8 +14,7 @@ import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-// Mirror of week-utils.ts CYCLE2_EPOCH logic
-const CYCLE2_EPOCH = "2025-08-12";
+const FALLBACK_EPOCH = "2025-08-12";
 function getWeekNumFromDate(dateStr: string | null): number | null {
   if (!dateStr) return null;
   const normalized = dateStr.includes("T") ? dateStr.split("T")[0]! : dateStr.split(" ")[0]!;
@@ -24,7 +23,7 @@ function getWeekNumFromDate(dateStr: string | null): number | null {
   const dayOfWeek = d.getUTCDay();
   const daysSinceTuesday = (dayOfWeek + 7 - 2) % 7;
   const tuesdayMs = d.getTime() - daysSinceTuesday * 86_400_000;
-  const epochMs = new Date(`${CYCLE2_EPOCH}T00:00:00Z`).getTime();
+  const epochMs = new Date(`${getCycleEpoch(ACTIVE_CYCLE) ?? FALLBACK_EPOCH}T00:00:00Z`).getTime();
   return Math.floor((tuesdayMs - epochMs) / (7 * 86_400_000)) + 1;
 }
 
@@ -129,6 +128,10 @@ function buildCsvRow(row: SourceRow, weekDates: string[]): string {
 
 export async function GET(request: Request, { params }: RouteParams) {
   try {
+    const cycleTables = getCycleTables(ACTIVE_CYCLE);
+    const longTermCycle = cycleTables.longTerm;
+    const longTermGf = cycleTables.longTermGf;
+
     const cookieStore = await cookies();
     const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
     const authSession = token ? await verifySessionToken(token) : null;
@@ -156,12 +159,12 @@ export async function GET(request: Request, { params }: RouteParams) {
     const [cycle2Rows, gfRows, tooGpAllRows] = await Promise.all([
       db
         .select()
-        .from(longTermObservationListCycle2)
-        .where(eq(longTermObservationListCycle2.weekId, planSession.weekId)),
+        .from(longTermCycle)
+        .where(eq(longTermCycle.weekId, planSession.weekId)),
       db
         .select()
-        .from(longTermObservationListCycle2GF)
-        .where(eq(longTermObservationListCycle2GF.weekId, planSession.weekId)),
+        .from(longTermGf)
+        .where(eq(longTermGf.weekId, planSession.weekId)),
       db
         .select({
           id: tooToGpSchedule.id,
@@ -321,7 +324,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       })
       .where(eq(shortTermPlanSessions.id, sessionId));
 
-    const filename = `reviewed_cycle2_source_list_${planSession.weekId.toLowerCase()}_v1.csv`;
+    const filename = `reviewed_cycle${ACTIVE_CYCLE}_source_list_${planSession.weekId.toLowerCase()}_v1.csv`;
     return new Response(csvText, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",

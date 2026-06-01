@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { parse } from "csv-parse/sync";
 
+import { parseCycleArg } from "./db/cycle-cli";
+
 type CsvRow = Record<string, string>;
 type LongTermInsert = Record<string, string | null>;
 
@@ -11,13 +13,14 @@ const WEEKLY_PLANS_DIR = path.join(process.cwd(), "longterm_sch", "weekly_plans"
 const WEEK_FILE_PATTERN = /^week_(\d{2})_\d{4}-\d{2}-\d{2}\.csv$/;
 const INSERT_BATCH_SIZE = 500;
 
-async function loadModules() {
+async function loadModules(cycle: number) {
   const clientModule = await import(new URL("./db/client.ts", import.meta.url).href);
-  const schemaModule = await import(new URL("./db/schema.ts", import.meta.url).href);
+  const cycleTablesModule = await import(new URL("./db/cycle-tables.ts", import.meta.url).href);
+  const tables = cycleTablesModule.getCycleTables(cycle);
 
   return {
     db: clientModule.db,
-    longTermObservationListCycle2: schemaModule.longTermObservationListCycle2,
+    longTermObservationListCycle2: tables.longTerm,
   };
 }
 
@@ -98,7 +101,8 @@ function mapRowToInsert(row: CsvRow, weekId: string): LongTermInsert {
 }
 
 async function main() {
-  const { db, longTermObservationListCycle2 } = await loadModules();
+  const cycle = parseCycleArg();
+  const { db, longTermObservationListCycle2 } = await loadModules(cycle);
   const fileNames = (await readdir(WEEKLY_PLANS_DIR))
     .filter((fileName) => WEEK_FILE_PATTERN.test(fileName))
     .sort((left, right) => left.localeCompare(right));

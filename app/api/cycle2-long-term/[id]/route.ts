@@ -2,11 +2,13 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
-import { longTermObservationListCycle2 } from "@/src/db/schema";
+import { getCycleTables } from "@/src/db/cycle-tables";
+import { resolveCycleFromRequest } from "@/app/lib/cycles";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
+  const longTermObservationListCycle2 = getCycleTables(resolveCycleFromRequest(request)).longTerm;
   const { id } = await params;
   const numId = Number.parseInt(id, 10);
 

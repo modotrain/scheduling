@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/src/db/client";
-import { cycle2GF } from "@/src/db/schema";
+import { getCycleTables } from "@/src/db/cycle-tables";
+import { resolveCycleFromRequest } from "@/app/lib/cycles";
 import { eq } from "drizzle-orm";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
+  const cycle2GF = getCycleTables(resolveCycleFromRequest(request)).gf;
   const { id } = await params;
   const numId = parseInt(id, 10);
   if (isNaN(numId)) {
@@ -24,6 +26,7 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 export async function PUT(request: Request, { params }: Params) {
+  const cycle2GF = getCycleTables(resolveCycleFromRequest(request)).gf;
   const { id } = await params;
   const numId = parseInt(id, 10);
   if (isNaN(numId)) {
@@ -46,7 +49,8 @@ export async function PUT(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
+  const cycle2GF = getCycleTables(resolveCycleFromRequest(request)).gf;
   const { id } = await params;
   const numId = parseInt(id, 10);
   if (isNaN(numId)) {

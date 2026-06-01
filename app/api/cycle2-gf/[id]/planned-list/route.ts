@@ -2,10 +2,16 @@ import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
+import { CYCLE_TABLE_NAME } from "@/src/db/cycle-tables";
+import { resolveCycleFromRequest } from "@/app/lib/cycles";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
+  const cycle = resolveCycleFromRequest(request);
+  // `cycle` is a validated integer, so these table identifiers are injection-safe.
+  const gfTable = CYCLE_TABLE_NAME(cycle).gf;
+  const longTermGfTable = CYCLE_TABLE_NAME(cycle).longTermGf;
   const { id } = await params;
   const numId = parseInt(id, 10);
   if (isNaN(numId)) {
@@ -26,8 +32,8 @@ export async function GET(_req: Request, { params }: Params) {
         lt.fxt1_filter AS "fxt1Filter",
         lt.fxt2_window_mode AS "fxt2WindowMode",
         lt.fxt2_filter AS "fxt2Filter"
-      FROM cycle2_gf g
-      JOIN long_term_observation_list_cycle2_gf lt
+      FROM ${sql.raw(gfTable)} g
+      JOIN ${sql.raw(longTermGfTable)} lt
         ON lt.source_id = g.source_id
       WHERE g.id = ${numId}
       ORDER BY

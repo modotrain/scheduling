@@ -2,10 +2,12 @@ import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
-import { longTermObservationListCycle2, longTermObservationListCycle2GF } from "@/src/db/schema";
+import { ACTIVE_CYCLE, getCycleEpoch } from "@/app/lib/cycles";
+import { getCycleTables } from "@/src/db/cycle-tables";
 
-// Mirror of week-utils.ts — keeps API route self-contained (no client-only import)
-const CYCLE2_EPOCH = "2025-08-12"; // Must stay in sync with app/lib/week-utils.ts
+function epochForActiveCycle(): string {
+  return getCycleEpoch(ACTIVE_CYCLE) ?? "2025-08-12";
+}
 
 function getTuesdayWeekStart(date: Date): Date {
   const dayOfWeek = date.getUTCDay(); // 0=Sun, 1=Mon, 2=Tue, …
@@ -15,7 +17,7 @@ function getTuesdayWeekStart(date: Date): Date {
 
 function getWeekLabel(date: Date): string {
   const tuesdayMs = getTuesdayWeekStart(date).getTime();
-  const epochMs = new Date(`${CYCLE2_EPOCH}T00:00:00Z`).getTime();
+  const epochMs = new Date(`${epochForActiveCycle()}T00:00:00Z`).getTime();
   const weekNo = Math.floor((tuesdayMs - epochMs) / (7 * 86_400_000)) + 1;
   return `W${String(weekNo).padStart(2, "0")}`;
 }
@@ -26,26 +28,30 @@ function parseWeekNum(wid: string): number {
 
 export async function GET() {
   try {
+    const cycleTables = getCycleTables(ACTIVE_CYCLE);
+    const longTermCycle = cycleTables.longTerm;
+    const longTermGf = cycleTables.longTermGf;
+
     // Query distinct weekIds with their date ranges from both tables
     const [cycle2Weeks, gfWeeks] = await Promise.all([
       db
         .select({
-          weekId: longTermObservationListCycle2.weekId,
-          minStart: sql<string>`MIN(${longTermObservationListCycle2.startTime})`,
-          maxEnd: sql<string>`MAX(${longTermObservationListCycle2.endTime})`,
+          weekId: longTermCycle.weekId,
+          minStart: sql<string>`MIN(${longTermCycle.startTime})`,
+          maxEnd: sql<string>`MAX(${longTermCycle.endTime})`,
         })
-        .from(longTermObservationListCycle2)
-        .where(sql`${longTermObservationListCycle2.weekId} IS NOT NULL AND ${longTermObservationListCycle2.weekId} != ''`)
-        .groupBy(longTermObservationListCycle2.weekId),
+        .from(longTermCycle)
+        .where(sql`${longTermCycle.weekId} IS NOT NULL AND ${longTermCycle.weekId} != ''`)
+        .groupBy(longTermCycle.weekId),
       db
         .select({
-          weekId: longTermObservationListCycle2GF.weekId,
-          minStart: sql<string>`MIN(${longTermObservationListCycle2GF.startTime})`,
-          maxEnd: sql<string>`MAX(${longTermObservationListCycle2GF.endTime})`,
+          weekId: longTermGf.weekId,
+          minStart: sql<string>`MIN(${longTermGf.startTime})`,
+          maxEnd: sql<string>`MAX(${longTermGf.endTime})`,
         })
-        .from(longTermObservationListCycle2GF)
-        .where(sql`${longTermObservationListCycle2GF.weekId} IS NOT NULL AND ${longTermObservationListCycle2GF.weekId} != ''`)
-        .groupBy(longTermObservationListCycle2GF.weekId),
+        .from(longTermGf)
+        .where(sql`${longTermGf.weekId} IS NOT NULL AND ${longTermGf.weekId} != ''`)
+        .groupBy(longTermGf.weekId),
     ]);
 
     // Merge and deduplicate by weekId

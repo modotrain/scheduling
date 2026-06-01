@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import Image from "next/image";
 
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
+import CyclePlanningTabs from "@/app/components/CyclePlanningTabs";
 
 export default async function HomePage() {
   const cookieStore = await cookies();
@@ -44,77 +45,7 @@ export default async function HomePage() {
 
           <div className="mt-8 space-y-6">
             <div className="grid gap-8 xl:grid-cols-2">
-              <section className="flex flex-col gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                  Cycle-2 Planning
-                </p>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
-                  <Link
-                    href="/gp-cycle2"
-                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-                  >
-                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                      FSTO
-                    </div>
-                    <h2 className="text-lg font-semibold">Cycle-2 Sources & Status</h2>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      Track cycle proposals, completion ratios, and detailed observation timelines.
-                    </p>
-                  </Link>
-
-                  <Link
-                    href="/cycle2-long-term"
-                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-                  >
-                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                      Weekly Orgnized Plan
-                    </div>
-                    <h2 className="text-lg font-semibold">Cycle-2 Long-Term Schedule</h2>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      Browse weekly-based long-term scheduling plans and inspect every scheduling detail.
-                    </p>
-                  </Link>
-
-                  <Link
-                    href="/gp-cal"
-                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-                  >
-                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                      Calibration Workspace
-                    </div>
-                    <h2 className="text-lg font-semibold">Cycle-2 Calibration Sources</h2>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      Browse GP-CAL calibration observations and filter by FXT or WXT instrument.
-                    </p>
-                  </Link>
-
-                  <Link
-                    href="/cycle2-gf"
-                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-                  >
-                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                      Gap Filling Pool
-                    </div>
-                    <h2 className="text-lg font-semibold">Cycle-2 Gap Filling Sources</h2>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      Browse cycle2 gap-filling sources, completion ratios, and open details for full source metadata.
-                    </p>
-                  </Link>
-
-                  <Link
-                    href="/short-term-planning"
-                    className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900 sm:col-span-2 xl:col-span-2"
-                  >
-                    <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
-                      Short-Term Scheduler
-                    </div>
-                    <h2 className="text-lg font-semibold">Cycle-2 Short-Term Planning</h2>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      Step-by-step weekly source selection, merged CSV generation, scheduling result integration, and unscheduled source management.
-                    </p>
-                  </Link>
-                </div>
-              </section>
+              <CyclePlanningTabs />
 
               <section className="flex flex-col gap-3">
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">

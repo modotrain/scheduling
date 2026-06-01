@@ -6,6 +6,8 @@ import path from "node:path";
 import { parse } from "csv-parse/sync";
 import { sql } from "drizzle-orm";
 
+import { parseCycleArg } from "./db/cycle-cli";
+
 type SourceCsvRow = {
   source_id?: string;
   source_name?: string;
@@ -34,14 +36,15 @@ const SOURCE_CSV_PATH = path.join(LONGTERM_DIR, "cc2.csv");
 const SCHEDULE_CSV_PATH = path.join(LONGTERM_DIR, "schedule_result.csv");
 const BATCH_SIZE = 500;
 
-async function loadModules() {
+async function loadModules(cycle: number) {
   const clientModule = await import(new URL("./db/client.ts", import.meta.url).href);
-  const schemaModule = await import(new URL("./db/schema.ts", import.meta.url).href);
+  const cycleTablesModule = await import(new URL("./db/cycle-tables.ts", import.meta.url).href);
+  const tables = cycleTablesModule.getCycleTables(cycle);
 
   return {
     db: clientModule.db,
-    cycle2SkymapSources: schemaModule.cycle2SkymapSources,
-    cycle2SkymapSchedule: schemaModule.cycle2SkymapSchedule,
+    cycle2SkymapSources: tables.skymapSources,
+    cycle2SkymapSchedule: tables.skymapSchedule,
   };
 }
 
@@ -92,7 +95,8 @@ async function insertInBatches<T extends Record<string, unknown>>(
 }
 
 async function main() {
-  const { db, cycle2SkymapSources, cycle2SkymapSchedule } = await loadModules();
+  const cycle = parseCycleArg();
+  const { db, cycle2SkymapSources, cycle2SkymapSchedule } = await loadModules(cycle);
 
   console.log("[info] Importing cycle2 sky map source and schedule CSV data...");
 

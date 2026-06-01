@@ -2,6 +2,8 @@ import "dotenv/config";
 
 import { eq } from "drizzle-orm";
 
+import { parseCycleArg } from "./db/cycle-cli";
+
 /**
  * Imports GF sources and schedule data from the existing cycle2_gf and
  * long_term_observation_list_cycle2_gf tables into the shared
@@ -14,16 +16,17 @@ import { eq } from "drizzle-orm";
 const BATCH_SIZE = 500;
 const DATASET = "gf" as const;
 
-async function loadModules() {
+async function loadModules(cycle: number) {
   const clientModule = await import(new URL("./db/client.ts", import.meta.url).href);
-  const schemaModule = await import(new URL("./db/schema.ts", import.meta.url).href);
+  const cycleTablesModule = await import(new URL("./db/cycle-tables.ts", import.meta.url).href);
+  const tables = cycleTablesModule.getCycleTables(cycle);
 
   return {
     db: clientModule.db,
-    cycle2GF: schemaModule.cycle2GF,
-    longTermObservationListCycle2GF: schemaModule.longTermObservationListCycle2GF,
-    cycle2SkymapSources: schemaModule.cycle2SkymapSources,
-    cycle2SkymapSchedule: schemaModule.cycle2SkymapSchedule,
+    cycle2GF: tables.gf,
+    longTermObservationListCycle2GF: tables.longTermGf,
+    cycle2SkymapSources: tables.skymapSources,
+    cycle2SkymapSchedule: tables.skymapSchedule,
   };
 }
 
@@ -90,8 +93,9 @@ async function insertInBatches<T extends Record<string, unknown>>(
 }
 
 async function main() {
+  const cycle = parseCycleArg();
   const { db, cycle2GF, longTermObservationListCycle2GF, cycle2SkymapSources, cycle2SkymapSchedule } =
-    await loadModules();
+    await loadModules(cycle);
 
   console.log("[info] Loading GF source and schedule data from DB...");
 

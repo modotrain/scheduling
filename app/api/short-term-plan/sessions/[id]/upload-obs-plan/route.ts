@@ -2,12 +2,10 @@ import { eq, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { ACTIVE_CYCLE } from "@/app/lib/cycles";
 import { db } from "@/src/db/client";
-import {
-  longTermObservationListCycle2,
-  longTermObservationListCycle2GF,
-  shortTermPlanSessions,
-} from "@/src/db/schema";
+import { getCycleTables } from "@/src/db/cycle-tables";
+import { shortTermPlanSessions } from "@/src/db/schema";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -38,6 +36,10 @@ function parseCsvLine(line: string): string[] {
 
 export async function POST(request: Request, { params }: RouteParams) {
   try {
+    const cycleTables = getCycleTables(ACTIVE_CYCLE);
+    const longTermCycle = cycleTables.longTerm;
+    const longTermGf = cycleTables.longTermGf;
+
     const cookieStore = await cookies();
     const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
     const authSession = token ? await verifySessionToken(token) : null;
@@ -89,17 +91,17 @@ export async function POST(request: Request, { params }: RouteParams) {
     const excludedGf = new Set<number>(planSession.excludedGfIds);
 
     const [cycle2Rows, gfRows] = await Promise.all([
-      db.select({ id: longTermObservationListCycle2.id, epDbObjectId: longTermObservationListCycle2.epDbObjectId, sourceId: longTermObservationListCycle2.sourceId, sourceName: longTermObservationListCycle2.sourceName, obsType: longTermObservationListCycle2.obsType })
-        .from(longTermObservationListCycle2)
-        .where(eq(longTermObservationListCycle2.weekId, planSession.weekId)),
-      db.select({ id: longTermObservationListCycle2GF.id, epDbObjectId: longTermObservationListCycle2GF.epDbObjectId, sourceId: longTermObservationListCycle2GF.sourceId, sourceName: longTermObservationListCycle2GF.sourceName, obsType: longTermObservationListCycle2GF.obsType })
-        .from(longTermObservationListCycle2GF)
-        .where(eq(longTermObservationListCycle2GF.weekId, planSession.weekId)),
+      db.select({ id: longTermCycle.id, epDbObjectId: longTermCycle.epDbObjectId, sourceId: longTermCycle.sourceId, sourceName: longTermCycle.sourceName, obsType: longTermCycle.obsType })
+        .from(longTermCycle)
+        .where(eq(longTermCycle.weekId, planSession.weekId)),
+      db.select({ id: longTermGf.id, epDbObjectId: longTermGf.epDbObjectId, sourceId: longTermGf.sourceId, sourceName: longTermGf.sourceName, obsType: longTermGf.obsType })
+        .from(longTermGf)
+        .where(eq(longTermGf.weekId, planSession.weekId)),
     ]);
 
     const mergedSources = [
-      ...cycle2Rows.filter((r) => !excludedCycle2.has(r.id)).map((r) => ({ ...r, table: "cycle2" as const })),
-      // GF sources are NOT included in unscheduled tracking — only Cycle2 matters here
+      ...cycle2Rows.filter((r) => !excludedCycle2.has(r.id)).map((r) => ({ ...r, table: "cycle" as const })),
+      // GF sources are NOT included in unscheduled tracking — only main cycle matters here
     ];
 
     // Find unscheduled Cycle2 sources (in merged list but EP_DB_OBJECT_ID not in obs plan)

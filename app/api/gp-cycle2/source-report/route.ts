@@ -1,8 +1,11 @@
-import { db, gpCycle2SourceReports } from "@/src/db";
+import { db } from "@/src/db";
+import { getCycleTables } from "@/src/db/cycle-tables";
+import { resolveCycleFromRequest } from "@/app/lib/cycles";
 import { and, eq } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
+    const gpCycle2SourceReports = getCycleTables(resolveCycleFromRequest(request)).sourceReports;
     const url = new URL(request.url);
     const sourceIdStr = url.searchParams.get("sourceId");
     const dataset = (url.searchParams.get("dataset") || "cycle2").toLowerCase() === "gf" ? "gf" : "cycle2";

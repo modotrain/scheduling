@@ -2,10 +2,13 @@ import { asc, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
-import { longTermObservationListCycle2 } from "@/src/db/schema";
+import { getCycleTables } from "@/src/db/cycle-tables";
+import { resolveCycleFromRequest } from "@/app/lib/cycles";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const cycle = resolveCycleFromRequest(request);
+    const longTermObservationListCycle2 = getCycleTables(cycle).longTerm;
     const rows = await db
       .select()
       .from(longTermObservationListCycle2)

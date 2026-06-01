@@ -17,7 +17,8 @@ import * as fs from "fs";
 import * as path from "path";
 import { parse as parseCSV } from "csv-parse/sync";
 import { db } from "./db/client.ts";
-import { gpCycle2SourceReports } from "./db/schema.ts";
+import { getCycleTables } from "./db/cycle-tables.ts";
+import { parseCycleArg } from "./db/cycle-cli.ts";
 
 const LONGTERM_SCH_DIR = path.join(process.cwd(), "longterm_sch");
 
@@ -145,6 +146,8 @@ function safeReadTxtFile(sourceId: number, sourceName: string, reportDir: string
 }
 
 async function main() {
+  const cycle = parseCycleArg();
+  const gpCycle2SourceReports = getCycleTables(cycle).sourceReports;
   const dataset = readDatasetArg();
   const { sourceCsv, scheduleCsv, reportDir } = resolveInputs(dataset);
 

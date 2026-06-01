@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { parse } from "csv-parse/sync";
 
+import { parseCycleArg } from "./db/cycle-cli";
+
 type CsvRow = Record<string, string>;
 type Cycle2GfInsert = Record<string, string | null>;
 
@@ -14,13 +16,14 @@ const CSV_PATH = path.join(
 );
 const INSERT_BATCH_SIZE = 500;
 
-async function loadModules() {
+async function loadModules(cycle: number) {
   const clientModule = await import(new URL("./db/client.ts", import.meta.url).href);
-  const schemaModule = await import(new URL("./db/schema.ts", import.meta.url).href);
+  const cycleTablesModule = await import(new URL("./db/cycle-tables.ts", import.meta.url).href);
+  const tables = cycleTablesModule.getCycleTables(cycle);
 
   return {
     db: clientModule.db,
-    cycle2GF: schemaModule.cycle2GF,
+    cycle2GF: tables.gf,
   };
 }
 
@@ -83,7 +86,8 @@ function mapRowToInsert(row: CsvRow): Cycle2GfInsert {
 }
 
 async function main() {
-  const { db, cycle2GF } = await loadModules();
+  const cycle = parseCycleArg();
+  const { db, cycle2GF } = await loadModules(cycle);
 
   const csvContent = await readFile(CSV_PATH, "utf8");
   const rows = parse(csvContent, {
