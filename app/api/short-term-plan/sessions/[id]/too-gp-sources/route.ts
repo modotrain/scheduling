@@ -43,6 +43,8 @@ export async function GET(_req: Request, { params }: RouteParams) {
         id: tooToGpSchedule.id,
         approvedTooId: tooToGpSchedule.approvedTooId,
         sourceName: approvedToO.sourceName,
+        sourceId: approvedToO.sourceId,
+        pi: approvedToO.pi,
         ra: approvedToO.ra,
         dec: approvedToO.dec,
         parentEpDbObjectId: tooToGpSchedule.parentEpDbObjectId,

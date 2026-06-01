@@ -26,7 +26,9 @@ type PlanSession = {
 
 type TooGpSourceRow = {
   id: number;
+  sourceId: string | null;
   sourceName: string | null;
+  pi: string | null;
   generatedEpDbObjectId: string | null;
   parentEpDbObjectId: string | null;
   plannedStartTime: string | null;
@@ -55,7 +57,7 @@ type SourceRow = {
   sourcePriority: string | null;
   startTime: string | null;
   endTime: string | null;
-  sourceType: "cycle" | "cycle2" | "gf";
+  sourceType: "cycle" | "cycle2" | "gf" | "toogp";
   isExcluded: boolean;
 };
 
@@ -354,7 +356,9 @@ function TooGpSourceTable({
                   className="cursor-pointer accent-primary"
                 />
               </th>
+              <th className="px-3 py-2">Source ID</th>
               <th className="px-3 py-2">Source Name</th>
+              <th className="px-3 py-2">PI</th>
               <th className="px-3 py-2">EP DB Object ID</th>
               <th className="px-3 py-2">Planned Window</th>
               <th className="px-3 py-2 text-right">Exp.</th>
@@ -383,7 +387,9 @@ function TooGpSourceTable({
                       className="cursor-pointer accent-primary"
                     />
                   </td>
+                  <td className="font-mono text-[11px] text-slate-500">{row.sourceId ?? "—"}</td>
                   <td className="max-w-[160px] truncate px-3 py-2 font-medium">{row.sourceName ?? "—"}</td>
+                  <td className="max-w-[100px] truncate px-3 py-2">{row.pi ?? "—"}</td>
                   <td className="px-3 py-2 font-mono text-[11px] text-slate-500">{row.generatedEpDbObjectId ?? "—"}</td>
                   <td className="px-3 py-2 text-[11px]">
                     {row.plannedStartTime ?? "—"} → {row.plannedEndTime ?? "—"}
@@ -822,7 +828,30 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   const cycle2Included = cycle2Rows.filter((r) => !excludedCycle2.has(r.id));
   const gfIncluded = gfRows.filter((r) => !excludedGf.has(r.id));
   const tooGpIncluded = tooGpRows.filter((r) => !excludedTooGp.has(r.id));
-  const mergedAll = [...cycle2Included, ...gfIncluded];
+  // Sort cycle2 and merge with ToO-GP: cycle A, then ToO-GP A, then cycle B, then others, then GF
+  const cycle2A = cycle2Included.filter((r) => r.sourcePriority === "A");
+  const cycle2B = cycle2Included.filter((r) => r.sourcePriority === "B");
+  const cycle2Other = cycle2Included.filter((r) => r.sourcePriority !== "A" && r.sourcePriority !== "B");
+  // Convert TooGpSourceRow to compatible format and merge
+  const tooGpConverted = tooGpIncluded.map((r) => ({
+    ...r,
+    sourceType: "toogp" as const,
+    epDbObjectId: r.generatedEpDbObjectId,
+    proposalId: null as string | null,
+    proposalNo: null as string | null,
+    groupName: null as string | null,
+    obsType: "ToO-GP",
+    ra: null as string | null,
+    dec: null as string | null,
+    totalExposureTime: r.reviewedSingleExposureTimeSnapshot?.toString() ?? null,
+    totalExposureTimeAll: r.reviewedSingleExposureTimeSnapshot?.toString() ?? null,
+    exposureTimeUnit: "s",
+    sourcePriority: "A",
+    startTime: r.plannedStartTime,
+    endTime: r.plannedEndTime,
+    isExcluded: false,
+  }));
+  const mergedAll: SourceRow[] = [...cycle2A, ...tooGpConverted, ...cycle2B, ...cycle2Other, ...gfIncluded];
 
   function calcExpS(rows: SourceRow[]) {
     return rows.reduce((sum, r) => {
@@ -1006,8 +1035,10 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                             row.sourceType === "gf"
                               ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                              : "bg-primary/10 text-primary"
-                          }`}>{row.sourceType === "gf" ? "GF" : `C${ACTIVE_CYCLE}`}</span>
+                                : row.sourceType === "toogp"
+                                ? "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400"
+                                : "bg-primary/10 text-primary"
+                              }`}>{row.sourceType === "gf" ? "GF" : row.sourceType === "toogp" ? "ToGP" : `C${ACTIVE_CYCLE}`}</span>
                         </td>
                         <td className="px-3 py-1.5 font-mono text-[11px]">{row.sourceId ?? "—"}</td>
                         <td className="max-w-[130px] truncate px-3 py-1.5">{row.sourceName ?? "—"}</td>
@@ -1022,28 +1053,22 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                             }`}>{row.sourcePriority}</span>
                           )}
                         </td>
-                        <td className="px-3 py-1.5 text-right">{row.totalExposureTimeAll ?? row.totalExposureTime ?? "—"} {row.exposureTimeUnit ?? ""}</td>
-                      </tr>
-                    ))}
-                    {tooGpIncluded.map((row) => (
-                      <tr key={`too-gp-${row.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                        <td className="px-3 py-1.5">
-                          <span className="rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">ToGP</span>
-                        </td>
-                        <td className="px-3 py-1.5 font-mono text-[11px]">{row.generatedEpDbObjectId ?? "—"}</td>
-                        <td className="max-w-[130px] truncate px-3 py-1.5">{row.sourceName ?? "—"}</td>
-                        <td className="px-3 py-1.5">—</td>
-                        <td className="px-3 py-1.5 text-[10px]">ToO-GP</td>
-                        <td className="px-3 py-1.5">—</td>
                         <td className="px-3 py-1.5 text-right">
-                          {row.reviewedSingleExposureTimeSnapshot != null ? fmtKs(row.reviewedSingleExposureTimeSnapshot) : "—"}
+                          {(() => {
+                            const val = row.totalExposureTimeAll ?? row.totalExposureTime;
+                            if (!val) return "—";
+                            const num = parseFloat(val);
+                            const unit = (row.exposureTimeUnit ?? "").toLowerCase();
+                            const seconds = unit === "ks" ? num * 1000 : unit === "hr" ? num * 3600 : num;
+                            return fmtKs(seconds);
+                          })()}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                {(mergedAll.length + tooGpIncluded.length) > 50 && mergedAll.length >= 50 && (
-                  <p className="px-3 py-2 text-center text-xs text-slate-400">… and {mergedAll.length + tooGpIncluded.length - 50} more rows in the downloaded CSV</p>
+                {mergedAll.length > 50 && (
+                  <p className="px-3 py-2 text-center text-xs text-slate-400">… and {mergedAll.length - 50} more rows in the downloaded CSV</p>
                 )}
               </div>
 
