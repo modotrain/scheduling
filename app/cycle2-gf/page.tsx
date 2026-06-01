@@ -1,13 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { parseCycleParam, getCycleLabel } from "@/app/lib/cycles";
 
-const CYCLE2_GF_CACHE_KEY = "cycle2-gf:list:v1";
-const CYCLE2_GF_CACHE_TTL_MS = 5 * 60 * 1000;
 const CYCLE2_GF_DETAIL_TITLE_CACHE_KEY_PREFIX = "cycle2-gf:detail:title:";
 const PAGE_SIZE_OPTIONS = [50, 100, 200] as const;
 
@@ -59,11 +57,6 @@ type Cycle2GfRow = {
 
 type SortConfig = { col: keyof Cycle2GfRow | null; dir: "asc" | "desc" };
 
-type Cycle2GfCache = {
-  rows: Cycle2GfRow[];
-  cachedAt: number;
-};
-
 const TABLE_COLS: (keyof Cycle2GfRow)[] = [
   "id",
   "sourceName",
@@ -110,15 +103,31 @@ export default function Cycle2GfPage() {
   const cycleQuery = `?cycle=${cycle}`;
   const cycleLabel = getCycleLabel(cycle);
 
+  // `rows` = current page only (from server). `total` = total matching rows.
   const [rows, setRows] = useState<Cycle2GfRow[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [searchText, setSearchText] = useState("");
+  // Debounced copy — only propagated to fetch after the user stops typing.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
   const [pageSize, setPageSize] = useState<number>(100);
   const [currentPage, setCurrentPage] = useState(1);
   const [urlStateHydrated, setUrlStateHydrated] = useState(false);
+
+  // Debounce search text so we don't fire a request on every keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchText), 400);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  // Reset to page 1 whenever the debounced search value changes.
+  useEffect(() => {
+    if (urlStateHydrated) setCurrentPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
 
   useEffect(() => {
     const q = searchParams.get("q") ?? "";
@@ -137,17 +146,20 @@ export default function Cycle2GfPage() {
     const parsedSortDir: "asc" | "desc" = sortDirParam === "desc" ? "desc" : "asc";
 
     setSearchText(q);
+    setDebouncedSearch(q); // sync immediately on URL hydration (no debounce delay)
     setCurrentPage(parsedPage);
     setPageSize(parsedPageSize);
     setSortConfig({ col: parsedSortCol, dir: parsedSortDir });
     setUrlStateHydrated(true);
   }, [searchParams]);
 
+  // Sync state → URL. Uses debouncedSearch so the URL only updates after the
+  // user stops typing (avoids noisy pushState on every keystroke).
   useEffect(() => {
     if (!urlStateHydrated) return;
 
     const next = new URLSearchParams(searchParams.toString());
-    const nextQ = searchText.trim();
+    const nextQ = debouncedSearch.trim();
 
     if (nextQ) next.set("q", nextQ);
     else next.delete("q");
@@ -171,47 +183,50 @@ export default function Cycle2GfPage() {
     if (currentQuery !== nextQuery) {
       router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
     }
-  }, [urlStateHydrated, searchText, currentPage, pageSize, sortConfig, pathname, router, searchParams]);
+  }, [urlStateHydrated, debouncedSearch, currentPage, pageSize, sortConfig, pathname, router, searchParams]);
 
-  const loadRows = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/gf${cycleQuery}`, { cache: "no-store" });
-      const data = (await res.json()) as { rows?: Cycle2GfRow[]; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Failed to load");
-      const nextRows = data.rows ?? [];
-      setRows(nextRows);
-      try {
-        const payload: Cycle2GfCache = { rows: nextRows, cachedAt: Date.now() };
-        localStorage.setItem(`${CYCLE2_GF_CACHE_KEY}:cycle${cycle}`, JSON.stringify(payload));
-      } catch {
-        // Ignore localStorage errors (quota/private mode) and keep runtime state.
-      }
-    } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Failed to load");
-      setMessageTone("error");
-    } finally {
-      setLoading(false);
-    }
-  }, [cycle, cycleQuery]);
-
+  // ── Server-side data fetch ──────────────────────────────────────────────
+  // Re-runs whenever any of the pagination / sort / search params change.
+  // Uses an abort-via-cancelled flag so stale responses are discarded.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`${CYCLE2_GF_CACHE_KEY}:cycle${cycle}`);
-      if (raw) {
-        const cache = JSON.parse(raw) as Cycle2GfCache;
-        const fresh = Date.now() - cache.cachedAt < CYCLE2_GF_CACHE_TTL_MS;
-        if (fresh && Array.isArray(cache.rows)) {
-          setRows(cache.rows);
-          setLoading(false);
-          return;
+    if (!urlStateHydrated) return;
+    let cancelled = false;
+    setLoading(true);
+
+    const fetchRows = async () => {
+      try {
+        const params = new URLSearchParams({
+          cycle: String(cycle),
+          page: String(currentPage),
+          pageSize: String(pageSize),
+          sortDir: sortConfig.col ? sortConfig.dir : "desc",
+        });
+        if (sortConfig.col) params.set("sortCol", sortConfig.col);
+        const q = debouncedSearch.trim();
+        if (q) params.set("q", q);
+
+        const res = await fetch(`/api/gf?${params.toString()}`, { cache: "no-store" });
+        const data = (await res.json()) as { rows?: Cycle2GfRow[]; total?: number; error?: string };
+        if (cancelled) return;
+        if (!res.ok) throw new Error(data.error ?? "Failed to load");
+        setRows(data.rows ?? []);
+        setTotal(data.total ?? 0);
+        setMessage("");
+      } catch (err) {
+        if (!cancelled) {
+          setMessage(err instanceof Error ? err.message : "Failed to load");
+          setMessageTone("error");
         }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch {
-      // Ignore malformed cache and fall back to network fetch.
-    }
-    void loadRows();
-  }, [loadRows, cycle]);
+    };
+
+    void fetchRows();
+    return () => {
+      cancelled = true;
+    };
+  }, [urlStateHydrated, cycle, currentPage, pageSize, sortConfig.col, sortConfig.dir, debouncedSearch]);
 
   function handleSort(col: keyof Cycle2GfRow) {
     setSortConfig((prev) => ({
@@ -221,55 +236,12 @@ export default function Cycle2GfPage() {
     setCurrentPage(1);
   }
 
-  const displayRows = useMemo(() => {
-    const query = searchText.toLowerCase().trim();
-    const filtered = query
-      ? rows.filter((row) =>
-          Object.values(row).some(
-            (v) => v !== null && v !== undefined && String(v).toLowerCase().includes(query),
-          ),
-        )
-      : rows;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    if (!sortConfig.col) return filtered;
-
-    const numericCols = new Set<keyof Cycle2GfRow>([
-      "totalExposureTime",
-      "completeness",
-      "visitNumber",
-      "cadence",
-    ]);
-
-    return [...filtered].sort((a, b) => {
-      const aVal = a[sortConfig.col!] ?? "";
-      const bVal = b[sortConfig.col!] ?? "";
-
-      let cmp: number;
-      if (numericCols.has(sortConfig.col!)) {
-        const aNum = Number(aVal) || 0;
-        const bNum = Number(bVal) || 0;
-        cmp = aNum - bNum;
-      } else if (typeof aVal === "number" && typeof bVal === "number") {
-        cmp = aVal - bVal;
-      } else {
-        cmp = String(aVal).localeCompare(String(bVal));
-      }
-      return sortConfig.dir === "asc" ? cmp : -cmp;
-    });
-  }, [rows, searchText, sortConfig]);
-
-  const totalPages = Math.max(1, Math.ceil(displayRows.length / pageSize));
-
+  // Clamp currentPage when total shrinks (e.g. after searching).
   useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  const pagedRows = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return displayRows.slice(start, start + pageSize);
-  }, [displayRows, currentPage, pageSize]);
+    if (total > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages, total]);
 
   function SortIcon({ col }: { col: keyof Cycle2GfRow }) {
     if (sortConfig.col !== col) {
@@ -333,7 +305,6 @@ export default function Cycle2GfPage() {
             value={searchText}
             onChange={(e) => {
               setSearchText(e.target.value);
-              setCurrentPage(1);
             }}
             className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
           />
@@ -341,10 +312,10 @@ export default function Cycle2GfPage() {
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <p>
-            {loading ? "" : `${displayRows.length} of ${rows.length} rows`} {loading ? "" : `(page ${currentPage}/${totalPages})`}
+            {loading ? "" : `${rows.length} of ${total} rows (page ${currentPage}/${totalPages})`}
           </p>
           <div className="flex items-center gap-3">
-            {displayRows.length > 0 ? (
+            {total > 0 ? (
               <div className="flex items-center gap-2 text-sm">
                 <button
                   type="button"
@@ -416,14 +387,14 @@ export default function Cycle2GfPage() {
                     </div>
                   </td>
                 </tr>
-              ) : displayRows.length === 0 ? (
+              ) : rows.length === 0 ? (
                 <tr>
                   <td className="px-2 py-4 text-slate-500 dark:text-slate-400" colSpan={TABLE_COLS.length + 2}>
-                    {searchText ? "No matching rows." : "No rows found."}
+                    {debouncedSearch ? "No matching rows." : "No rows found."}
                   </td>
                 </tr>
               ) : (
-                pagedRows.map((row, index) => (
+                rows.map((row, index) => (
                   <tr
                     key={row.id}
                     className="border-b border-slate-100 odd:bg-white even:bg-slate-50/70 hover:bg-slate-100/70 dark:border-slate-800 dark:odd:bg-slate-900 dark:even:bg-slate-800/35 dark:hover:bg-slate-800/70"
@@ -473,7 +444,7 @@ export default function Cycle2GfPage() {
           </table>
         </div>
 
-        {displayRows.length > 0 ? (
+        {total > 0 ? (
           <div className="mt-3 flex items-center justify-end gap-2 text-sm">
             <button
               type="button"
