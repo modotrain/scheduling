@@ -1250,9 +1250,27 @@ export default function TooManagementDetailPage() {
                 onClick={handleOpenCreatePlanning}
                 disabled={planningSubmitting || loading || !row || !row.epDbObjectId || !canManageGP}
                 title={!canManageGP && row?.concluded ? "GP operations are frozen: this record is concluded" : !canManageGP ? "Permission denied: operator or admin only" : ""}
-                className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark disabled:opacity-60"
+                className="group relative inline-flex items-center gap-2 overflow-hidden rounded-md border border-primary/55 bg-gradient-to-r from-primary to-brand-dark px-3.5 py-1.5 text-sm font-semibold text-white shadow-[0_3px_10px_rgba(2,132,199,0.22)] transition-all duration-200 hover:-translate-y-px hover:from-primary hover:to-[#045c8f] hover:shadow-[0_6px_14px_rgba(2,132,199,0.26)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
               >
-                Add GP Plan
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-disabled:opacity-0 motion-safe:group-hover:animate-[gp-plan-sheen_1.1s_ease-in-out]"
+                />
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 16 16"
+                  className="h-3.5 w-3.5 shrink-0 text-white/90 motion-safe:group-hover:animate-[pulse_1.2s_ease-in-out_infinite]"
+                  fill="currentColor"
+                >
+                  <path d="M7.25 1.75a.75.75 0 0 1 1.5 0v4h4a.75.75 0 0 1 0 1.5h-4v4a.75.75 0 0 1-1.5 0v-4h-4a.75.75 0 0 1 0-1.5h4v-4Z" />
+                </svg>
+                <span>Add GP Plan</span>
+                <style jsx>{`
+                  @keyframes gp-plan-sheen {
+                    0% { transform: translateX(-120%) skewX(-12deg); }
+                    100% { transform: translateX(360%) skewX(-12deg); }
+                  }
+                `}</style>
               </button>
               </div>
             </div>

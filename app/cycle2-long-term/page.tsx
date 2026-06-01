@@ -339,7 +339,7 @@ export default function Cycle2LongTermPage() {
               ) : displayRows.length === 0 ? (
                 <tr>
                   <td className="px-3 py-4 text-slate-500 dark:text-slate-400" colSpan={TABLE_COLS.length + 2}>
-                    {searchText ? "No matching rows." : "No cycle2 long-term rows found."}
+                    {searchText ? "No matching rows." : "No rows found."}
                   </td>
                 </tr>
               ) : (

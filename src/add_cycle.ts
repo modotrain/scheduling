@@ -111,17 +111,17 @@ async function main(): Promise<void> {
   const { cycle, epoch, label } = parseArgs(process.argv.slice(2));
   const config = await readConfig();
 
-  if (config.cycles.some((c) => c.cycle === cycle)) {
-    throw new Error(`Cycle ${cycle} is already registered in cycles.config.json.`);
-  }
+  const isAlreadyRegistered = config.cycles.some((c) => c.cycle === cycle);
 
   const registered = config.cycles.map((c) => c.cycle).sort((a, b) => a - b);
-  if (registered.length === 0) {
+  const templateCandidates = registered.filter((c) => c !== cycle);
+  if (templateCandidates.length === 0) {
     throw new Error("No template cycle is registered; cannot clone table structure.");
   }
-  const templateCycle = registered[0];
-  if (cycle === templateCycle) {
-    throw new Error(`Cycle ${cycle} collides with the template cycle.`);
+  const templateCycle = templateCandidates[0]!;
+
+  if (isAlreadyRegistered) {
+    console.log(`Cycle ${cycle} is already registered. Running provision/repair for missing tables...`);
   }
 
   const templateNames = CYCLE_TABLE_NAME(templateCycle);
@@ -172,10 +172,16 @@ async function main(): Promise<void> {
     }
   }
 
-  config.cycles.push({ cycle, epoch, label: label ?? `Cycle ${cycle}` });
-  await writeConfig(config);
+  if (!isAlreadyRegistered) {
+    config.cycles.push({ cycle, epoch, label: label ?? `Cycle ${cycle}` });
+    await writeConfig(config);
+  }
 
-  console.log(`\nDone. Cycle ${cycle} tables provisioned and registered in cycles.config.json.`);
+  console.log(
+    isAlreadyRegistered
+      ? `\nDone. Cycle ${cycle} tables provisioned/repaired (config entry kept).`
+      : `\nDone. Cycle ${cycle} tables provisioned and registered in cycles.config.json.`,
+  );
   console.log("Next steps:");
   console.log(`  1. Inject data, e.g.  npx tsx src/inject_cycle2_gf.ts --cycle ${cycle}`);
   console.log(`  2. When ready to go live, set "activeCycle": ${cycle} in src/db/cycles.config.json.`);
