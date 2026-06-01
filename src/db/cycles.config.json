@@ -5,6 +5,11 @@
       "cycle": 2,
       "epoch": "2025-08-12",
       "label": "Cycle 2"
+    },
+    {
+      "cycle": 3,
+      "epoch": "2026-08-11",
+      "label": "Cycle 3"
     }
   ]
 }
