@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { CYCLES, ACTIVE_CYCLE, getCycleLabel, cycleHref } from "@/app/lib/cycles";
+
+const STORAGE_KEY = "home:selected-cycle";
 
 interface PlanningCard {
   badge: string;
@@ -44,11 +46,38 @@ const PLANNING_CARDS: PlanningCard[] = [
  * Tabbed "Cycle Planning" section. The four sub-entries switch per cycle via a
  * `?cycle=N` query param. The active cycle is selected by default; other
  * registered cycles remain available in secondary tabs for reference.
+ *
+ * The selected cycle is persisted in localStorage so it survives navigation.
  */
 export default function CyclePlanningTabs() {
   const [selected, setSelected] = useState<number>(ACTIVE_CYCLE);
   const selectedLabel = getCycleLabel(selected);
   const multipleCycles = CYCLES.length > 1;
+  const isArchive = selected !== ACTIVE_CYCLE;
+
+  // Restore persisted selection after mount (avoids SSR mismatch).
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const n = Number(stored);
+        if (Number.isInteger(n) && CYCLES.some((c) => c.cycle === n)) {
+          setSelected(n);
+        }
+      }
+    } catch {
+      // Ignore storage errors in private/restricted contexts.
+    }
+  }, []);
+
+  function handleSelect(cycle: number) {
+    setSelected(cycle);
+    try {
+      localStorage.setItem(STORAGE_KEY, String(cycle));
+    } catch {
+      // Ignore.
+    }
+  }
 
   return (
     <section className="flex flex-col gap-3">
@@ -65,7 +94,7 @@ export default function CyclePlanningTabs() {
                 <button
                   key={c.cycle}
                   type="button"
-                  onClick={() => setSelected(c.cycle)}
+                  onClick={() => handleSelect(c.cycle)}
                   className={
                     isSelected
                       ? "inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1 text-xs font-semibold text-white shadow-sm"
@@ -91,20 +120,38 @@ export default function CyclePlanningTabs() {
         ) : null}
       </div>
 
+      {/* Archive-mode notice — only shown when browsing a non-current cycle */}
+      {isArchive ? (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200/70 bg-amber-50/60 px-3 py-2 text-xs text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-300">
+          <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Browsing {selectedLabel} — not the current active cycle ({getCycleLabel(ACTIVE_CYCLE)}).
+        </div>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
         {PLANNING_CARDS.map((card) => (
           <Link
             key={card.basePath}
             href={cycleHref(card.basePath, selected)}
-            className="group rounded-xl border border-slate-200 bg-white/90 p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
+            className={`group rounded-xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg ${
+              isArchive
+                ? "border-slate-200/60 bg-slate-50/70 hover:border-slate-400 dark:border-slate-700/60 dark:bg-slate-800/40"
+                : "border-slate-200 bg-white/90 hover:border-primary dark:border-slate-700 dark:bg-slate-900"
+            }`}
           >
-            <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+            <div className={`mb-3 inline-flex rounded-lg px-2.5 py-1 text-xs font-medium ${
+              isArchive
+                ? "bg-slate-200/70 text-slate-500 dark:bg-slate-700/60 dark:text-slate-400"
+                : "bg-primary/10 text-primary"
+            }`}>
               {card.badge}
             </div>
-            <h2 className="text-lg font-semibold">
+            <h2 className={`text-lg font-semibold ${isArchive ? "text-slate-600 dark:text-slate-400" : ""}`}>
               {selectedLabel} {card.titleSuffix}
             </h2>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{card.description}</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{card.description}</p>
           </Link>
         ))}
 
