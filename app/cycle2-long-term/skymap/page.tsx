@@ -19,7 +19,7 @@ export default function Cycle2LongTermSkyMapPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href={`/cycle2-long-term${cycleQuery}`}
+              href={`/long-term${cycleQuery}`}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               ← Back to {cycleLabel} Long-Term

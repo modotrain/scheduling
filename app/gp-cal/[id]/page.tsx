@@ -4,7 +4,7 @@ import { SubmitEvent, useCallback, useEffect, useLayoutEffect, useState, type Mo
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCycle } from "@/app/lib/useCycle";
-import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "../../cycle2-long-term/detail-title-cache";
+import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "../../long-term/detail-title-cache";
 import SourceReportChart from "../../components/SourceReportChart";
 
 const GP_CAL_DETAIL_TITLE_CACHE_KEY_PREFIX = "gp-cal:detail:title:";
@@ -359,7 +359,7 @@ export default function GpCalDetailPage() {
   const loadObsList = useCallback(async () => {
     setObsLoading(true);
     try {
-      const res = await fetch(`/api/gp-cycle2/${id}/obs-list${cycleQuery}`, { cache: "no-store" });
+      const res = await fetch(`/api/gp/${id}/obs-list${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as {
         rows?: Record<string, unknown>[];
         totalValidSecs?: number;
@@ -399,7 +399,7 @@ export default function GpCalDetailPage() {
   const loadPlannedList = useCallback(async () => {
     setPlannedLoading(true);
     try {
-      const res = await fetch(`/api/gp-cycle2/${id}/planned-list${cycleQuery}`, { cache: "no-store" });
+      const res = await fetch(`/api/gp/${id}/planned-list${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as {
         rows?: PlannedObsRow[];
         error?: string;
@@ -416,7 +416,7 @@ export default function GpCalDetailPage() {
   const loadRow = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/gp-cycle2/${id}${cycleQuery}`, { cache: "no-store" });
+      const res = await fetch(`/api/gp/${id}${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as { row?: GpCycle2Row; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed to load");
       if (data.row) {
@@ -448,7 +448,7 @@ export default function GpCalDetailPage() {
       const payload = Object.fromEntries(
         Object.entries(input).map(([k, v]) => [k, v === "" ? null : v]),
       );
-      const res = await fetch(`/api/gp-cycle2/${id}${cycleQuery}`, {
+      const res = await fetch(`/api/gp/${id}${cycleQuery}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -556,6 +556,8 @@ export default function GpCalDetailPage() {
                 sourceId={row.sourceId}
                 dataset="cycle2"
                 cycle={cycle}
+                allowMissingPlan
+                missingPlanLabel="No source report is available for this cycle yet."
                 embedded
                 activePointKey={activeScheduleHoverKey}
                 onPointHover={(key) => {
@@ -672,7 +674,7 @@ export default function GpCalDetailPage() {
                       })}
                       <td className="whitespace-nowrap px-3 py-2">
                         <Link
-                          href={`/cycle2-long-term/${planned.id}${cycleQuery}`}
+                          href={`/long-term/${planned.id}${cycleQuery}`}
                           onClick={() => cacheLongTermDetailSourceName(planned.id, planned.sourceName)}
                           className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-dark"
                         >

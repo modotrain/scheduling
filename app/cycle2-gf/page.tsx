@@ -176,7 +176,7 @@ export default function Cycle2GfPage() {
   const loadRows = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/cycle2-gf${cycleQuery}`, { cache: "no-store" });
+      const res = await fetch(`/api/gf${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as { rows?: Cycle2GfRow[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed to load");
       const nextRows = data.rows ?? [];
@@ -459,7 +459,7 @@ export default function Cycle2GfPage() {
                     })}
                     <td className="px-2 py-2">
                       <Link
-                        href={`/cycle2-gf/${row.id}${cycleQuery}`}
+                        href={`/gf/${row.id}${cycleQuery}`}
                         onClick={() => cacheDetailSourceName(row.id, row.sourceName)}
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >

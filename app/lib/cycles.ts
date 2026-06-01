@@ -76,13 +76,13 @@ export interface CyclePlanningEntry {
 export const CYCLE_PLANNING_ENTRIES: CyclePlanningEntry[] = [
   {
     key: "sources",
-    basePath: "/gp-cycle2",
+    basePath: "/gp",
     title: "Sources & Status",
     description: "Full-source target observation status",
   },
   {
     key: "long-term",
-    basePath: "/cycle2-long-term",
+    basePath: "/long-term",
     title: "Long-Term Schedule",
     description: "Weekly organized observation plan",
   },
@@ -94,7 +94,7 @@ export const CYCLE_PLANNING_ENTRIES: CyclePlanningEntry[] = [
   },
   {
     key: "gap-filling",
-    basePath: "/cycle2-gf",
+    basePath: "/gf",
     title: "Gap Filling Sources",
     description: "Gap filling observation pool",
   },

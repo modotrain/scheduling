@@ -144,19 +144,25 @@ npx tsx src/add_cycle.ts --cycle 3 --epoch 2026-08-11 --label "Cycle 3"
 建议注入顺序（以 cycle3 为例）：
 
 ```bash
-npx tsx src/inject_cycle2_gf.ts --cycle 3
+npx tsx src/inject_cycle_gf.ts --cycle 3 --gp
+npx tsx src/inject_cycle_gf.ts --cycle 3 --gf
 npx tsx src/inject_longterm_weekly_plans.ts --cycle 3
 npx tsx src/inject_longterm_weekly_plans_gf.ts --cycle 3
-npx tsx src/inject_cycle2_skymap_data.ts --cycle 3
-npx tsx src/inject_cycle2_gf_skymap_data.ts --cycle 3
-npx tsx src/inject_gp_cycle2_source_reports.ts --cycle 3 --dataset=cycle2
-npx tsx src/inject_gp_cycle2_source_reports.ts --cycle 3 --dataset=gf
+npx tsx src/inject_cycle_skymap_data.ts --cycle 3
+npx tsx src/inject_cycle_gf_skymap_data.ts --cycle 3
+npx tsx src/inject_gp_cycle_source_reports.ts --cycle 3 --dataset=gp
+npx tsx src/inject_gp_cycle_source_reports.ts --cycle 3 --dataset=gf
 ```
 
 说明：
 
-1. inject_gp_cycle2_source_reports.ts 通过 --dataset=cycle2 或 --dataset=gf 区分来源。
-2. inject_too.ts 属于共享 ToO 数据，不是 cycle-aware，不用于 cycle 切换流程。
+1. inject_cycle_gf.ts 通过 --gp / --gf（或 --target gp|gf）区分导入目标。
+2. 当目标为 gp 时，会合并三份源文件导入同一张 gp_cycleN 表：GP、WXTCAL、FXTCAL。
+3. inject_cycle_skymap_data.ts 会合并 GP/WXTCAL/FXTCAL 三份 visibility_eachday 文件导入同一张 cycleN_skymap_sources 表。
+4. inject_gp_cycle_source_reports.ts 通过 --dataset=gp 或 --dataset=gf 区分来源。
+5. 其中 --dataset=gp 会映射到历史分区值 cycle2（兼容旧查询）；这里的 dataset 语义是“主流/ GF 数据分区”，不是 cycle 编号。
+6. 所有 cycle-aware 脚本建议始终显式传 --cycle N。
+7. inject_too.ts 属于共享 ToO 数据，不是 cycle-aware，不用于 cycle 切换流程。
 
 ### 4.3 步骤三：切默认 cycle
 
@@ -173,14 +179,25 @@ npx tsx src/inject_gp_cycle2_source_reports.ts --cycle 3 --dataset=gf
 
 注入脚本默认读取 longterm_sch 目录下数据：
 
-1. longterm_sch/reviewed_cycle2_source_list_GF_forDatabase.csv
-2. longterm_sch/weekly_plans/*.csv
-3. longterm_sch/weekly_plans_gf/*.csv
-4. longterm_sch/cc2.csv
-5. longterm_sch/schedule_result.csv
-6. longterm_sch/schedule_gf_records.csv
-7. longterm_sch/source_reports/*.txt
-8. longterm_sch/source_reports_gf/*.txt
+1. longterm_sch/reviewed_cycleN_source_list_GP_forDatabase.csv
+2. longterm_sch/reviewed_cycleN_source_list_wxtcal_forDatabase.csv
+3. longterm_sch/reviewed_cycleN_source_list_fxtcal_forDatabase.csv
+4. longterm_sch/reviewed_cycleN_source_list_GF_forDatabase.csv
+5. longterm_sch/reviewed_cycleN_source_list_GP_visibility_eachday.csv
+6. longterm_sch/reviewed_cycleN_source_list_wxtcal_visibility_eachday.csv
+7. longterm_sch/reviewed_cycleN_source_list_fxtcal_visibility_eachday.csv
+8. longterm_sch/reviewed_cycleN_source_list_GF_visibility_eachday.csv
+9. longterm_sch/weekly_plans/*.csv
+10. longterm_sch/weekly_plans_gf/*.csv
+11. longterm_sch/schedule_result.csv
+12. longterm_sch/schedule_gf_records.csv
+13. longterm_sch/source_reports/*.txt
+14. longterm_sch/source_reports_gf/*.txt
+
+说明：
+
+1. 这里的 N 表示目标 cycle（例如 cycle3）。
+2. GP/WXTCAL/FXTCAL 在多个注入流程中会合并导入到同一个 GP 相关目标表。
 
 ### 5.2 覆盖行为注意
 

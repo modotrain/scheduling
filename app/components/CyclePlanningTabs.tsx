@@ -18,13 +18,13 @@ const PLANNING_CARDS: PlanningCard[] = [
     badge: "FSTO",
     titleSuffix: "Sources & Status",
     description: "Track cycle proposals, completion ratios, and detailed observation timelines.",
-    basePath: "/gp-cycle2",
+    basePath: "/gp",
   },
   {
     badge: "Weekly Orgnized Plan",
     titleSuffix: "Long-Term Schedule",
     description: "Browse weekly-based long-term scheduling plans and inspect every scheduling detail.",
-    basePath: "/cycle2-long-term",
+    basePath: "/long-term",
   },
   {
     badge: "Calibration Workspace",
@@ -36,7 +36,7 @@ const PLANNING_CARDS: PlanningCard[] = [
     badge: "Gap Filling Pool",
     titleSuffix: "Gap Filling Sources",
     description: "Browse gap-filling sources, completion ratios, and open details for full source metadata.",
-    basePath: "/cycle2-gf",
+    basePath: "/gf",
   },
 ];
 

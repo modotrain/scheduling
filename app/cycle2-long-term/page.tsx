@@ -137,7 +137,7 @@ export default function Cycle2LongTermPage() {
         }
       }
 
-      const response = await fetch(`/api/cycle2-long-term${cycleQuery}`, { cache: "no-store" });
+      const response = await fetch(`/api/long-term${cycleQuery}`, { cache: "no-store" });
       const data = (await response.json()) as { rows?: LongTermRow[]; error?: string };
       if (!response.ok) {
         throw new Error(data.error ?? "Failed to load cycle2 long-term list");
@@ -258,7 +258,7 @@ export default function Cycle2LongTermPage() {
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href={`/cycle2-long-term/skymap${cycleQuery}`}
+              href={`/long-term/skymap${cycleQuery}`}
               // target="_blank"
               rel="noopener noreferrer"
               className="rounded-md bg-primary px-3 py-1.5 text-sm text-white hover:bg-brand-dark"
@@ -266,7 +266,7 @@ export default function Cycle2LongTermPage() {
               Sky Map View
             </Link>
             <Link
-              href={`/gp-cycle2${cycleQuery}`}
+              href={`/gp${cycleQuery}`}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               GP {cycleLabel}
@@ -364,7 +364,7 @@ export default function Cycle2LongTermPage() {
                     ))}
                     <td className="px-3 py-2">
                       <Link
-                        href={`/cycle2-long-term/${row.id}${cycleQuery}`}
+                        href={`/long-term/${row.id}${cycleQuery}`}
                         onClick={() => cacheDetailSourceName(row.id, row.sourceName)}
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >

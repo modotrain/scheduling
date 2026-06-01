@@ -183,7 +183,7 @@ async function main(): Promise<void> {
       : `\nDone. Cycle ${cycle} tables provisioned and registered in cycles.config.json.`,
   );
   console.log("Next steps:");
-  console.log(`  1. Inject data, e.g.  npx tsx src/inject_cycle2_gf.ts --cycle ${cycle}`);
+  console.log(`  1. Inject data, e.g.  npx tsx src/inject_cycle_gf.ts --cycle ${cycle}`);
   console.log(`  2. When ready to go live, set "activeCycle": ${cycle} in src/db/cycles.config.json.`);
 }
 

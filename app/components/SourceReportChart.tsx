@@ -46,7 +46,7 @@ export default function SourceReportChart({
   cycle,
   isDarkMode = false,
   embedded = false,
-  apiBase = "/api/gp-cycle2",
+  apiBase = "/api/gp",
   allowMissingPlan = false,
   disablePreview = false,
   missingPlanLabel = "No chart data available",
@@ -209,6 +209,11 @@ export default function SourceReportChart({
         if (dataset) params.set("dataset", dataset);
         if (cycle !== undefined) params.set("cycle", String(cycle));
         const res = await fetch(`${apiBase}/source-reports/download?${params.toString()}`);
+        if (allowMissingPlan && res.status === 404) {
+          setPreviewText("");
+          setPreviewError(null);
+          return;
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
         if (disposed) return;
@@ -227,7 +232,7 @@ export default function SourceReportChart({
     return () => {
       disposed = true;
     };
-  }, [sourceId, apiBase, disablePreview, dataset, cycle]);
+  }, [sourceId, apiBase, disablePreview, dataset, cycle, allowMissingPlan]);
 
   const handlePreviewClick = () => {
     setPreviewOpen((prev) => !prev);

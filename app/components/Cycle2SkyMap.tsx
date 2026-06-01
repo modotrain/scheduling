@@ -138,7 +138,7 @@ export default function Cycle2SkyMap({ cycle }: { cycle?: number } = {}) {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`/api/cycle2-long-term/skymap${cycleQuery}`, { cache: "no-store" });
+        const response = await fetch(`/api/long-term/skymap${cycleQuery}`, { cache: "no-store" });
         const payload = (await response.json()) as SkyPayload & { error?: string };
         if (!response.ok) {
           throw new Error(payload.error ?? "Failed to load sky map data");

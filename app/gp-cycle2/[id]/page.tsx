@@ -4,7 +4,7 @@ import { SubmitEvent, useCallback, useEffect, useLayoutEffect, useState, type Mo
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCycle } from "@/app/lib/useCycle";
-import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "../../cycle2-long-term/detail-title-cache";
+import { DETAIL_TITLE_CACHE_KEY_PREFIX } from "../../long-term/detail-title-cache";
 import SourceReportChart from "../../components/SourceReportChart";
 
 const GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX = "gp-cycle2:detail:title:";
@@ -294,7 +294,7 @@ function getScheduledCompletionTone(row: ObsListRow): "zero" | "good" | "partial
 export default function GpCycle2DetailPage() {
   const pathname = usePathname();
   const id = pathname?.split("/").at(-1) ?? "";
-  const { cycle, query: cycleQuery } = useCycle();
+  const { cycle, query: cycleQuery, isReady } = useCycle();
 
   // obs list state
   const [obsList, setObsList] = useState<ObsListRow[]>([]);
@@ -427,7 +427,7 @@ export default function GpCycle2DetailPage() {
   const loadObsList = useCallback(async () => {
     setObsLoading(true);
     try {
-      const res = await fetch(`/api/gp-cycle2/${id}/obs-list${cycleQuery}`, { cache: "no-store" });
+      const res = await fetch(`/api/gp/${id}/obs-list${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as {
         rows?: Record<string, unknown>[];
         totalValidSecs?: number;
@@ -469,7 +469,7 @@ export default function GpCycle2DetailPage() {
   const loadPlannedList = useCallback(async () => {
     setPlannedLoading(true);
     try {
-      const res = await fetch(`/api/gp-cycle2/${id}/planned-list${cycleQuery}`, { cache: "no-store" });
+      const res = await fetch(`/api/gp/${id}/planned-list${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as {
         rows?: PlannedObsRow[];
         error?: string;
@@ -486,12 +486,13 @@ export default function GpCycle2DetailPage() {
   const loadRow = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/gp-cycle2/${id}${cycleQuery}`, { cache: "no-store" });
+      const res = await fetch(`/api/gp/${id}${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as { row?: GpCycle2Row; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed to load");
       if (data.row) {
         setRow(data.row);
         setInput(rowToInput(data.row));
+        setMessage("");
       }
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Failed to load", "error");
@@ -501,10 +502,11 @@ export default function GpCycle2DetailPage() {
   }, [id, cycleQuery]);
 
   useEffect(() => {
+    if (!isReady) return;
     void loadRow();
     void loadPlannedList();
     void loadObsList();
-  }, [loadRow, loadPlannedList, loadObsList]);
+  }, [isReady, loadRow, loadPlannedList, loadObsList]);
 
   useEffect(() => {
     if (!row?.sourceName) return;
@@ -518,7 +520,7 @@ export default function GpCycle2DetailPage() {
       const payload = Object.fromEntries(
         Object.entries(input).map(([k, v]) => [k, v === "" ? null : v]),
       );
-      const res = await fetch(`/api/gp-cycle2/${id}${cycleQuery}`, {
+      const res = await fetch(`/api/gp/${id}${cycleQuery}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -579,14 +581,14 @@ export default function GpCycle2DetailPage() {
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">GP Cycle 2 — {titleSourceName}</h1>
+            <h1 className="text-2xl font-semibold">GP — {titleSourceName}</h1>
             {row?.pi ? (
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{row.pi}</p>
             ) : null}
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href={`/gp-cycle2${cycleQuery}`}
+              href={`/gp${cycleQuery}`}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               ← Back to list
@@ -626,6 +628,8 @@ export default function GpCycle2DetailPage() {
                 sourceId={row.sourceId}
                 dataset="cycle2"
                 cycle={cycle}
+                allowMissingPlan
+                missingPlanLabel="No source report available for this source yet."
                 embedded
                 activePointKey={activePlannedScheduleHoverKey}
                 onPointHover={(key) => {
@@ -742,7 +746,7 @@ export default function GpCycle2DetailPage() {
                       })}
                       <td className="whitespace-nowrap px-3 py-2">
                         <Link
-                          href={`/cycle2-long-term/${planned.id}${cycleQuery}`}
+                          href={`/long-term/${planned.id}${cycleQuery}`}
                           onClick={() => cacheLongTermDetailSourceName(planned.id, planned.sourceName)}
                           className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-dark"
                         >

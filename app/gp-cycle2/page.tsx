@@ -116,7 +116,7 @@ export default function GpCycle2Page() {
   const loadRows = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/gp-cycle2${cycleQuery}`, { cache: "no-store" });
+      const res = await fetch(`/api/gp${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as { rows?: GpCycle2Row[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed to load");
       const nextRows = data.rows ?? [];
@@ -337,7 +337,7 @@ export default function GpCycle2Page() {
                     })}
                     <td className="px-2 py-2">
                       <Link
-                        href={`/gp-cycle2/${row.id}${cycleQuery}`}
+                        href={`/gp/${row.id}${cycleQuery}`}
                         onClick={() => cacheDetailSourceName(row.id, row.sourceName)}
                         className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
                       >

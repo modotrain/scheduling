@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Krona_One } from "next/font/google";
+import Script from "next/script";
 import { cookies } from "next/headers";
 import "./globals.css";
 import ThemeToggle from "./theme-toggle";
@@ -62,7 +63,9 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${kronaOne.variable} h-full antialiased`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeInitScript}
+        </Script>
       </head>
       <body className="min-h-full flex flex-col">
         <div className="fixed right-4 top-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-2">
