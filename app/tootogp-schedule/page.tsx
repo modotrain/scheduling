@@ -28,6 +28,7 @@ type GpPlanningListRow = {
 };
 
 type SortConfig = { col: keyof GpPlanningListRow | null; dir: "asc" | "desc" };
+type ListViewMode = "visit" | "merged";
 
 const TABLE_COLS: (keyof GpPlanningListRow)[] = [
   "id",
@@ -64,6 +65,7 @@ const COL_LABELS: Partial<Record<keyof GpPlanningListRow, string>> = {
 const GP_PLANNING_CACHE_KEY = "tootogp-schedule-cache-v2";
 const GP_PLANNING_CACHE_TTL_MS = 10 * 1000;
 const GP_PLANNING_VIEW_KEY = "tootogp-schedule-view-v1";
+const GP_PLANNING_LIST_MODE_KEY = "tootogp-schedule-list-mode-v1";
 
 type GpPlanningCachePayload = {
   ts: number;
@@ -108,6 +110,7 @@ export default function TooToGpSchedulePage() {
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "queued" | "scheduled">("queued");
+  const [listViewMode, setListViewMode] = useState<ListViewMode>("visit");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
 
   const effectiveStatusFilter = hydrated ? statusFilter : "queued";
@@ -120,6 +123,11 @@ export default function TooToGpSchedulePage() {
     const stored = localStorage.getItem(GP_PLANNING_VIEW_KEY);
     if (stored === "all" || stored === "queued" || stored === "scheduled") {
       setStatusFilter(stored);
+    }
+
+    const storedListMode = localStorage.getItem(GP_PLANNING_LIST_MODE_KEY);
+    if (storedListMode === "visit" || storedListMode === "merged") {
+      setListViewMode(storedListMode);
     }
   }, []);
 
@@ -168,7 +176,60 @@ export default function TooToGpSchedulePage() {
     localStorage.setItem(GP_PLANNING_VIEW_KEY, next);
   }
 
-  function getSortedAndFilteredRows() {
+  function handleListViewModeChange(next: ListViewMode) {
+    setListViewMode(next);
+    localStorage.setItem(GP_PLANNING_LIST_MODE_KEY, next);
+  }
+
+  function mergeRowsByPlannedDbIdAndWeek(inputRows: GpPlanningListRow[]): GpPlanningListRow[] {
+    const grouped = new Map<string, GpPlanningListRow[]>();
+
+    for (const row of inputRows) {
+      const key = `${row.generatedEpDbObjectId}::${row.weekId ?? ""}`;
+      const bucket = grouped.get(key);
+      if (bucket) {
+        bucket.push(row);
+      } else {
+        grouped.set(key, [row]);
+      }
+    }
+
+    return Array.from(grouped.values()).map((group) => {
+      const first = group[0]!;
+
+      let totalVisits = 0;
+      let totalExp = 0;
+      let earliestStart: string | null = null;
+      let latestEnd: string | null = null;
+      let latestUpdatedAt: string | null = null;
+
+      for (const row of group) {
+        totalVisits += row.reviewedNumberOfVisitsSnapshot ?? 0;
+        totalExp += row.reviewedSingleExposureTimeSnapshot ?? 0;
+
+        if (row.plannedStartTime && (!earliestStart || row.plannedStartTime < earliestStart)) {
+          earliestStart = row.plannedStartTime;
+        }
+        if (row.plannedEndTime && (!latestEnd || row.plannedEndTime > latestEnd)) {
+          latestEnd = row.plannedEndTime;
+        }
+        if (row.updatedAt && (!latestUpdatedAt || row.updatedAt > latestUpdatedAt)) {
+          latestUpdatedAt = row.updatedAt;
+        }
+      }
+
+      return {
+        ...first,
+        plannedStartTime: earliestStart,
+        plannedEndTime: latestEnd,
+        reviewedSingleExposureTimeSnapshot: totalExp,
+        reviewedNumberOfVisitsSnapshot: totalVisits,
+        updatedAt: latestUpdatedAt,
+      };
+    });
+  }
+
+  function getSortedAndFilteredRows(inputRows: GpPlanningListRow[]) {
     const query = searchText.toLowerCase().trim();
     const normalizeDate = (value: string | null) => {
       if (!value) return "";
@@ -176,7 +237,7 @@ export default function TooToGpSchedulePage() {
       return dateTimeSplit.split("T")[0] ?? "";
     };
 
-    const filtered = rows.filter((row) => {
+    const filtered = inputRows.filter((row) => {
       if (effectiveStatusFilter !== "all" && row.scheduledStatus !== effectiveStatusFilter) return false;
       if (
         query &&
@@ -227,7 +288,9 @@ export default function TooToGpSchedulePage() {
     return <span className="ml-1 text-primary">{sortConfig.dir === "asc" ? "↑" : "↓"}</span>;
   }
 
-  const displayRows = getSortedAndFilteredRows();
+  const mergedRows = useMemo(() => mergeRowsByPlannedDbIdAndWeek(rows), [rows]);
+  const viewRows = listViewMode === "merged" ? mergedRows : rows;
+  const displayRows = getSortedAndFilteredRows(viewRows);
 
   const todayStr = new Date().toISOString().split("T")[0]!;
 
@@ -342,6 +405,31 @@ export default function TooToGpSchedulePage() {
           <div className="flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-600 text-xs shrink-0">
             <button
               type="button"
+              onClick={() => handleListViewModeChange("visit")}
+              className={`px-4 py-1.5 font-medium transition-colors ${
+                listViewMode === "visit"
+                  ? "bg-primary text-white"
+                  : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+            >
+              Visit View
+            </button>
+            <button
+              type="button"
+              onClick={() => handleListViewModeChange("merged")}
+              className={`border-l border-slate-300 px-4 py-1.5 font-medium transition-colors dark:border-slate-600 ${
+                listViewMode === "merged"
+                  ? "bg-primary text-white"
+                  : "bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              }`}
+            >
+              Source View
+            </button>
+          </div>
+
+          <div className="flex overflow-hidden rounded-md ring-1 ring-slate-300 dark:ring-slate-600 text-xs shrink-0">
+            <button
+              type="button"
               onClick={() => handleStatusFilterChange("queued")}
               className={`px-4 py-1.5 font-medium transition-colors ${
                 effectiveStatusFilter === "queued"
@@ -411,7 +499,9 @@ export default function TooToGpSchedulePage() {
                     className="cursor-pointer whitespace-nowrap px-3 py-2 select-none hover:bg-slate-200 dark:hover:bg-slate-700"
                   >
                     <span className="flex items-center">
-                      {COL_LABELS[col] ?? col}
+                      {col === "reviewedSingleExposureTimeSnapshot" && listViewMode === "merged"
+                        ? "Total Exp"
+                        : (COL_LABELS[col] ?? col)}
                       <SortIcon col={col} />
                     </span>
                   </th>
@@ -490,7 +580,7 @@ export default function TooToGpSchedulePage() {
         </div>
 
         <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
-          {loading ? "" : `${displayRows.length} of ${rows.length} rows`}
+          {loading ? "" : `${displayRows.length} of ${viewRows.length} rows`}
         </p>
       </div>
     </main>
