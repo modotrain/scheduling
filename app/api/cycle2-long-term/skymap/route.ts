@@ -4,7 +4,7 @@ import { db } from "@/src/db/client";
 import { getCycleTables } from "@/src/db/cycle-tables";
 import { resolveCycleFromRequest } from "@/app/lib/cycles";
 
-type SourceDataset = "cycle2" | "gf";
+type SourceDataset = string;
 
 type SourceRow = {
   dataset: string;
@@ -80,7 +80,9 @@ function extractIsoDate(value: string | null): string | null {
 
 export async function GET(request: Request) {
   try {
-    const cycleTables = getCycleTables(resolveCycleFromRequest(request));
+    const cycle = resolveCycleFromRequest(request);
+    const cycleTables = getCycleTables(cycle);
+    const defaultDataset = `cycle${cycle}`;
     const cycle2SkymapSources = cycleTables.skymapSources;
     const cycle2SkymapSchedule = cycleTables.skymapSchedule;
     const [sourcesRaw, scheduleRowsRaw] = await Promise.all([
@@ -105,7 +107,7 @@ export async function GET(request: Request) {
     const weekDateMap = new Map<number, { startDate: string | null; endDate: string | null }>();
 
     for (const row of scheduleRows) {
-      const dataset = (row.dataset || "cycle2") as SourceDataset;
+      const dataset = (row.dataset || defaultDataset) as SourceDataset;
       const sourceKey = makeSourceKey(dataset, row.sourceId);
       const weekIndex = row.weekIndex ?? null;
       const exposureS = row.exposureS ?? 0;
@@ -140,12 +142,12 @@ export async function GET(request: Request) {
         weeklyExposureMap.set(sourceKey, weekMap);
       }
 
-      // Global week date bounds (used for weekBounds / slider)
-      if (weekIndex !== null && scheduledDate) {
+      // Global week bounds (used for weekBounds / slider): keep week index even when date is missing.
+      if (weekIndex !== null) {
         const existing = weekDateMap.get(weekIndex);
         if (!existing) {
           weekDateMap.set(weekIndex, { startDate: scheduledDate, endDate: scheduledDate });
-        } else {
+        } else if (scheduledDate) {
           existing.startDate = existing.startDate && existing.startDate < scheduledDate ? existing.startDate : scheduledDate;
           existing.endDate = existing.endDate && existing.endDate > scheduledDate ? existing.endDate : scheduledDate;
         }
@@ -160,7 +162,7 @@ export async function GET(request: Request) {
     const points = sources
       .filter((row) => row.ra !== null && row.dec !== null)
       .map((row) => {
-        const dataset = (row.dataset || "cycle2") as SourceDataset;
+        const dataset = (row.dataset || defaultDataset) as SourceDataset;
         const exposureS = row.totalExposureTimeAll ?? 0;
         const exposureClipped = Math.max(exposureS, 1);
         const sourceKey = makeSourceKey(dataset, row.sourceId);

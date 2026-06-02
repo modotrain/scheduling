@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Cycle2GanttChart from "./Cycle2GanttChart";
 
 type SkyPoint = {
-  dataset: "cycle2" | "gf";
+  dataset: string;
   sourceId: number;
   sourceName: string | null;
   proposalNo: string | null;
@@ -97,6 +97,8 @@ function buildPopupText(point: SkyPoint): string {
 
 export default function Cycle2SkyMap({ cycle }: { cycle?: number } = {}) {
   const cycleQuery = typeof cycle === "number" ? `?cycle=${cycle}` : "";
+  const cycleLabel = `Cycle${cycle ?? 2}`;
+  const gfLabel = `${cycleLabel}-GF`;
   const [data, setData] = useState<SkyPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -312,8 +314,8 @@ export default function Cycle2SkyMap({ cycle }: { cycle?: number } = {}) {
 
   const activePopup = lockedHover ?? hover;
   const isPopupLocked = lockedHover !== null;
-  const cycle2TimelinePoints = useMemo(
-    () => data?.points.filter((point) => point.dataset === "cycle2") ?? [],
+  const cycleTimelinePoints = useMemo(
+    () => data?.points.filter((point) => point.dataset !== "gf") ?? [],
     [data],
   );
 
@@ -683,7 +685,7 @@ export default function Cycle2SkyMap({ cycle }: { cycle?: number } = {}) {
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#d62728]" />Priority A</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#1f77b4]" />Priority B</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full bg-[#2ca02c]" />Priority C</span>
-        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: isDarkMode ? "#d4af37" : "#fef3c7" }} />Cycle2-GF</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: isDarkMode ? "#d4af37" : "#fef3c7" }} />{gfLabel}</span>
         <span className="inline-flex items-center gap-1">
           <svg className="inline-block h-2 w-2" viewBox="0 0 8 8">
             <rect x="1" y="1" width="6" height="6" fill="#8b5cf6" />
@@ -747,7 +749,7 @@ export default function Cycle2SkyMap({ cycle }: { cycle?: number } = {}) {
             </div>
           </div>
           <p className="mt-1 text-slate-700 dark:text-slate-200">
-            Dataset: {activePopup.point.dataset === "gf" ? "Cycle2-GF" : "Cycle2"}
+            Dataset: {activePopup.point.dataset === "gf" ? gfLabel : cycleLabel}
           </p>
           <p className="text-slate-700 dark:text-slate-200">
             Source ID: {isPopupLocked ? (
@@ -851,7 +853,7 @@ export default function Cycle2SkyMap({ cycle }: { cycle?: number } = {}) {
       ) : null}
 
       <Cycle2GanttChart
-        points={cycle2TimelinePoints}
+        points={cycleTimelinePoints}
         weekBounds={data.weekBounds}
         filterMode={filterMode}
         selectedWeek={selectedWeek}

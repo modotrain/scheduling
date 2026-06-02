@@ -127,14 +127,18 @@ export default function Cycle2LongTermPage() {
   const loadRows = useCallback(async () => {
     setLoading(true);
     try {
-      const rawCache = sessionStorage.getItem(`${CACHE_KEY}:cycle${cycle}`);
-      if (rawCache) {
-        const parsed = JSON.parse(rawCache) as LongTermCachePayload;
-        if (Date.now() - parsed.ts < CACHE_TTL_MS) {
-          setRows(parsed.rows ?? []);
-          setLoading(false);
-          return;
+      try {
+        const rawCache = sessionStorage.getItem(`${CACHE_KEY}:cycle${cycle}`);
+        if (rawCache) {
+          const parsed = JSON.parse(rawCache) as LongTermCachePayload;
+          if (Date.now() - parsed.ts < CACHE_TTL_MS) {
+            setRows(parsed.rows ?? []);
+            setLoading(false);
+            return;
+          }
         }
+      } catch {
+        // Ignore sessionStorage read/parse errors (quota/private mode/corrupted cache).
       }
 
       const response = await fetch(`/api/long-term${cycleQuery}`, { cache: "no-store" });
@@ -145,7 +149,12 @@ export default function Cycle2LongTermPage() {
 
       const nextRows = data.rows ?? [];
       setRows(nextRows);
-      sessionStorage.setItem(`${CACHE_KEY}:cycle${cycle}`, JSON.stringify({ ts: Date.now(), rows: nextRows }));
+
+      try {
+        sessionStorage.setItem(`${CACHE_KEY}:cycle${cycle}`, JSON.stringify({ ts: Date.now(), rows: nextRows }));
+      } catch {
+        // Ignore cache write failures so data loading is not treated as an error.
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to load cycle2 long-term list");
       setMessageTone("error");
