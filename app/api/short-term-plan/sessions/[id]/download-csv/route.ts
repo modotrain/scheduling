@@ -69,6 +69,171 @@ type SourceRow = {
   isForDisrupted: string | null;
 };
 
+type TooGpRawRow = {
+  id: number;
+  sourceId: string | null;
+  sourceName: string | null;
+  sourceType: string | null;
+  pi: string | null;
+  groupName: string | null;
+  proposalId: string | null;
+  proposalNo: string | null;
+  ra: string | null;
+  dec: string | null;
+  completeness: string | null;
+  reviewedCadence: string | null;
+  reviewedCadenceUnit: string | null;
+  fxt1WindowMode: string | null;
+  fxt1Filter: string | null;
+  fxt2WindowMode: string | null;
+  fxt2Filter: string | null;
+  wxtCmos: string | null;
+  wxtCmosX: string | null;
+  wxtCmosY: string | null;
+  fxtCmr: string | null;
+  fxtX: string | null;
+  fxtY: string | null;
+  generatedEpDbObjectId: string;
+  plannedStartTime: string | null;
+  plannedEndTime: string | null;
+  reviewedSingleExposureTimeSnapshot: number | null;
+  reviewedTotalExposureTimeSnapshot: number | null;
+  reviewedNumberOfVisitsSnapshot: number | null;
+  scheduledStatus: "scheduled" | "queued";
+};
+
+type TooGpGroupedRow = {
+  sourceId: string | null;
+  sourceName: string | null;
+  sourceType: string | null;
+  pi: string | null;
+  groupName: string | null;
+  proposalId: string | null;
+  proposalNo: string | null;
+  ra: string | null;
+  dec: string | null;
+  completeness: string | null;
+  reviewedCadence: string | null;
+  reviewedCadenceUnit: string | null;
+  fxt1WindowMode: string | null;
+  fxt1Filter: string | null;
+  fxt2WindowMode: string | null;
+  fxt2Filter: string | null;
+  wxtCmos: string | null;
+  wxtCmosX: string | null;
+  wxtCmosY: string | null;
+  fxtCmr: string | null;
+  fxtX: string | null;
+  fxtY: string | null;
+  generatedEpDbObjectId: string;
+  plannedStartTime: string | null;
+  plannedEndTime: string | null;
+  totalExposureTime: number;
+  totalExposureTimeAll: number;
+  totalVisits: number;
+};
+
+function normalizeDateOnly(value: string | null): string | null {
+  if (!value) return null;
+  return value.includes("T") ? value.split("T")[0] ?? null : value.split(" ")[0] ?? null;
+}
+
+function formatDateAsStartOfDay(value: string | null): string | null {
+  const dateOnly = normalizeDateOnly(value);
+  return dateOnly ? `${dateOnly}T00:00:00` : null;
+}
+
+function classifyTooGpObsType(sourceType: string | null, totalExposureS: number): string {
+  if (sourceType === "MonitoringObs") return "GP-PPT-MT";
+  if (sourceType === "SingleObs") return totalExposureS <= 3000 ? "GP-PPT-ST" : "GP-PPT-LT";
+  return "ToO-GP";
+}
+
+function normalizeFxtCmr(value: string | null): string | null {
+  if (value === "FXTA") return "A";
+  if (value === "FXTB") return "B";
+  return null;
+}
+
+function parseCadence(rawCadence: string | null, rawUnit: string | null): { cadence: number | null; cadenceUnit: "day" | "orbit" | null } {
+  const cadence = rawCadence != null ? Number(rawCadence) : NaN;
+  const unit = (rawUnit ?? "").trim().toLowerCase();
+  if (!unit || !Number.isFinite(cadence) || cadence <= 0) return { cadence: null, cadenceUnit: null };
+  if (unit === "day" || unit === "days") return { cadence, cadenceUnit: "day" };
+  if (unit === "orbit" || unit === "orbits") return { cadence, cadenceUnit: "orbit" };
+  return { cadence: null, cadenceUnit: null };
+}
+
+function computePrecision(cadence: number | null, cadenceUnit: "day" | "orbit" | null): { precision: number | null; precisionUnit: "day" | "orbit" | null } {
+  if (cadence == null || cadenceUnit == null) return { precision: null, precisionUnit: null };
+  if (cadenceUnit === "orbit") {
+    return { precision: Math.ceil(cadence / 10), precisionUnit: "orbit" };
+  }
+
+  if (cadence >= 5) {
+    return { precision: Math.ceil(cadence / 10), precisionUnit: "day" };
+  }
+
+  const cadenceOrbit = (cadence / 10) * (1440 / 97);
+  return { precision: Math.ceil(cadenceOrbit), precisionUnit: "orbit" };
+}
+
+function groupTooGpRows(rows: TooGpRawRow[]): TooGpGroupedRow[] {
+  const grouped = new Map<string, TooGpGroupedRow>();
+
+  for (const row of rows) {
+    // Source view: aggregate by source identity within this session week.
+    const key = row.sourceId ?? row.generatedEpDbObjectId ?? row.sourceName ?? String(row.id);
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, {
+        sourceId: row.sourceId,
+        sourceName: row.sourceName,
+        sourceType: row.sourceType,
+        pi: row.pi,
+        groupName: row.groupName,
+        proposalId: row.proposalId,
+        proposalNo: row.proposalNo,
+        ra: row.ra,
+        dec: row.dec,
+        completeness: row.completeness,
+        reviewedCadence: row.reviewedCadence,
+        reviewedCadenceUnit: row.reviewedCadenceUnit,
+        fxt1WindowMode: row.fxt1WindowMode,
+        fxt1Filter: row.fxt1Filter,
+        fxt2WindowMode: row.fxt2WindowMode,
+        fxt2Filter: row.fxt2Filter,
+        wxtCmos: row.wxtCmos,
+        wxtCmosX: row.wxtCmosX,
+        wxtCmosY: row.wxtCmosY,
+        fxtCmr: row.fxtCmr,
+        fxtX: row.fxtX,
+        fxtY: row.fxtY,
+        generatedEpDbObjectId: row.generatedEpDbObjectId,
+        plannedStartTime: row.plannedStartTime,
+        plannedEndTime: row.plannedEndTime,
+        totalExposureTime: row.reviewedSingleExposureTimeSnapshot ?? 0,
+        totalExposureTimeAll: row.reviewedTotalExposureTimeSnapshot ?? 0,
+        totalVisits: row.reviewedNumberOfVisitsSnapshot ?? 0,
+      });
+      continue;
+    }
+
+    existing.totalExposureTime += row.reviewedSingleExposureTimeSnapshot ?? 0;
+    existing.totalExposureTimeAll += row.reviewedTotalExposureTimeSnapshot ?? 0;
+    existing.totalVisits += row.reviewedNumberOfVisitsSnapshot ?? 0;
+
+    if (row.plannedStartTime && (!existing.plannedStartTime || row.plannedStartTime < existing.plannedStartTime)) {
+      existing.plannedStartTime = row.plannedStartTime;
+    }
+    if (row.plannedEndTime && (!existing.plannedEndTime || row.plannedEndTime > existing.plannedEndTime)) {
+      existing.plannedEndTime = row.plannedEndTime;
+    }
+  }
+
+  return Array.from(grouped.values());
+}
+
 function escapeCsvCell(val: string | null | undefined): string {
   const s = val ?? "";
   if (s.includes(",") || s.includes('"') || s.includes("\n")) {
@@ -170,12 +335,16 @@ export async function GET(request: Request, { params }: RouteParams) {
           id: tooToGpSchedule.id,
           sourceId: approvedToO.sourceId,
           sourceName: approvedToO.sourceName,
+          sourceType: approvedToO.sourceType,
           pi: approvedToO.pi,
           groupName: approvedToO.groupName,
           proposalId: approvedToO.proposalId,
           proposalNo: approvedToO.proposalNo,
           ra: approvedToO.ra,
           dec: approvedToO.dec,
+          completeness: approvedToO.completeness,
+          reviewedCadence: approvedToO.reviewedCadence,
+          reviewedCadenceUnit: approvedToO.reviewedCadenceUnit,
           fxt1WindowMode: approvedToO.fxt1WindowMode,
           fxt1Filter: approvedToO.fxt1Filter,
           fxt2WindowMode: approvedToO.fxt2WindowMode,
@@ -208,13 +377,28 @@ export async function GET(request: Request, { params }: RouteParams) {
     ]);
 
     // Filter tooGp: match week + scheduledStatus=queued + not excluded
-    const tooGpRows = tooGpAllRows
+    const filteredTooGpRows: TooGpRawRow[] = tooGpAllRows
       .filter((r) => {
         const rowWeekNum = getWeekNumFromDate(r.plannedStartTime);
         return rowWeekNum !== null && rowWeekNum === sessionWeekNum && r.scheduledStatus === "queued" && !excludedTooGp.has(r.id);
       })
-      .map((r): SourceRow => ({
-        id: r.id,
+      .map((r) => ({
+        ...r,
+        sourceType: r.sourceType ?? null,
+        completeness: r.completeness ?? null,
+        reviewedCadence: r.reviewedCadence ?? null,
+        reviewedCadenceUnit: r.reviewedCadenceUnit ?? null,
+      }));
+
+    const tooGpRows = groupTooGpRows(filteredTooGpRows).map((r, index): SourceRow => {
+      const normalizedFxtCmr = normalizeFxtCmr(r.fxtCmr ?? null);
+      const payload = normalizedFxtCmr ? "FXT" : (r.wxtCmos ? "WXT" : null);
+      const cadenceInfo = parseCadence(r.reviewedCadence ?? null, r.reviewedCadenceUnit ?? null);
+      const precisionInfo = computePrecision(cadenceInfo.cadence, cadenceInfo.cadenceUnit);
+      const totalExp = r.totalExposureTime;
+
+      return {
+        id: 900000 + index,
         sourceId: r.sourceId ?? null,
         proposalId: r.proposalId ?? null,
         proposalNo: r.proposalNo ?? null,
@@ -222,38 +406,39 @@ export async function GET(request: Request, { params }: RouteParams) {
         pi: r.pi ?? null,
         groupName: r.groupName ?? null,
         sourceName: r.sourceName ?? null,
-        obsType: "ToO-GP",
+        obsType: classifyTooGpObsType(r.sourceType, totalExp),
         ra: r.ra ?? null,
         dec: r.dec ?? null,
-        totalExposureTime: r.reviewedSingleExposureTimeSnapshot?.toString() ?? null,
-        totalExposureTimeAll: r.reviewedTotalExposureTimeSnapshot?.toString() ?? null,
-        exposureTimeUnit: "s",
+        totalExposureTime: String(totalExp),
+        totalExposureTimeAll: String(r.totalExposureTimeAll),
+        exposureTimeUnit: "second",
         continousExposure: null,
-        visitNumber: r.reviewedNumberOfVisitsSnapshot?.toString() ?? null,
-        exposurePerVistMin: null,
-        exposurePerVistMax: null,
-        completeness: null,
-        cadence: null,
-        cadenceUnit: null,
-        precision: null,
-        precisionUnit: null,
-        startTime: r.plannedStartTime,
-        endTime: r.plannedEndTime,
+        visitNumber: String(r.totalVisits),
+        exposurePerVistMin: String(Math.ceil(totalExp * 0.8)),
+        exposurePerVistMax: String(Math.ceil(totalExp * 1.2)),
+        completeness: r.completeness ?? null,
+        cadence: cadenceInfo.cadence != null ? String(cadenceInfo.cadence) : null,
+        cadenceUnit: cadenceInfo.cadenceUnit,
+        precision: precisionInfo.precision != null ? String(precisionInfo.precision) : null,
+        precisionUnit: precisionInfo.precisionUnit,
+        startTime: formatDateAsStartOfDay(r.plannedStartTime),
+        endTime: formatDateAsStartOfDay(r.plannedEndTime),
         sourcePriority: "A",
         fxt1WindowMode: r.fxt1WindowMode ?? null,
         fxt1Filter: r.fxt1Filter ?? null,
         fxt2WindowMode: r.fxt2WindowMode ?? null,
         fxt2Filter: r.fxt2Filter ?? null,
         isUpdated: null,
-        payload: null,
+        payload,
         wxtCmos: r.wxtCmos ?? null,
         wxtCmosX: r.wxtCmosX ?? null,
         wxtCmosY: r.wxtCmosY ?? null,
-        fxtCmr: r.fxtCmr ?? null,
+        fxtCmr: normalizedFxtCmr,
         fxtX: r.fxtX ?? null,
         fxtY: r.fxtY ?? null,
-        isForDisrupted: null,
-      }));
+        isForDisrupted: "false",
+      };
+    });
 
     const selectedCycle2 = cycle2Rows.filter((r) => !excludedCycle2.has(r.id));
     const selectedGf = gfRows.filter((r) => !excludedGf.has(r.id));

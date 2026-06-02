@@ -29,6 +29,12 @@ type TooGpSourceRow = {
   sourceId: string | null;
   sourceName: string | null;
   pi: string | null;
+  sourceType: string | null;
+  completeness: string | null;
+  reviewedCadence: string | null;
+  reviewedCadenceUnit: string | null;
+  fxtCmr: string | null;
+  wxtCmos: string | null;
   generatedEpDbObjectId: string | null;
   parentEpDbObjectId: string | null;
   plannedStartTime: string | null;
@@ -53,6 +59,7 @@ type SourceRow = {
   dec: string | null;
   totalExposureTime: string | null;
   totalExposureTimeAll: string | null;
+  visitNumber: string | null;
   exposureTimeUnit: string | null;
   sourcePriority: string | null;
   startTime: string | null;
@@ -65,6 +72,25 @@ type SourceStats = {
   count: number;
   totalCount: number;
   totalExposureS: number;
+};
+
+type TooGpGroupedRow = {
+  key: string;
+  rawIds: number[];
+  sourceId: string | null;
+  sourceName: string | null;
+  pi: string | null;
+  sourceType: string | null;
+  completeness: string | null;
+  reviewedCadence: string | null;
+  reviewedCadenceUnit: string | null;
+  fxtCmr: string | null;
+  wxtCmos: string | null;
+  generatedEpDbObjectId: string | null;
+  plannedStartTime: string | null;
+  plannedEndTime: string | null;
+  totalExposureS: number;
+  totalVisits: number;
 };
 
 type UnscheduledSource = {
@@ -104,6 +130,68 @@ function formatWeekRange(minStart: string | null, maxEnd: string | null): string
 function formatWeekId(weekId: string): string {
   const num = parseInt(weekId.replace(/\D/g, ""), 10);
   return isNaN(num) ? weekId : `W${String(num).padStart(2, "0")}`;
+}
+
+function normalizeDateOnly(value: string | null): string | null {
+  if (!value) return null;
+  return value.includes("T") ? value.split("T")[0] ?? null : value.split(" ")[0] ?? null;
+}
+
+function formatDateAsStartOfDay(value: string | null): string | null {
+  const dateOnly = normalizeDateOnly(value);
+  return dateOnly ? `${dateOnly}T00:00:00` : null;
+}
+
+function classifyTooGpObsType(sourceType: string | null, totalExposureS: number): string {
+  if (sourceType === "MonitoringObs") return "GP-PPT-MT";
+  if (sourceType === "SingleObs") {
+    return totalExposureS <= 3000 ? "GP-PPT-ST" : "GP-PPT-LT";
+  }
+  return "ToO-GP";
+}
+
+function groupTooGpRows(rows: TooGpSourceRow[]): TooGpGroupedRow[] {
+  const grouped = new Map<string, TooGpGroupedRow>();
+
+  for (const row of rows) {
+    // Source view: aggregate by source identity within the current session week.
+    const key = row.sourceId ?? row.generatedEpDbObjectId ?? row.sourceName ?? String(row.id);
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, {
+        key,
+        rawIds: [row.id],
+        sourceId: row.sourceId,
+        sourceName: row.sourceName,
+        pi: row.pi,
+        sourceType: row.sourceType,
+        completeness: row.completeness,
+        reviewedCadence: row.reviewedCadence,
+        reviewedCadenceUnit: row.reviewedCadenceUnit,
+        fxtCmr: row.fxtCmr,
+        wxtCmos: row.wxtCmos,
+        generatedEpDbObjectId: row.generatedEpDbObjectId,
+        plannedStartTime: row.plannedStartTime,
+        plannedEndTime: row.plannedEndTime,
+        totalExposureS: row.reviewedSingleExposureTimeSnapshot ?? 0,
+        totalVisits: row.reviewedNumberOfVisitsSnapshot ?? 0,
+      });
+      continue;
+    }
+
+    existing.rawIds.push(row.id);
+    existing.totalExposureS += row.reviewedSingleExposureTimeSnapshot ?? 0;
+    existing.totalVisits += row.reviewedNumberOfVisitsSnapshot ?? 0;
+
+    if (row.plannedStartTime && (!existing.plannedStartTime || row.plannedStartTime < existing.plannedStartTime)) {
+      existing.plannedStartTime = row.plannedStartTime;
+    }
+    if (row.plannedEndTime && (!existing.plannedEndTime || row.plannedEndTime > existing.plannedEndTime)) {
+      existing.plannedEndTime = row.plannedEndTime;
+    }
+  }
+
+  return Array.from(grouped.values());
 }
 
 // ── Step indicator ────────────────────────────────────────────────────────────
@@ -156,12 +244,14 @@ function SourceTable({
   onSelectionChange,
   stats,
   loading,
+  showPlanningColumns = false,
 }: {
   rows: SourceRow[];
   excludedIds: Set<number>;
   onSelectionChange: (newExcluded: Set<number>) => void;
   stats: SourceStats | null;
   loading: boolean;
+  showPlanningColumns?: boolean;
 }) {
   const allIds = rows.map((r) => r.id);
   const selectedIds = new Set(allIds.filter((id) => !excludedIds.has(id)));
@@ -213,7 +303,7 @@ function SourceTable({
 
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
-        <table className="w-full text-xs">
+        <table className={`w-full whitespace-nowrap text-xs ${showPlanningColumns ? "min-w-[1250px]" : "min-w-[980px]"}`}>
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
               <th className="w-9 px-3 py-2">
@@ -230,6 +320,13 @@ function SourceTable({
               <th className="px-3 py-2">PI</th>
               <th className="px-3 py-2">Type</th>
               <th className="px-3 py-2">Priority</th>
+              {showPlanningColumns && (
+                <>
+                  <th className="px-3 py-2">Start</th>
+                  <th className="px-3 py-2">End</th>
+                  <th className="px-3 py-2 text-right">Visits</th>
+                </>
+              )}
               <th className="px-3 py-2 text-right">Exp. (total)</th>
               <th className="hidden px-3 py-2 sm:table-cell">EP_DB_OBJ_ID</th>
             </tr>
@@ -260,8 +357,8 @@ function SourceTable({
                   </td>
                   <td className="px-3 py-2 font-mono text-[11px]">{row.sourceId ?? "—"}</td>
                   <td className="max-w-[140px] truncate px-3 py-2 font-medium">{row.sourceName ?? "—"}</td>
-                  <td className="px-3 py-2">{row.pi ?? "—"}</td>
-                  <td className="px-3 py-2">{row.obsType ?? "—"}</td>
+                  <td className="max-w-[120px] truncate px-3 py-2">{row.pi ?? "—"}</td>
+                  <td className="max-w-[120px] truncate px-3 py-2">{row.obsType ?? "—"}</td>
                   <td className="px-3 py-2">
                     {row.sourcePriority && (
                       <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
@@ -272,6 +369,13 @@ function SourceTable({
                       }`}>{row.sourcePriority}</span>
                     )}
                   </td>
+                  {showPlanningColumns && (
+                    <>
+                      <td className="px-3 py-2 text-[11px]">{row.startTime ?? "—"}</td>
+                      <td className="px-3 py-2 text-[11px]">{row.endTime ?? "—"}</td>
+                      <td className="px-3 py-2 text-right">{row.visitNumber ?? "—"}</td>
+                    </>
+                  )}
                   <td className="px-3 py-2 text-right">{expStr} {unit}</td>
                   <td className="hidden max-w-[180px] truncate px-3 py-2 font-mono text-[10px] text-slate-400 sm:table-cell">{row.epDbObjectId ?? "—"}</td>
                 </tr>
@@ -299,20 +403,27 @@ function TooGpSourceTable({
   stats: SourceStats | null;
   loading: boolean;
 }) {
-  const allIds = rows.map((r) => r.id);
-  const selectedIds = new Set(allIds.filter((id) => !excludedIds.has(id)));
-  const allSelected = rows.length > 0 && selectedIds.size === rows.length;
-  const someSelected = selectedIds.size > 0 && !allSelected;
+  const groupedRows = groupTooGpRows(rows);
+  const selectedGroups = groupedRows.filter((g) => g.rawIds.every((id) => !excludedIds.has(id)));
+  const allSelected = groupedRows.length > 0 && selectedGroups.length === groupedRows.length;
+  const someSelected = selectedGroups.length > 0 && !allSelected;
 
   const toggleAll = () => {
-    if (allSelected) onSelectionChange(new Set(allIds));
-    else onSelectionChange(new Set());
+    if (allSelected) {
+      const allIds = groupedRows.flatMap((g) => g.rawIds);
+      onSelectionChange(new Set(allIds));
+    } else {
+      onSelectionChange(new Set());
+    }
   };
 
-  const toggleRow = (id: number) => {
+  const toggleGroup = (group: TooGpGroupedRow) => {
     const next = new Set(excludedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    const groupSelected = group.rawIds.every((id) => !next.has(id));
+    for (const id of group.rawIds) {
+      if (groupSelected) next.add(id);
+      else next.delete(id);
+    }
     onSelectionChange(next);
   };
 
@@ -320,7 +431,7 @@ function TooGpSourceTable({
     return <div className="flex h-48 items-center justify-center text-slate-400">Loading sources…</div>;
   }
 
-  if (rows.length === 0) {
+  if (groupedRows.length === 0) {
     return <div className="flex h-48 items-center justify-center text-slate-400">No ToO-GP sources found for this week.</div>;
   }
 
@@ -329,10 +440,10 @@ function TooGpSourceTable({
       {stats && (
         <div className="mb-3 flex flex-wrap items-center gap-4 text-sm">
           <span className="text-slate-600 dark:text-slate-300">
-            <strong className="text-slate-900 dark:text-white">{stats.count}</strong> / {stats.totalCount} sources selected
+            <strong className="text-slate-900 dark:text-white">{selectedGroups.length}</strong> / {groupedRows.length} sources selected
           </span>
           <span className="text-slate-600 dark:text-slate-300">
-            Total exposure: <strong className="text-slate-900 dark:text-white">{fmtKs(stats.totalExposureS)}</strong>
+            Total exposure: <strong className="text-slate-900 dark:text-white">{fmtKs(selectedGroups.reduce((sum, g) => sum + g.totalExposureS, 0))}</strong>
           </span>
           <button
             onClick={toggleAll}
@@ -361,17 +472,17 @@ function TooGpSourceTable({
               <th className="px-3 py-2">PI</th>
               <th className="px-3 py-2">EP DB Object ID</th>
               <th className="px-3 py-2">Planned Window</th>
-              <th className="px-3 py-2 text-right">Exp.</th>
+              <th className="px-3 py-2 text-right">Total Exp.</th>
               <th className="px-3 py-2 text-right">Visits</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {rows.map((row) => {
-              const isSelected = !excludedIds.has(row.id);
+            {groupedRows.map((group) => {
+              const isSelected = group.rawIds.every((id) => !excludedIds.has(id));
               return (
                 <tr
-                  key={row.id}
-                  onClick={() => toggleRow(row.id)}
+                  key={group.key}
+                  onClick={() => toggleGroup(group)}
                   className={`cursor-pointer transition-colors ${
                     isSelected
                       ? "hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
@@ -382,24 +493,22 @@ function TooGpSourceTable({
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => toggleRow(row.id)}
+                      onChange={() => toggleGroup(group)}
                       onClick={(e) => e.stopPropagation()}
                       className="cursor-pointer accent-primary"
                     />
                   </td>
-                  <td className="font-mono text-[11px] text-slate-500">{row.sourceId ?? "—"}</td>
-                  <td className="max-w-[160px] truncate px-3 py-2 font-medium">{row.sourceName ?? "—"}</td>
-                  <td className="max-w-[100px] truncate px-3 py-2">{row.pi ?? "—"}</td>
-                  <td className="px-3 py-2 font-mono text-[11px] text-slate-500">{row.generatedEpDbObjectId ?? "—"}</td>
+                  <td className="font-mono text-[11px] text-slate-500">{group.sourceId ?? "—"}</td>
+                  <td className="max-w-[160px] truncate px-3 py-2 font-medium">{group.sourceName ?? "—"}</td>
+                  <td className="max-w-[100px] truncate px-3 py-2">{group.pi ?? "—"}</td>
+                  <td className="px-3 py-2 font-mono text-[11px] text-slate-500">{group.generatedEpDbObjectId ?? "—"}</td>
                   <td className="px-3 py-2 text-[11px]">
-                    {row.plannedStartTime ?? "—"} → {row.plannedEndTime ?? "—"}
+                    {group.plannedStartTime ?? "—"} → {group.plannedEndTime ?? "—"}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    {row.reviewedSingleExposureTimeSnapshot != null
-                      ? fmtKs(row.reviewedSingleExposureTimeSnapshot)
-                      : "—"}
+                    {fmtKs(group.totalExposureS)}
                   </td>
-                  <td className="px-3 py-2 text-right">{row.reviewedNumberOfVisitsSnapshot ?? "—"}</td>
+                  <td className="px-3 py-2 text-right">{group.totalVisits}</td>
                 </tr>
               );
             })}
@@ -828,27 +937,53 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   const cycle2Included = cycle2Rows.filter((r) => !excludedCycle2.has(r.id));
   const gfIncluded = gfRows.filter((r) => !excludedGf.has(r.id));
   const tooGpIncluded = tooGpRows.filter((r) => !excludedTooGp.has(r.id));
+  const tooGpGroupedIncluded = groupTooGpRows(tooGpIncluded);
   // Sort cycle2 and merge with ToO-GP: cycle A, then ToO-GP A, then cycle B, then others, then GF
   const cycle2A = cycle2Included.filter((r) => r.sourcePriority === "A");
   const cycle2B = cycle2Included.filter((r) => r.sourcePriority === "B");
   const cycle2Other = cycle2Included.filter((r) => r.sourcePriority !== "A" && r.sourcePriority !== "B");
   // Convert TooGpSourceRow to compatible format and merge
-  const tooGpConverted = tooGpIncluded.map((r) => ({
-    ...r,
+  const tooGpConverted = tooGpGroupedIncluded.map((r, index) => ({
+    id: 900000 + index,
+    sourceId: r.sourceId,
+    sourceName: r.sourceName,
+    pi: r.pi,
     sourceType: "toogp" as const,
     epDbObjectId: r.generatedEpDbObjectId,
     proposalId: null as string | null,
     proposalNo: null as string | null,
     groupName: null as string | null,
-    obsType: "ToO-GP",
+    obsType: classifyTooGpObsType(r.sourceType, r.totalExposureS),
     ra: null as string | null,
     dec: null as string | null,
-    totalExposureTime: r.reviewedSingleExposureTimeSnapshot?.toString() ?? null,
-    totalExposureTimeAll: r.reviewedSingleExposureTimeSnapshot?.toString() ?? null,
-    exposureTimeUnit: "s",
+    totalExposureTime: String(r.totalExposureS),
+    totalExposureTimeAll: String(r.totalExposureS),
+    exposureTimeUnit: "second",
+    continousExposure: null,
+    visitNumber: String(r.totalVisits),
+    exposurePerVistMin: null,
+    exposurePerVistMax: null,
+    completeness: r.completeness,
+    cadence: r.reviewedCadence,
+    cadenceUnit: r.reviewedCadenceUnit,
+    precision: null,
+    precisionUnit: null,
     sourcePriority: "A",
-    startTime: r.plannedStartTime,
-    endTime: r.plannedEndTime,
+    startTime: formatDateAsStartOfDay(r.plannedStartTime),
+    endTime: formatDateAsStartOfDay(r.plannedEndTime),
+    fxt1WindowMode: null,
+    fxt1Filter: null,
+    fxt2WindowMode: null,
+    fxt2Filter: null,
+    isUpdated: null,
+    payload: null,
+    wxtCmos: r.wxtCmos,
+    wxtCmosX: null,
+    wxtCmosY: null,
+    fxtCmr: r.fxtCmr,
+    fxtX: null,
+    fxtY: null,
+    isForDisrupted: "false",
     isExcluded: false,
   }));
   const mergedAll: SourceRow[] = [...cycle2A, ...tooGpConverted, ...cycle2B, ...cycle2Other, ...gfIncluded];
@@ -862,7 +997,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   }
   const cycle2ExpS = calcExpS(cycle2Included);
   const gfExpS = calcExpS(gfIncluded);
-  const tooGpExpS = tooGpIncluded.reduce((sum, r) => sum + (r.reviewedSingleExposureTimeSnapshot ?? 0), 0);
+  const tooGpExpS = tooGpGroupedIncluded.reduce((sum, r) => sum + r.totalExposureS, 0);
   const mergedExpS = cycle2ExpS + gfExpS + tooGpExpS;
   const overviewCardsLoading = currentStep === 4 && (!cycle2Loaded || !gfLoaded || !tooGpLoaded);
 
@@ -933,6 +1068,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                 onSelectionChange={setExcludedCycle2}
                 stats={cycle2Stats}
                 loading={cycle2Loading}
+                showPlanningColumns
               />
             </div>
           )}
@@ -982,10 +1118,10 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
               )}
               <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
                 {[
-                  { label: "Total Sources", value: mergedAll.length + tooGpIncluded.length },
+                  { label: "Total Sources", value: mergedAll.length },
                   { label: `${cycleLabel} Sources`, value: cycle2Included.length },
                   { label: "GF Sources", value: gfIncluded.length },
-                  { label: "ToO-GP Sources", value: tooGpIncluded.length },
+                  { label: "ToO-GP Sources", value: tooGpGroupedIncluded.length },
                   { label: `${cycleLabel} Exposure`, value: fmtKs(cycle2ExpS) },
                   { label: "GF Exposure", value: fmtKs(gfExpS) },
                   { label: "ToO-GP Exposure", value: fmtKs(tooGpExpS) },
@@ -1025,7 +1161,10 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                       <th className="px-3 py-2">PI</th>
                       <th className="px-3 py-2">Obs Type</th>
                       <th className="px-3 py-2">Priority</th>
-                      <th className="px-3 py-2 text-right">Exp.</th>
+                      <th className="px-3 py-2">Start</th>
+                      <th className="px-3 py-2">End</th>
+                      <th className="px-3 py-2 text-right">Visits</th>
+                      <th className="px-3 py-2 text-right">Total Exp.</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1053,6 +1192,9 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                             }`}>{row.sourcePriority}</span>
                           )}
                         </td>
+                        <td className="px-3 py-1.5 text-[10px]">{row.startTime ?? "—"}</td>
+                        <td className="px-3 py-1.5 text-[10px]">{row.endTime ?? "—"}</td>
+                        <td className="px-3 py-1.5 text-right">{row.visitNumber ?? "—"}</td>
                         <td className="px-3 py-1.5 text-right">
                           {(() => {
                             const val = row.totalExposureTimeAll ?? row.totalExposureTime;
