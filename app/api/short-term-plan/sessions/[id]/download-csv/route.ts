@@ -396,6 +396,9 @@ export async function GET(request: Request, { params }: RouteParams) {
       const cadenceInfo = parseCadence(r.reviewedCadence ?? null, r.reviewedCadenceUnit ?? null);
       const precisionInfo = computePrecision(cadenceInfo.cadence, cadenceInfo.cadenceUnit);
       const totalExp = r.totalExposureTime;
+      const totalExpAll = r.totalExposureTimeAll;
+      const visits = r.totalVisits;
+      const perVisitBaseline = visits > 0 ? (totalExpAll / visits) : null;
 
       return {
         id: 900000 + index,
@@ -410,12 +413,12 @@ export async function GET(request: Request, { params }: RouteParams) {
         ra: r.ra ?? null,
         dec: r.dec ?? null,
         totalExposureTime: String(totalExp),
-        totalExposureTimeAll: String(r.totalExposureTimeAll),
+        totalExposureTimeAll: String(totalExpAll),
         exposureTimeUnit: "second",
         continousExposure: null,
-        visitNumber: String(r.totalVisits),
-        exposurePerVistMin: String(Math.ceil(totalExp * 0.8)),
-        exposurePerVistMax: String(Math.ceil(totalExp * 1.2)),
+        visitNumber: String(visits),
+        exposurePerVistMin: perVisitBaseline != null ? String(perVisitBaseline * 0.8) : null,
+        exposurePerVistMax: perVisitBaseline != null ? String(perVisitBaseline * 1.2) : null,
         completeness: r.completeness ?? null,
         cadence: cadenceInfo.cadence != null ? String(cadenceInfo.cadence) : null,
         cadenceUnit: cadenceInfo.cadenceUnit,
