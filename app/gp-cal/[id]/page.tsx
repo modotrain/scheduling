@@ -556,7 +556,7 @@ export default function GpCalDetailPage() {
             <div className="border-b border-slate-200 dark:border-slate-700">
               <SourceReportChart
                 sourceId={row.sourceId}
-                dataset="cycle2"
+                dataset={`cycle${cycle}`}
                 cycle={cycle}
                 allowMissingPlan
                 missingPlanLabel="No source report is available for this cycle yet."
