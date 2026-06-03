@@ -115,6 +115,24 @@ type WeekOption = {
   maxEnd: string | null;
 };
 
+type SchedulerMode = "unp-first" | "eff-first";
+
+type SchedulerJob = {
+  id: number;
+  sessionId: number;
+  status: string;
+  mode: SchedulerMode;
+  totalRuns: number;
+  completedRuns: number;
+  workers: number;
+  bestUnp: number | null;
+  bestEff: number | null;
+  bestIter: number | null;
+  bestCsvUrl: string | null;
+  cancelRequested: boolean;
+  errorMessage: string | null;
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtKs(seconds: number): string {
@@ -559,6 +577,14 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   // Nav saving state
   const [saving, setSaving] = useState(false);
 
+  // Scheduler state
+  const [schedulerJob, setSchedulerJob] = useState<SchedulerJob | null>(null);
+  const [schedulerLoading, setSchedulerLoading] = useState(false);
+  const [schedulerStarting, setSchedulerStarting] = useState(false);
+  const [schedulerMode, setSchedulerMode] = useState<SchedulerMode>("unp-first");
+  const [schedulerRuns, setSchedulerRuns] = useState(1000);
+  const [schedulerWorkers, setSchedulerWorkers] = useState(4);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Init ───────────────────────────────────────────────────────────────────
@@ -617,6 +643,34 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
       .then((r) => r.json())
       .then((d: { weeks: WeekOption[] }) => setAvailableWeeks(d.weeks ?? []));
   }, []);
+
+  const loadSchedulerJob = useCallback(async () => {
+    if (!session) return;
+    setSchedulerLoading(true);
+    try {
+      const res = await fetch(`/api/short-term-plan/sessions/${session.id}/scheduler`);
+      if (!res.ok) return;
+      const data = (await res.json()) as { job: SchedulerJob | null };
+      setSchedulerJob(data.job ?? null);
+    } finally {
+      setSchedulerLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    void loadSchedulerJob();
+  }, [session, loadSchedulerJob]);
+
+  useEffect(() => {
+    if (!session || !schedulerJob) return;
+    if (!["starting", "running", "cancelling"].includes(schedulerJob.status)) return;
+
+    const timer = setInterval(() => {
+      void loadSchedulerJob();
+    }, 1500);
+    return () => clearInterval(timer);
+  }, [session, schedulerJob, loadSchedulerJob]);
 
   // ── Load sources on step change ──────────────────────────────────────────
 
@@ -885,6 +939,47 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     }
   }
 
+  async function handleRunScheduler() {
+    if (!session) return;
+    setSchedulerStarting(true);
+    try {
+      const res = await fetch(`/api/short-term-plan/sessions/${session.id}/scheduler/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: schedulerMode,
+          totalRuns: schedulerRuns,
+          workers: schedulerWorkers,
+        }),
+      });
+      const data = (await res.json()) as { job?: SchedulerJob; error?: string };
+      if (!res.ok) {
+        alert(data.error ?? "Failed to start scheduler");
+        return;
+      }
+      if (data.job) {
+        setSchedulerJob(data.job);
+      }
+    } finally {
+      setSchedulerStarting(false);
+    }
+  }
+
+  async function handleCancelScheduler() {
+    if (!session) return;
+    const res = await fetch(`/api/short-term-plan/sessions/${session.id}/scheduler/cancel`, {
+      method: "POST",
+    });
+    const data = (await res.json()) as { job?: SchedulerJob; error?: string };
+    if (!res.ok) {
+      alert(data.error ?? "Failed to cancel scheduler");
+      return;
+    }
+    if (data.job) {
+      setSchedulerJob(data.job);
+    }
+  }
+
   // Allow re-editing steps 2/3/4 from overview
   function goBackToStep(step: number) {
     setCurrentStep(step);
@@ -1000,6 +1095,9 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   const tooGpExpS = tooGpGroupedIncluded.reduce((sum, r) => sum + r.totalExposureS, 0);
   const mergedExpS = cycle2ExpS + gfExpS + tooGpExpS;
   const overviewCardsLoading = currentStep === 4 && (!cycle2Loaded || !gfLoaded || !tooGpLoaded);
+  const schedulerProgressPct = schedulerJob && schedulerJob.totalRuns > 0
+    ? Math.min(100, Math.round((schedulerJob.completedRuns / schedulerJob.totalRuns) * 100))
+    : 0;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-8 dark:from-slate-950 dark:to-slate-900 md:px-8">
@@ -1288,15 +1386,57 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                   </>
                 )}
 
-                {/* Run Scheduler (placeholder) */}
-                <div className="relative group">
-                  <button
-                    disabled
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-4 py-2 text-sm font-medium text-slate-400 dark:border-slate-700"
+                {/* Run Scheduler */}
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
+                  <label className="text-xs text-slate-500">Mode</label>
+                  <select
+                    value={schedulerMode}
+                    onChange={(e) => setSchedulerMode(e.target.value as SchedulerMode)}
+                    disabled={schedulerStarting || (schedulerJob ? ["starting", "running", "cancelling"].includes(schedulerJob.status) : false)}
+                    className="rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
                   >
-                    ▶ Run Scheduler
+                    <option value="unp-first">unp-first</option>
+                    <option value="eff-first">eff-first</option>
+                  </select>
+
+                  <label className="text-xs text-slate-500">Runs</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={200000}
+                    value={schedulerRuns}
+                    onChange={(e) => setSchedulerRuns(Math.max(1, parseInt(e.target.value || "1", 10)))}
+                    disabled={schedulerStarting || (schedulerJob ? ["starting", "running", "cancelling"].includes(schedulerJob.status) : false)}
+                    className="w-24 rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
+                  />
+
+                  <label className="text-xs text-slate-500">Workers</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={64}
+                    value={schedulerWorkers}
+                    onChange={(e) => setSchedulerWorkers(Math.max(1, parseInt(e.target.value || "1", 10)))}
+                    disabled={schedulerStarting || (schedulerJob ? ["starting", "running", "cancelling"].includes(schedulerJob.status) : false)}
+                    className="w-16 rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
+                  />
+
+                  <button
+                    onClick={() => void handleRunScheduler()}
+                    disabled={schedulerStarting || (schedulerJob ? ["starting", "running", "cancelling"].includes(schedulerJob.status) : false)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/10 disabled:opacity-50"
+                  >
+                    {schedulerStarting ? "Starting…" : "▶ Run Scheduler"}
                   </button>
-                  <span className="invisible group-hover:visible absolute bottom-full left-0 mb-1.5 rounded-md bg-slate-800 px-2 py-1 text-xs text-white whitespace-nowrap">Coming soon</span>
+
+                  {schedulerJob && ["starting", "running", "cancelling"].includes(schedulerJob.status) && (
+                    <button
+                      onClick={() => void handleCancelScheduler()}
+                      className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:border-red-700 dark:text-red-400"
+                    >
+                      Request Cancel
+                    </button>
+                  )}
                 </div>
 
                 {/* Upload result summary */}
@@ -1316,6 +1456,43 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                       </button>
                     )}
                   </div>
+                )}
+              </div>
+
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-800/50">
+                <div className="mb-2 flex flex-wrap items-center gap-4">
+                  <span>
+                    Scheduler: <strong className="text-slate-900 dark:text-white">{schedulerLoading ? "loading" : (schedulerJob?.status ?? "idle")}</strong>
+                  </span>
+                  <span>
+                    Mode: <strong className="text-slate-900 dark:text-white">{schedulerJob?.mode ?? schedulerMode}</strong>
+                  </span>
+                  <span>
+                    Progress: <strong className="text-slate-900 dark:text-white">{schedulerJob ? `${schedulerJob.completedRuns}/${schedulerJob.totalRuns}` : "0/0"}</strong>
+                  </span>
+                  {schedulerJob?.bestUnp != null && (
+                    <span>
+                      Best: <strong className="text-slate-900 dark:text-white">unp={schedulerJob.bestUnp}</strong>, eff=<strong className="text-slate-900 dark:text-white">{schedulerJob.bestEff?.toFixed(4) ?? "—"}</strong>
+                    </span>
+                  )}
+                  {schedulerJob?.bestIter != null && (
+                    <span>
+                      iter: <strong className="text-slate-900 dark:text-white">{schedulerJob.bestIter}</strong>
+                    </span>
+                  )}
+                  {schedulerJob?.bestCsvUrl && (
+                    <a href={schedulerJob.bestCsvUrl} target="_blank" rel="noreferrer" className="text-primary underline-offset-2 hover:underline">
+                      Download best CSV
+                    </a>
+                  )}
+                </div>
+
+                <div className="h-2 w-full overflow-hidden rounded bg-slate-200 dark:bg-slate-700">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${schedulerProgressPct}%` }} />
+                </div>
+
+                {schedulerJob?.errorMessage && (
+                  <p className="mt-2 text-red-600 dark:text-red-400">{schedulerJob.errorMessage}</p>
                 )}
               </div>
             </div>
