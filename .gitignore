@@ -44,3 +44,6 @@ next-env.d.ts
 # python 
 longterm_sch/
 short_term_plan_files/
+
+# AI
+repomix-output.xml
