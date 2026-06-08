@@ -41,7 +41,7 @@ export default async function HomePage() {
                     </div>
                     <h2 className="text-lg font-semibold">ToO Management</h2>
                     <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      Manage approved ToO records with detail view and editable request/review fields.
+                      Manage approved ToO observations and create GP schedule.
                     </p>
                   </Link>
 
@@ -52,9 +52,9 @@ export default async function HomePage() {
                     <div className="mb-3 inline-flex rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                       Planning Queue
                     </div>
-                    <h2 className="text-lg font-semibold">GP-Planned ToO List</h2>
+                    <h2 className="text-lg font-semibold">ToO-GP Planning Pool</h2>
                     <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      Review all manually added ToO-to-GP planning windows before they become scheduled observations.
+                      Track scheduling status of all DS manually added ToO-to-GP sources.
                     </p>
                   </Link>
                 </div>
