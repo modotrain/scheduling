@@ -315,6 +315,20 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     if (!planSession) return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
+    // Once confirmed, the merged CSV is immutable and must be served from persisted content.
+    if (
+      ["confirmed", "uploaded", "completed"].includes(planSession.status) &&
+      planSession.mergedCsvText
+    ) {
+      const filename = `reviewed_cycle${ACTIVE_CYCLE}_source_list_${planSession.weekId.toLowerCase()}_v1.csv`;
+      return new Response(planSession.mergedCsvText, {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+        },
+      });
+    }
+
     const excludedCycle2 = new Set<number>(planSession.excludedCycle2Ids);
     const excludedGf = new Set<number>(planSession.excludedGfIds);
     const excludedTooGp = new Set<number>(planSession.excludedTooGpIds ?? []);

@@ -53,6 +53,27 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       mergedCsvText: string;
     }>;
 
+    const [existing] = await db
+      .select()
+      .from(shortTermPlanSessions)
+      .where(eq(shortTermPlanSessions.id, sessionId));
+
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const isLocked = ["confirmed", "uploaded", "completed", "cancelled"].includes(existing.status);
+    const attemptsSelectionMutation =
+      body.currentStep !== undefined ||
+      body.excludedCycle2Ids !== undefined ||
+      body.excludedGfIds !== undefined ||
+      body.excludedTooGpIds !== undefined;
+
+    if (isLocked && attemptsSelectionMutation) {
+      return NextResponse.json(
+        { error: "Session is locked after confirmation." },
+        { status: 409 },
+      );
+    }
+
     const updateData: Record<string, unknown> = {
       updatedAt: new Date().toISOString(),
     };

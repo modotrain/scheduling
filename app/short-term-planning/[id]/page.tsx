@@ -576,6 +576,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
 
   // Nav saving state
   const [saving, setSaving] = useState(false);
+  const [returnToOverviewAfterSave, setReturnToOverviewAfterSave] = useState(false);
 
   // Scheduler state
   const [schedulerJob, setSchedulerJob] = useState<SchedulerJob | null>(null);
@@ -810,29 +811,35 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
         if (!res.ok) { alert("Failed to save. Please try again."); return; }
         setCurrentStep(1);
       } else if (currentStep === 1) {
+        const nextStep = returnToOverviewAfterSave ? 4 : 2;
         const res = await fetch(`/api/short-term-plan/sessions/${session.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ excludedCycle2Ids: [...excludedCycle2], currentStep: 2 }),
+          body: JSON.stringify({ excludedCycle2Ids: [...excludedCycle2], currentStep: nextStep }),
         });
         if (!res.ok) { alert("Failed to save. Please try again."); return; }
-        setCurrentStep(2);
+        setCurrentStep(nextStep);
+        setReturnToOverviewAfterSave(false);
       } else if (currentStep === 2) {
+        const nextStep = returnToOverviewAfterSave ? 4 : 3;
         const res = await fetch(`/api/short-term-plan/sessions/${session.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ excludedGfIds: [...excludedGf], currentStep: 3 }),
+          body: JSON.stringify({ excludedGfIds: [...excludedGf], currentStep: nextStep }),
         });
         if (!res.ok) { alert("Failed to save. Please try again."); return; }
-        setCurrentStep(3);
+        setCurrentStep(nextStep);
+        setReturnToOverviewAfterSave(false);
       } else if (currentStep === 3) {
+        const nextStep = returnToOverviewAfterSave ? 4 : 4;
         const res = await fetch(`/api/short-term-plan/sessions/${session.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ excludedTooGpIds: [...excludedTooGp], currentStep: 4 }),
+          body: JSON.stringify({ excludedTooGpIds: [...excludedTooGp], currentStep: nextStep }),
         });
         if (!res.ok) { alert("Failed to save. Please try again."); return; }
-        setCurrentStep(4);
+        setCurrentStep(nextStep);
+        setReturnToOverviewAfterSave(false);
       }
     } finally {
       setSaving(false);
@@ -843,6 +850,13 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     if (!session) return;
     setSaving(true);
     try {
+      // Freeze CSV content before confirming so future downloads stay immutable.
+      const freezeRes = await fetch(`/api/short-term-plan/sessions/${session.id}/download-csv`);
+      if (!freezeRes.ok) {
+        alert("Failed to generate locked CSV. Please try again.");
+        return;
+      }
+
       const res = await fetch(`/api/short-term-plan/sessions/${session.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -982,6 +996,8 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
 
   // Allow re-editing steps 2/3/4 from overview
   function goBackToStep(step: number) {
+    if (isConfirmed) return;
+    setReturnToOverviewAfterSave(true);
     setCurrentStep(step);
     if (session) {
       void fetch(`/api/short-term-plan/sessions/${session.id}`, {
@@ -1237,15 +1253,23 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
 
               {/* Modify selections links */}
               <div className="mb-4 flex flex-wrap gap-3">
-                <button onClick={() => goBackToStep(1)} className="text-xs text-primary underline-offset-2 hover:underline">
-                  ✏ Modify {cycleLabel} selection
-                </button>
-                <button onClick={() => goBackToStep(2)} className="text-xs text-primary underline-offset-2 hover:underline">
-                  ✏ Modify GF selection
-                </button>
-                <button onClick={() => goBackToStep(3)} className="text-xs text-primary underline-offset-2 hover:underline">
-                  ✏ Modify ToO-GP selection
-                </button>
+                {!isConfirmed ? (
+                  <>
+                    <button onClick={() => goBackToStep(1)} className="text-xs text-primary underline-offset-2 hover:underline">
+                      ✏ Modify {cycleLabel} selection
+                    </button>
+                    <button onClick={() => goBackToStep(2)} className="text-xs text-primary underline-offset-2 hover:underline">
+                      ✏ Modify GF selection
+                    </button>
+                    <button onClick={() => goBackToStep(3)} className="text-xs text-primary underline-offset-2 hover:underline">
+                      ✏ Modify ToO-GP selection
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Source selection is locked after confirmation.
+                  </span>
+                )}
               </div>
 
               {/* Merged table preview (first 50 rows) */}
@@ -1354,7 +1378,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
               disabled={saving}
               className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
             >
-              {saving ? "Saving…" : "Next →"}
+              {saving ? "Saving…" : returnToOverviewAfterSave ? "Save & Return to Overview" : "Next →"}
             </button>
           )}
         </div>
