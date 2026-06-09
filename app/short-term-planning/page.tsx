@@ -131,7 +131,7 @@ export default function ShortTermPlanningPage() {
             </Link>
             <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">{cycleLabel} Short-Term Planning</h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Manage weekly source list preparation and scheduling integration.
+              Manage weekly source list preparation with short-term scheduling integration.
             </p>
           </div>
           <button
