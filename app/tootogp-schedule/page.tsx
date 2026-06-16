@@ -38,6 +38,7 @@ const TABLE_COLS: (keyof GpPlanningListRow)[] = [
   "generatedEpDbObjectId",
   "reviewedSingleExposureTimeSnapshot",
   "reviewedNumberOfVisitsSnapshot",
+  "reviewedTotalExposureTimeSnapshot",
   "weekId",
   "plannedStartTime",
   "plannedEndTime",
@@ -52,8 +53,9 @@ const COL_LABELS: Partial<Record<keyof GpPlanningListRow, string>> = {
   pi: "PI",
   parentEpDbObjectId: "Parent DB ID",
   generatedEpDbObjectId: "Planned DB ID",
-  reviewedSingleExposureTimeSnapshot: "Exp.",
+  reviewedSingleExposureTimeSnapshot: "Single Exp",
   reviewedNumberOfVisitsSnapshot: "Visits",
+  reviewedTotalExposureTimeSnapshot: "Total",
   weekId: "Week",
   plannedStartTime: "Start",
   plannedEndTime: "End",
@@ -198,14 +200,14 @@ export default function TooToGpSchedulePage() {
       const first = group[0]!;
 
       let totalVisits = 0;
-      let totalExp = 0;
+      let totalExpAll = 0;
       let earliestStart: string | null = null;
       let latestEnd: string | null = null;
       let latestUpdatedAt: string | null = null;
 
       for (const row of group) {
         totalVisits += row.reviewedNumberOfVisitsSnapshot ?? 0;
-        totalExp += row.reviewedSingleExposureTimeSnapshot ?? 0;
+        totalExpAll += row.reviewedTotalExposureTimeSnapshot ?? 0;
 
         if (row.plannedStartTime && (!earliestStart || row.plannedStartTime < earliestStart)) {
           earliestStart = row.plannedStartTime;
@@ -222,8 +224,8 @@ export default function TooToGpSchedulePage() {
         ...first,
         plannedStartTime: earliestStart,
         plannedEndTime: latestEnd,
-        reviewedSingleExposureTimeSnapshot: totalExp,
         reviewedNumberOfVisitsSnapshot: totalVisits,
+        reviewedTotalExposureTimeSnapshot: totalExpAll,
         updatedAt: latestUpdatedAt,
       };
     });
@@ -499,9 +501,7 @@ export default function TooToGpSchedulePage() {
                     className="cursor-pointer whitespace-nowrap px-3 py-2 select-none hover:bg-slate-200 dark:hover:bg-slate-700"
                   >
                     <span className="flex items-center">
-                      {col === "reviewedSingleExposureTimeSnapshot" && listViewMode === "merged"
-                        ? "Total Exp"
-                        : (COL_LABELS[col] ?? col)}
+                      {COL_LABELS[col] ?? col}
                       <SortIcon col={col} />
                     </span>
                   </th>
