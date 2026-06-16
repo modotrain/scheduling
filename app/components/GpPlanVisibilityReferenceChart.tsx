@@ -1,6 +1,6 @@
 "use client";
 
-import { MouseEvent as ReactMouseEvent, ReactElement, useMemo, useState } from "react";
+import { MouseEvent as ReactMouseEvent, ReactElement, useId, useMemo, useState } from "react";
 import * as Astronomy from "astronomy-engine";
 
 import { getCycleWeekLabel } from "@/app/lib/week-utils";
@@ -288,6 +288,9 @@ export default function GpPlanVisibilityReferenceChart({
   visitPreviews,
 }: Props) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const patternBaseId = useId();
+  const visitVisiblePatternId = `${patternBaseId}-visit-visible`;
+  const visitBlockedPatternId = `${patternBaseId}-visit-blocked`;
 
   const state = useMemo(
     () => evaluateGpVisibility({ sourceRa, sourceDec, plannedStart, plannedEnd, visitPreviews }),
@@ -358,15 +361,15 @@ export default function GpPlanVisibilityReferenceChart({
       })
     : [];
 
-  const visibleRects = segmentFlags.flatMap((segment) => {
-    if (segment.blocked) return [];
-    const { left, right } = segmentBoundsForIndex(segment.index);
+  const visibleRects = state.visibleRanges.map((range, index) => {
+    const left = xForDate(range.start, false);
+    const right = xForDate(range.end, true);
     return (
       <rect
-        key={`visible-segment-${segment.index}`}
+        key={`visible-range-${index}-${range.start}-${range.end}`}
         x={left}
         y={padding.top}
-        width={Math.max(1.2, right - left)}
+        width={Math.max(0, right - left)}
         height={chartHeight}
         fill="#16a34a"
         opacity="0.12"
@@ -430,7 +433,48 @@ export default function GpPlanVisibilityReferenceChart({
   const sunPath = state.daySeries.map((day, index) => `${index === 0 ? "M" : "L"} ${xForIndex(index)} ${yForAngle(day.sunAngle)}`).join(" ");
   const moonPath = state.daySeries.map((day, index) => `${index === 0 ? "M" : "L"} ${xForIndex(index)} ${yForAngle(day.moonAngle)}`).join(" ");
 
-  // Visible visit rects — rendered BEFORE masks so they are covered in blocked regions (correct).
+  const visitBandRanges = state.visitPreviews.map((visit) => {
+    const left = xForDate(visit.start, false);
+    const right = xForDate(visit.end, true);
+    return {
+      left,
+      right,
+      visible: visit.visible,
+      visitNo: visit.visitNo,
+    };
+  });
+
+  const buildOverlapSegments = (targetVisible: boolean): Array<{ left: number; right: number }> => {
+    const events = new Map<number, number>();
+    for (const band of visitBandRanges) {
+      if (band.visible !== targetVisible) continue;
+      if (band.right <= band.left) continue;
+      events.set(band.left, (events.get(band.left) ?? 0) + 1);
+      events.set(band.right, (events.get(band.right) ?? 0) - 1);
+    }
+
+    const sortedX = Array.from(events.keys()).sort((a, b) => a - b);
+    if (sortedX.length < 2) return [];
+
+    const segments: Array<{ left: number; right: number }> = [];
+    let active = 0;
+
+    for (let i = 0; i < sortedX.length - 1; i += 1) {
+      const x = sortedX[i]!;
+      active += events.get(x) ?? 0;
+      const nextX = sortedX[i + 1]!;
+      if (active >= 2 && nextX > x) {
+        segments.push({ left: x, right: nextX });
+      }
+    }
+
+    return segments;
+  };
+
+  const visibleOverlapSegments = buildOverlapSegments(true);
+  const blockedOverlapSegments = buildOverlapSegments(false);
+
+  // Visible visit base rects — rendered BEFORE masks so blocked regions stay masked.
   const visitBandVisibleRects = state.visitPreviews
     .filter((v) => v.visible)
     .map((visit) => {
@@ -447,13 +491,25 @@ export default function GpPlanVisibilityReferenceChart({
           fill="var(--visit-band-fill)"
           opacity="0.16"
           stroke="var(--visit-band-stroke)"
-          strokeOpacity="0.28"
+          strokeOpacity="0.24"
           strokeWidth="0.8"
         />
       );
     });
 
-  // Blocked visit rects — rendered AFTER masks so the red tint shows on top of the mask.
+  const visitBandVisibleOverlapRects = visibleOverlapSegments.map((segment, index) => (
+    <rect
+      key={`visit-overlap-visible-${index}`}
+      x={segment.left}
+      y={padding.top}
+      width={Math.max(1, segment.right - segment.left)}
+      height={chartHeight}
+      fill={`url(#${visitVisiblePatternId})`}
+      opacity="0.92"
+    />
+  ));
+
+  // Blocked visit base rects — rendered AFTER masks so blocked tint sits above mask.
   const visitBandBlockedRects = state.visitPreviews
     .filter((v) => !v.visible)
     .map((visit) => {
@@ -470,11 +526,23 @@ export default function GpPlanVisibilityReferenceChart({
           fill="var(--blocked-band-fill)"
           opacity="0.22"
           stroke="var(--blocked-band-stroke)"
-          strokeOpacity="0.45"
+          strokeOpacity="0.35"
           strokeWidth="0.8"
         />
       );
     });
+
+  const visitBandBlockedOverlapRects = blockedOverlapSegments.map((segment, index) => (
+    <rect
+      key={`visit-overlap-blocked-${index}`}
+      x={segment.left}
+      y={padding.top}
+      width={Math.max(1, segment.right - segment.left)}
+      height={chartHeight}
+      fill={`url(#${visitBlockedPatternId})`}
+      opacity="0.92"
+    />
+  ));
 
   // Labels rendered AFTER the invisible masks so they are always readable.
   const visitBandLabels = state.visitPreviews.map((visit) => {
@@ -576,7 +644,7 @@ export default function GpPlanVisibilityReferenceChart({
         <div>
           <p className="text-sm font-semibold text-slate-900 dark:text-white">Visibility Reference</p>
           <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-            Green bands indicate daily visibility windows. Visit markers are colored by the constraint check.
+            Green background indicates visibility windows. Hatched overlays mark visit windows to avoid overlap ambiguity.
           </p>
         </div>
         <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
@@ -593,11 +661,23 @@ export default function GpPlanVisibilityReferenceChart({
           onMouseMove={handleChartMouseMove}
           onMouseLeave={() => setHoverIndex(null)}
         >
+          <defs>
+            <pattern id={visitVisiblePatternId} patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+              <rect width="8" height="8" fill="transparent" />
+              <line x1="0" y1="0" x2="0" y2="8" stroke="var(--visit-band-stroke)" strokeWidth="1.1" opacity="0.5" />
+            </pattern>
+            <pattern id={visitBlockedPatternId} patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+              <rect width="8" height="8" fill="transparent" />
+              <line x1="0" y1="0" x2="0" y2="8" stroke="var(--blocked-band-stroke)" strokeWidth="1.1" opacity="0.68" />
+            </pattern>
+          </defs>
           <rect x={0} y={0} width={width} height={height} fill={bgColor} />
           {visibleRects}
           {visitBandVisibleRects}
+          {visitBandVisibleOverlapRects}
           {invisibleDayOverlays}
           {visitBandBlockedRects}
+          {visitBandBlockedOverlapRects}
           {gridLines}
           {breakBoundaryLines}
 
@@ -675,6 +755,16 @@ export default function GpPlanVisibilityReferenceChart({
         <div className="flex items-center gap-2">
           <span className="h-3 w-8 rounded-sm bg-emerald-500/20 ring-1 ring-emerald-500/30" />
           <span>Visible window</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className="h-3 w-8 rounded-sm ring-1 ring-emerald-500/30"
+            style={{
+              backgroundImage: "repeating-linear-gradient(45deg, rgba(22,163,74,0.30) 0 2px, transparent 2px 6px)",
+              backgroundColor: "transparent",
+            }}
+          />
+          <span>Visit overlap (hatched)</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="h-0.5 w-8 rounded bg-[color:var(--sun-color,#b91c1c)]" style={{ backgroundColor: sunColor }} />
