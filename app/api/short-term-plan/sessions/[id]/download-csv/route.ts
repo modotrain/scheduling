@@ -219,7 +219,10 @@ function groupTooGpRows(rows: TooGpRawRow[]): TooGpGroupedRow[] {
       continue;
     }
 
-    existing.totalExposureTime += row.reviewedSingleExposureTimeSnapshot ?? 0;
+    // Keep single-exposure semantics at source level; do not aggregate into total.
+    if (existing.totalExposureTime <= 0 && row.reviewedSingleExposureTimeSnapshot != null) {
+      existing.totalExposureTime = row.reviewedSingleExposureTimeSnapshot;
+    }
     existing.totalExposureTimeAll += row.reviewedTotalExposureTimeSnapshot ?? 0;
     existing.totalVisits += row.reviewedNumberOfVisitsSnapshot ?? 0;
 
@@ -409,9 +412,9 @@ export async function GET(request: Request, { params }: RouteParams) {
       const payload = normalizedFxtCmr ? "FXT" : (r.wxtCmos ? "WXT" : null);
       const cadenceInfo = parseCadence(r.reviewedCadence ?? null, r.reviewedCadenceUnit ?? null);
       const precisionInfo = computePrecision(cadenceInfo.cadence, cadenceInfo.cadenceUnit);
-      const totalExp = r.totalExposureTime;
       const totalExpAll = r.totalExposureTimeAll;
       const visits = r.totalVisits;
+      const totalExp = visits > 0 ? (totalExpAll / visits) : r.totalExposureTime;
       const perVisitBaseline = visits > 0 ? (totalExpAll / visits) : null;
 
       return {
