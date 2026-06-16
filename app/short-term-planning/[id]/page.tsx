@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ACTIVE_CYCLE, getCycleLabel } from "@/app/lib/cycles";
+import SkyMap, { type SkyPayload, type SkyPoint } from "@/app/components/SkyMap";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,8 @@ type TooGpSourceRow = {
   sourceId: string | null;
   sourceName: string | null;
   pi: string | null;
+  ra: string | null;
+  dec: string | null;
   sourceType: string | null;
   completeness: string | null;
   reviewedCadence: string | null;
@@ -65,6 +68,7 @@ type SourceRow = {
   startTime: string | null;
   endTime: string | null;
   sourceType: "cycle" | "cycle2" | "gf" | "toogp";
+  sourceKey?: string | null;
   isExcluded: boolean;
 };
 
@@ -80,6 +84,8 @@ type TooGpGroupedRow = {
   sourceId: string | null;
   sourceName: string | null;
   pi: string | null;
+  ra: string | null;
+  dec: string | null;
   sourceType: string | null;
   completeness: string | null;
   reviewedCadence: string | null;
@@ -160,12 +166,32 @@ function formatDateAsStartOfDay(value: string | null): string | null {
   return dateOnly ? `${dateOnly}T00:00:00` : null;
 }
 
+function parseExposureToSeconds(value: string | null, unit: string | null): number {
+  const v = Number(value ?? "0");
+  if (!Number.isFinite(v)) return 0;
+  const u = (unit ?? "").toLowerCase();
+  if (u === "ks") return v * 1000;
+  if (u === "hr") return v * 3600;
+  return v;
+}
+
+function getSourceRowKey(row: SourceRow): string {
+  if (row.sourceKey) return row.sourceKey;
+  return `${row.sourceType}:${row.id}`;
+}
+
 function classifyTooGpObsType(sourceType: string | null, totalExposureS: number): string {
   if (sourceType === "MonitoringObs") return "GP-PPT-MT";
   if (sourceType === "SingleObs") {
     return totalExposureS <= 3000 ? "GP-PPT-ST" : "GP-PPT-LT";
   }
   return "ToO-GP";
+}
+
+function getCalibrationPointType(pi: string | null): "fxt-calibration" | "wxt-calibration" {
+  const instrument = (pi ?? "").toUpperCase();
+  if (instrument.includes("WXT")) return "wxt-calibration";
+  return "fxt-calibration";
 }
 
 function groupTooGpRows(rows: TooGpSourceRow[]): TooGpGroupedRow[] {
@@ -182,6 +208,8 @@ function groupTooGpRows(rows: TooGpSourceRow[]): TooGpGroupedRow[] {
         sourceId: row.sourceId,
         sourceName: row.sourceName,
         pi: row.pi,
+        ra: row.ra,
+        dec: row.dec,
         sourceType: row.sourceType,
         completeness: row.completeness,
         reviewedCadence: row.reviewedCadence,
@@ -211,6 +239,10 @@ function groupTooGpRows(rows: TooGpSourceRow[]): TooGpGroupedRow[] {
 
   return Array.from(grouped.values());
 }
+
+const SKYMAP_VISIBLE_STORAGE_KEY = "short-term-planning:skymap-visible";
+const SKYMAP_POPUP_LAYOUT_STORAGE_KEY = "short-term-planning:skymap-popup-layout";
+const SKYMAP_GF_STORAGE_KEY = "short-term-planning:skymap-gf";
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -263,6 +295,9 @@ function SourceTable({
   stats,
   loading,
   showPlanningColumns = false,
+  hoveredSourceKey,
+  lockedSourceKey,
+  onRowHoverKeyChange,
 }: {
   rows: SourceRow[];
   excludedIds: Set<number>;
@@ -270,6 +305,9 @@ function SourceTable({
   stats: SourceStats | null;
   loading: boolean;
   showPlanningColumns?: boolean;
+  hoveredSourceKey?: string | null;
+  lockedSourceKey?: string | null;
+  onRowHoverKeyChange?: (key: string | null) => void;
 }) {
   const allIds = rows.map((r) => r.id);
   const selectedIds = new Set(allIds.filter((id) => !excludedIds.has(id)));
@@ -352,17 +390,22 @@ function SourceTable({
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {rows.map((row) => {
               const isSelected = !excludedIds.has(row.id);
+              const rowKey = getSourceRowKey(row);
+              const isSkyHighlighted = lockedSourceKey ? lockedSourceKey === rowKey : hoveredSourceKey === rowKey;
               const expStr = row.totalExposureTimeAll ?? row.totalExposureTime ?? "—";
               const unit = row.exposureTimeUnit ?? "";
               return (
                 <tr
                   key={row.id}
+                  data-source-key={rowKey}
                   onClick={() => toggleRow(row.id)}
+                  onMouseEnter={() => onRowHoverKeyChange?.(rowKey)}
+                  onMouseLeave={() => onRowHoverKeyChange?.(null)}
                   className={`cursor-pointer transition-colors ${
                     isSelected
                       ? "hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
                       : "bg-slate-50/60 text-slate-400 line-through dark:bg-slate-900/40 dark:text-slate-600"
-                  }`}
+                  } ${isSkyHighlighted ? "ring-1 ring-primary/70 bg-primary/5 dark:bg-primary/10" : ""}`}
                 >
                   <td className="px-3 py-2">
                     <input
@@ -414,12 +457,18 @@ function TooGpSourceTable({
   onSelectionChange,
   stats,
   loading,
+  hoveredSourceKey,
+  lockedSourceKey,
+  onRowHoverKeyChange,
 }: {
   rows: TooGpSourceRow[];
   excludedIds: Set<number>;
   onSelectionChange: (newExcluded: Set<number>) => void;
   stats: SourceStats | null;
   loading: boolean;
+  hoveredSourceKey?: string | null;
+  lockedSourceKey?: string | null;
+  onRowHoverKeyChange?: (key: string | null) => void;
 }) {
   const groupedRows = groupTooGpRows(rows);
   const selectedGroups = groupedRows.filter((g) => g.rawIds.every((id) => !excludedIds.has(id)));
@@ -497,15 +546,19 @@ function TooGpSourceTable({
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {groupedRows.map((group) => {
               const isSelected = group.rawIds.every((id) => !excludedIds.has(id));
+              const isSkyHighlighted = lockedSourceKey ? lockedSourceKey === group.key : hoveredSourceKey === group.key;
               return (
                 <tr
                   key={group.key}
+                  data-source-key={group.key}
                   onClick={() => toggleGroup(group)}
+                  onMouseEnter={() => onRowHoverKeyChange?.(group.key)}
+                  onMouseLeave={() => onRowHoverKeyChange?.(null)}
                   className={`cursor-pointer transition-colors ${
                     isSelected
                       ? "hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
                       : "bg-slate-50/60 text-slate-400 line-through dark:bg-slate-900/40 dark:text-slate-600"
-                  }`}
+                  } ${isSkyHighlighted ? "ring-1 ring-primary/70 bg-primary/5 dark:bg-primary/10" : ""}`}
                 >
                   <td className="px-3 py-2">
                     <input
@@ -585,8 +638,16 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   const [schedulerMode, setSchedulerMode] = useState<SchedulerMode>("unp-first");
   const [schedulerRuns, setSchedulerRuns] = useState(1000);
   const [schedulerWorkers, setSchedulerWorkers] = useState(4);
+  const [hoveredSourceKey, setHoveredSourceKey] = useState<string | null>(null);
+  const [lockedSourceKey, setLockedSourceKey] = useState<string | null>(null);
+  const [showSkyMapGf, setShowSkyMapGf] = useState(true);
+  const [isSessionMapVisible, setIsSessionMapVisible] = useState(true);
+  const [isSessionMapExpanded, setIsSessionMapExpanded] = useState(false);
+  const [sessionMapPopupLayout, setSessionMapPopupLayout] = useState<"floating" | "side">("floating");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sessionMapRef = useRef<HTMLDivElement>(null);
+  const locateFlashTimerRef = useRef<number | null>(null);
 
   // ── Init ───────────────────────────────────────────────────────────────────
 
@@ -672,6 +733,94 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     }, 1500);
     return () => clearInterval(timer);
   }, [session, schedulerJob, loadSchedulerJob]);
+
+  useEffect(() => {
+    setHoveredSourceKey(null);
+    setLockedSourceKey(null);
+    setIsSessionMapExpanded(false);
+  }, [currentStep, sessionId]);
+
+  useEffect(() => {
+    try {
+      const visibleRaw = localStorage.getItem(SKYMAP_VISIBLE_STORAGE_KEY);
+      const popupLayoutRaw = localStorage.getItem(SKYMAP_POPUP_LAYOUT_STORAGE_KEY);
+      const showGfRaw = localStorage.getItem(SKYMAP_GF_STORAGE_KEY);
+
+      if (visibleRaw === "0" || visibleRaw === "1") {
+        setIsSessionMapVisible(visibleRaw === "1");
+      }
+      if (popupLayoutRaw === "floating" || popupLayoutRaw === "side") {
+        setSessionMapPopupLayout(popupLayoutRaw);
+      }
+      if (showGfRaw === "0" || showGfRaw === "1") {
+        setShowSkyMapGf(showGfRaw === "1");
+      }
+    } catch {
+      // Ignore local preference read failures.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SKYMAP_VISIBLE_STORAGE_KEY, isSessionMapVisible ? "1" : "0");
+    } catch {
+      // Ignore local preference write failures.
+    }
+  }, [isSessionMapVisible]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SKYMAP_POPUP_LAYOUT_STORAGE_KEY, sessionMapPopupLayout);
+    } catch {
+      // Ignore local preference write failures.
+    }
+  }, [sessionMapPopupLayout]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SKYMAP_GF_STORAGE_KEY, showSkyMapGf ? "1" : "0");
+    } catch {
+      // Ignore local preference write failures.
+    }
+  }, [showSkyMapGf]);
+
+  useEffect(() => {
+    return () => {
+      if (locateFlashTimerRef.current !== null) {
+        window.clearTimeout(locateFlashTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleRowHoverKeyChange = useCallback((key: string | null) => {
+    if (lockedSourceKey) return;
+    setHoveredSourceKey(key);
+  }, [lockedSourceKey]);
+
+  const handleLocateInList = useCallback((sourceKey: string) => {
+    const escaped = typeof window.CSS?.escape === "function" ? window.CSS.escape(sourceKey) : sourceKey;
+    const target = document.querySelector<HTMLElement>(`[data-source-key="${escaped}"]`);
+    if (!target) return;
+
+    setLockedSourceKey(sourceKey);
+    setHoveredSourceKey(sourceKey);
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.add("ring-2", "ring-amber-300", "bg-amber-100", "dark:ring-amber-700", "dark:bg-amber-900/30");
+
+    if (locateFlashTimerRef.current !== null) {
+      window.clearTimeout(locateFlashTimerRef.current);
+    }
+    locateFlashTimerRef.current = window.setTimeout(() => {
+      target.classList.remove("ring-2", "ring-amber-300", "bg-amber-100", "dark:ring-amber-700", "dark:bg-amber-900/30");
+      locateFlashTimerRef.current = null;
+    }, 1400);
+  }, []);
+
+  const handleLocateOnMap = useCallback((sourceKey: string) => {
+    setLockedSourceKey(sourceKey);
+    setHoveredSourceKey(sourceKey);
+    sessionMapRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   // ── Load sources on step change ──────────────────────────────────────────
 
@@ -1056,6 +1205,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   // Convert TooGpSourceRow to compatible format and merge
   const tooGpConverted = tooGpGroupedIncluded.map((r, index) => ({
     id: 900000 + index,
+    sourceKey: r.key,
     sourceId: r.sourceId,
     sourceName: r.sourceName,
     pi: r.pi,
@@ -1065,8 +1215,8 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     proposalNo: null as string | null,
     groupName: null as string | null,
     obsType: classifyTooGpObsType(r.sourceType, r.totalExposureS),
-    ra: null as string | null,
-    dec: null as string | null,
+    ra: r.ra,
+    dec: r.dec,
     totalExposureTime: String(r.totalExposureS),
     totalExposureTimeAll: String(r.totalExposureS),
     exposureTimeUnit: "second",
@@ -1115,6 +1265,176 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     ? Math.min(100, Math.round((schedulerJob.completedRuns / schedulerJob.totalRuns) * 100))
     : 0;
 
+  const weekNum = parseInt(session.weekId.replace(/\D/g, ""), 10) || 1;
+  const skyMapPoints: SkyPoint[] = (() => {
+    if (currentStep === 1) {
+      return cycle2Rows
+        .filter((row) => !excludedCycle2.has(row.id))
+        .flatMap((row) => {
+          const ra = Number(row.ra ?? "NaN");
+          const dec = Number(row.dec ?? "NaN");
+          if (!Number.isFinite(ra) || !Number.isFinite(dec)) return [];
+          const exposureS = parseExposureToSeconds(row.totalExposureTimeAll ?? row.totalExposureTime, row.exposureTimeUnit);
+          const pointType = (row.obsType ?? "").toUpperCase().includes("GP-CAL") ? getCalibrationPointType(row.pi) : "normal";
+          return [{
+            dataset: "cycle",
+            sourceId: Number(row.sourceId ?? row.id) || row.id,
+            sourceKey: getSourceRowKey(row),
+            sourceName: row.sourceName,
+            proposalNo: row.proposalNo,
+            pi: row.pi,
+            obsType: row.obsType,
+            sourcePriority: row.sourcePriority,
+            pointType,
+            ra,
+            dec,
+            totalExposureTimeAll: Math.round(exposureS),
+            totalExposureKs: exposureS / 1000,
+            pointSize: 1,
+            nScheduled: Number(row.visitNumber ?? "1") || 1,
+            minWeek: weekNum,
+            maxWeek: weekNum,
+            scheduledDateStart: row.startTime,
+            scheduledDateEnd: row.endTime,
+            weeklyExposure: [{ weekIndex: weekNum, exposureS: Math.round(exposureS) }],
+            visibleDateRanges: null,
+          } satisfies SkyPoint];
+        });
+    }
+
+    if (currentStep === 2) {
+      return gfRows
+        .filter((row) => !excludedGf.has(row.id))
+        .flatMap((row) => {
+          const ra = Number(row.ra ?? "NaN");
+          const dec = Number(row.dec ?? "NaN");
+          if (!Number.isFinite(ra) || !Number.isFinite(dec)) return [];
+          const exposureS = parseExposureToSeconds(row.totalExposureTimeAll ?? row.totalExposureTime, row.exposureTimeUnit);
+          return [{
+            dataset: "gf",
+            sourceId: Number(row.sourceId ?? row.id) || row.id,
+            sourceKey: getSourceRowKey(row),
+            sourceName: row.sourceName,
+            proposalNo: row.proposalNo,
+            pi: row.pi,
+            obsType: row.obsType,
+            sourcePriority: row.sourcePriority ?? "D",
+            pointType: "normal",
+            ra,
+            dec,
+            totalExposureTimeAll: Math.round(exposureS),
+            totalExposureKs: exposureS / 1000,
+            pointSize: 1,
+            nScheduled: Number(row.visitNumber ?? "1") || 1,
+            minWeek: weekNum,
+            maxWeek: weekNum,
+            scheduledDateStart: row.startTime,
+            scheduledDateEnd: row.endTime,
+            weeklyExposure: [{ weekIndex: weekNum, exposureS: Math.round(exposureS) }],
+            visibleDateRanges: null,
+          } satisfies SkyPoint];
+        });
+    }
+
+    if (currentStep === 3) {
+      return tooGpGroupedIncluded
+        .flatMap((row) => {
+          const ra = Number(row.ra ?? "NaN");
+          const dec = Number(row.dec ?? "NaN");
+          if (!Number.isFinite(ra) || !Number.isFinite(dec)) return [];
+          return [{
+            dataset: "toogp",
+            sourceId: Number(row.sourceId ?? row.key.length) || row.key.length,
+            sourceKey: row.key,
+            sourceName: row.sourceName,
+            proposalNo: null,
+            pi: row.pi,
+            obsType: classifyTooGpObsType(row.sourceType, row.totalExposureS),
+            sourcePriority: "A",
+            pointType: "too-gp",
+            ra,
+            dec,
+            totalExposureTimeAll: Math.round(row.totalExposureS),
+            totalExposureKs: row.totalExposureS / 1000,
+            pointSize: 1,
+            nScheduled: row.totalVisits,
+            minWeek: weekNum,
+            maxWeek: weekNum,
+            scheduledDateStart: formatDateAsStartOfDay(row.plannedStartTime),
+            scheduledDateEnd: formatDateAsStartOfDay(row.plannedEndTime),
+            weeklyExposure: [{ weekIndex: weekNum, exposureS: Math.round(row.totalExposureS) }],
+            visibleDateRanges: null,
+          } satisfies SkyPoint];
+        });
+    }
+
+    if (currentStep === 4) {
+      return mergedAll
+        .flatMap((row) => {
+          const ra = Number(row.ra ?? "NaN");
+          const dec = Number(row.dec ?? "NaN");
+          if (!Number.isFinite(ra) || !Number.isFinite(dec)) return [];
+          const exposureS = parseExposureToSeconds(row.totalExposureTimeAll ?? row.totalExposureTime, row.exposureTimeUnit);
+          const pointType = row.sourceType === "toogp"
+            ? "too-gp"
+            : (row.obsType ?? "").toUpperCase().includes("GP-CAL")
+            ? getCalibrationPointType(row.pi)
+            : "normal";
+          const priority = row.sourceType === "gf" ? "D" : row.sourcePriority;
+          return [{
+            dataset: row.sourceType,
+            sourceId: Number(row.sourceId ?? row.id) || row.id,
+            sourceKey: getSourceRowKey(row),
+            sourceName: row.sourceName,
+            proposalNo: row.proposalNo,
+            pi: row.pi,
+            obsType: row.obsType,
+            sourcePriority: priority,
+            pointType,
+            ra,
+            dec,
+            totalExposureTimeAll: Math.round(exposureS),
+            totalExposureKs: exposureS / 1000,
+            pointSize: 1,
+            nScheduled: Number(row.visitNumber ?? "1") || 1,
+            minWeek: weekNum,
+            maxWeek: weekNum,
+            scheduledDateStart: row.startTime,
+            scheduledDateEnd: row.endTime,
+            weeklyExposure: [{ weekIndex: weekNum, exposureS: Math.round(exposureS) }],
+            visibleDateRanges: null,
+          } satisfies SkyPoint];
+        });
+    }
+
+    return [];
+  })();
+
+  const skyMapPayload: SkyPayload = {
+    points: skyMapPoints,
+    regions: [],
+    weekBounds: [{ weekIndex: weekNum, startDate: null, endDate: null }],
+    summary: {
+      totalSources: skyMapPoints.length,
+      totalExposureS: skyMapPoints.reduce((sum, p) => sum + p.totalExposureTimeAll, 0),
+      totalExposureMillionS: skyMapPoints.reduce((sum, p) => sum + p.totalExposureTimeAll, 0) / 1_000_000,
+      priorities: {
+        A: skyMapPoints.filter((p) => p.sourcePriority === "A").length,
+        B: skyMapPoints.filter((p) => p.sourcePriority === "B").length,
+        C: skyMapPoints.filter((p) => p.sourcePriority === "C").length,
+        D: skyMapPoints.filter((p) => p.sourcePriority === "D").length,
+      },
+      fxtCalibration: { count: 0, exposureS: 0, exposureMillionS: 0 },
+      wxtCalibration: { count: 0, exposureS: 0, exposureMillionS: 0 },
+    },
+  };
+
+  const skyMapLoading =
+    (currentStep === 1 && cycle2Loading) ||
+    (currentStep === 2 && gfLoading) ||
+    (currentStep === 3 && tooGpLoading) ||
+    (currentStep === 4 && overviewCardsLoading);
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-8 dark:from-slate-950 dark:to-slate-900 md:px-8">
       <div className="mx-auto max-w-5xl">
@@ -1145,6 +1465,107 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
         <div className="mb-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <StepBar current={currentStep} />
         </div>
+
+        {currentStep >= 1 && currentStep <= 4 && (
+          <div className="mb-6" ref={sessionMapRef}>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs text-slate-500 dark:text-slate-400">Sky Map</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSessionMapPopupLayout((prev) => (prev === "floating" ? "side" : "floating"))}
+                  className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  Popup: {sessionMapPopupLayout === "floating" ? "Floating" : "Side"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSessionMapVisible((prev) => !prev)}
+                  className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  {isSessionMapVisible ? "Hide mini map" : "Show mini map"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSessionMapExpanded(true)}
+                  className="rounded-md border border-primary/40 px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/10"
+                >
+                  Expand fullscreen
+                </button>
+              </div>
+            </div>
+
+            {isSessionMapVisible ? (
+              <SkyMap
+                cycle={ACTIVE_CYCLE}
+                dataOverride={skyMapPayload}
+                loadingOverride={skyMapLoading}
+                errorOverride={null}
+                title="Sky Map"
+                mapHeightClass="h-[300px]"
+                popupLayout={sessionMapPopupLayout}
+                hideWeekControls
+                hideGanttChart
+                showGfToggle={isConfirmed && currentStep === 4}
+                showGf={showSkyMapGf}
+                onShowGfChange={setShowSkyMapGf}
+                activeSourceKey={hoveredSourceKey}
+                lockedSourceKey={lockedSourceKey}
+                onActiveSourceKeyChange={setHoveredSourceKey}
+                onLockedSourceKeyChange={setLockedSourceKey}
+                onLocateInList={handleLocateInList}
+                onLocateOnMap={handleLocateOnMap}
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-5 text-center text-xs text-slate-500 dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-400">
+                Mini map is hidden. Use the toolbar above to show it again.
+              </div>
+            )}
+
+            {isSessionMapExpanded && (
+              <div
+                className="fixed inset-0 z-[70] bg-slate-950/65 p-4 backdrop-blur-[1px]"
+                onClick={() => setIsSessionMapExpanded(false)}
+              >
+                <div
+                  className="mx-auto flex h-full max-w-7xl flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Sky Map · Fullscreen</h3>
+                    <button
+                      type="button"
+                      onClick={() => setIsSessionMapExpanded(false)}
+                      className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <SkyMap
+                    cycle={ACTIVE_CYCLE}
+                    dataOverride={skyMapPayload}
+                    loadingOverride={skyMapLoading}
+                    errorOverride={null}
+                    title="Sky Map"
+                    mapHeightClass="h-[72vh]"
+                    popupLayout={sessionMapPopupLayout}
+                    hideWeekControls
+                    hideGanttChart
+                    showGfToggle={isConfirmed && currentStep === 4}
+                    showGf={showSkyMapGf}
+                    onShowGfChange={setShowSkyMapGf}
+                    activeSourceKey={hoveredSourceKey}
+                    lockedSourceKey={lockedSourceKey}
+                    onActiveSourceKeyChange={setHoveredSourceKey}
+                    onLockedSourceKeyChange={setLockedSourceKey}
+                    onLocateInList={handleLocateInList}
+                    onLocateOnMap={handleLocateOnMap}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Step content */}
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -1183,6 +1604,9 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                 stats={cycle2Stats}
                 loading={cycle2Loading}
                 showPlanningColumns
+                hoveredSourceKey={hoveredSourceKey}
+                lockedSourceKey={lockedSourceKey}
+                onRowHoverKeyChange={handleRowHoverKeyChange}
               />
             </div>
           )}
@@ -1200,6 +1624,9 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                 onSelectionChange={setExcludedGf}
                 stats={gfStats}
                 loading={gfLoading}
+                hoveredSourceKey={hoveredSourceKey}
+                lockedSourceKey={lockedSourceKey}
+                onRowHoverKeyChange={handleRowHoverKeyChange}
               />
             </div>
           )}
@@ -1217,6 +1644,9 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                 onSelectionChange={setExcludedTooGp}
                 stats={tooGpStats}
                 loading={tooGpLoading}
+                hoveredSourceKey={hoveredSourceKey}
+                lockedSourceKey={lockedSourceKey}
+                onRowHoverKeyChange={handleRowHoverKeyChange}
               />
             </div>
           )}
@@ -1290,8 +1720,17 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {mergedAll.slice(0, 50).map((row) => (
-                      <tr key={`${row.sourceType}-${row.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                    {mergedAll.slice(0, 50).map((row) => {
+                      const rowKey = getSourceRowKey(row);
+                      const isSkyHighlighted = lockedSourceKey ? lockedSourceKey === rowKey : hoveredSourceKey === rowKey;
+                      return (
+                      <tr
+                        key={`${row.sourceType}-${row.id}`}
+                        data-source-key={rowKey}
+                        onMouseEnter={() => handleRowHoverKeyChange(rowKey)}
+                        onMouseLeave={() => handleRowHoverKeyChange(null)}
+                        className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/40 ${isSkyHighlighted ? "ring-1 ring-primary/70 bg-primary/5 dark:bg-primary/10" : ""}`}
+                      >
                         <td className="px-3 py-1.5">
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                             row.sourceType === "gf"
@@ -1328,7 +1767,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                           })()}
                         </td>
                       </tr>
-                    ))}
+                    );})}
                   </tbody>
                 </table>
                 {mergedAll.length > 50 && (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import Cycle2SkyMap from "@/app/components/Cycle2SkyMap";
+import SkyMap from "@/app/components/SkyMap";
 import { useCycle } from "@/app/lib/useCycle";
 
 export default function Cycle2LongTermSkyMapPage() {
@@ -27,7 +27,7 @@ export default function Cycle2LongTermSkyMapPage() {
           </div>
         </div>
 
-        <Cycle2SkyMap cycle={cycle} />
+        <SkyMap cycle={cycle} />
       </div>
     </main>
   );
