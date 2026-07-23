@@ -80,11 +80,11 @@ function buildGeneratedId(epDbObjectId: string, seqNo: number): string {
 
   if (match) {
     const [, secondPart, thirdPart] = match;
-    return `cycle2-${secondPart}_${thirdPart}_${seqNo}_ToO`;
+    return `cycle2-${secondPart}_${thirdPart}_${seqNo}_ToO_P2`;
   }
 
   const base = normalized.replace(/^EP_ToO_Season/i, "cycle2");
-  return `${base}_${seqNo}_ToO`;
+  return `${base}_${seqNo}_ToO_P2`;
 }
 
 function cadenceToDays(cadenceValue: number | null, cadenceUnit: "day" | "orbit" | null): number {

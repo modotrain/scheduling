@@ -37,9 +37,9 @@ function buildGeneratedId(epDbObjectId: string, seqNo: number): string {
   const match = normalized.match(/^EP_ToO_Season-\d+-([^-]+)-([^-]+)$/i);
   if (match) {
     const [, p2, p3] = match;
-    return `cycle2-${p2}_${p3}_${seqNo}_ToO`;
+    return `cycle2-${p2}_${p3}_${seqNo}_ToO_P2`;
   }
-  return `${normalized.replace(/^EP_ToO_Season/i, "cycle2")}_${seqNo}_ToO`;
+  return `${normalized.replace(/^EP_ToO_Season/i, "cycle2")}_${seqNo}_ToO_P2`;
 }
 
 export async function PUT(request: Request, { params }: Params) {
