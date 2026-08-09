@@ -5,10 +5,12 @@ import { and, eq } from "drizzle-orm";
 
 export async function GET(request: Request) {
   try {
-    const gpCycle2SourceReports = getCycleTables(resolveCycleFromRequest(request)).sourceReports;
+    const cycle = resolveCycleFromRequest(request);
+    const gpCycle2SourceReports = getCycleTables(cycle).sourceReports;
     const url = new URL(request.url);
     const sourceIdStr = url.searchParams.get("sourceId");
-    const dataset = (url.searchParams.get("dataset") || "cycle2").toLowerCase() === "gf" ? "gf" : "cycle2";
+    // GP data is always stored as "cycle2" regardless of cycle; "gf" is the only other partition.
+    const dataset = (url.searchParams.get("dataset") || "").toLowerCase() === "gf" ? "gf" : "cycle2";
 
     if (!sourceIdStr) {
       return new Response(

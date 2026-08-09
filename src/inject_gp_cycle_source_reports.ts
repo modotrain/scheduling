@@ -205,8 +205,8 @@ async function main() {
   }
 
   // Date range for chart (plan span)
-  let minDate = "2025-08-12";
-  let maxDate = "2026-08-12";
+  let minDate = "2026-08-11";
+  let maxDate = "2027-08-09";
   try {
     const dates = scheduleRows
       .map((r) => r.scheduled_date)
