@@ -77,6 +77,14 @@ function parseWeekId(value: string | null): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+function normalizeForSearch(value: string): string {
+  return value
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 const CACHE_KEY = "cycle2-long-term-cache-v1";
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -183,13 +191,18 @@ export default function Cycle2LongTermPage() {
   }
 
   function getSortedAndFilteredRows() {
-    const query = searchText.toLowerCase().trim();
+    const query = normalizeForSearch(searchText);
     const normalizedWeekFilter = weekFilter.trim();
     const filtered = rows.filter((row) => {
       const matchesSearch = query
-        ? Object.values(row).some(
-            (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(query),
-          )
+        ? TABLE_COLS.some((col) => {
+            const val = row[col];
+            return (
+              val !== null &&
+              val !== undefined &&
+              normalizeForSearch(String(val)).includes(query)
+            );
+          })
         : true;
       const matchesWeek = normalizedWeekFilter
         ? String(parseWeekId(row.weekId) ?? row.weekId ?? "") === normalizedWeekFilter
