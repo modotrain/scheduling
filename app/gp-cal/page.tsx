@@ -75,6 +75,8 @@ const TABLE_COLS: (keyof GpCycle2Row)[] = [
   "totalExposureTime",
   "visitNumber",
   "cadence",
+  "startTime",
+  "endTime",
   "validTimeRatio",
 ];
 
@@ -92,6 +94,8 @@ const COL_LABELS: Partial<Record<keyof GpCycle2Row, string>> = {
   validTimeRatio: "Compl",
   stp: "STP",
   cadence: "Cadence",
+  startTime: "Start",
+  endTime: "End",
   visitNumber: "Visits",
   exposureTimeUnit: "Exp. Unit",
   sourcePriority: "Priority",
@@ -210,6 +214,19 @@ export default function GpCalPage() {
       const num = typeof val === "number" ? val : Number(val);
       if (Number.isFinite(num)) {
         return num.toFixed(2);
+      }
+    }
+    if (col === "startTime" || col === "endTime") {
+      const str = String(val).trim();
+      if (str) {
+        try {
+          const date = new Date(str);
+          if (!Number.isNaN(date.getTime())) {
+            return date.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
+          }
+        } catch {
+          // Fall through
+        }
       }
     }
     return String(val);
