@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/src/db/client";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/src/auth/session";
 import { approvedToO, tooToGpSchedule, usersTable } from "@/src/db/schema";
+import { buildGeneratedId } from "@/app/lib/too-utils";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -72,19 +73,6 @@ function getDefaultTuesdayWindow(): { start: string; end: string } {
 
   const start = [reference.getUTCFullYear(), String(reference.getUTCMonth() + 1).padStart(2, "0"), String(reference.getUTCDate()).padStart(2, "0")].join("-");
   return { start, end: addDays(start, 7) };
-}
-
-function buildGeneratedId(epDbObjectId: string, seqNo: number): string {
-  const normalized = epDbObjectId.trim();
-  const match = normalized.match(/^EP_ToO_Season-\d+-([^-]+)-([^-]+)$/i);
-
-  if (match) {
-    const [, secondPart, thirdPart] = match;
-    return `cycle2-${secondPart}_${thirdPart}_${seqNo}_ToO_P2`;
-  }
-
-  const base = normalized.replace(/^EP_ToO_Season/i, "cycle2");
-  return `${base}_${seqNo}_ToO_P2`;
 }
 
 function cadenceToDays(cadenceValue: number | null, cadenceUnit: "day" | "orbit" | null): number {

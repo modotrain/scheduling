@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
 import { tooToGpSchedule } from "@/src/db/schema";
+import { buildGeneratedId } from "@/app/lib/too-utils";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -30,16 +31,6 @@ function getTuesdayStart(dateStr: string | null | undefined): string | null {
   const daysSince = (d.getUTCDay() + 7 - 2) % 7;
   const tue = new Date(d.getTime() - daysSince * 86_400_000);
   return [tue.getUTCFullYear(), String(tue.getUTCMonth() + 1).padStart(2, "0"), String(tue.getUTCDate()).padStart(2, "0")].join("-");
-}
-
-function buildGeneratedId(epDbObjectId: string, seqNo: number): string {
-  const normalized = epDbObjectId.trim();
-  const match = normalized.match(/^EP_ToO_Season-\d+-([^-]+)-([^-]+)$/i);
-  if (match) {
-    const [, p2, p3] = match;
-    return `cycle2-${p2}_${p3}_${seqNo}_ToO_P2`;
-  }
-  return `${normalized.replace(/^EP_ToO_Season/i, "cycle2")}_${seqNo}_ToO_P2`;
 }
 
 export async function PUT(request: Request, { params }: Params) {
