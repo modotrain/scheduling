@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getWeekKey } from "@/app/lib/week-utils";
+import { ACTIVE_CYCLE } from "@/app/lib/cycles";
 
 type GpPlanningListRow = {
   id: number;
@@ -77,7 +78,7 @@ type GpPlanningCachePayload = {
 function addWeekId(r: Omit<GpPlanningListRow, "weekId">): GpPlanningListRow {
   return {
     ...r,
-    weekId: r.plannedStartTime ? (getWeekKey(r.plannedStartTime)?.split("-")[1] ?? null) : null,
+    weekId: r.plannedStartTime ? (getWeekKey(r.plannedStartTime, ACTIVE_CYCLE)?.split("-")[1] ?? null) : null,
   };
 }
 
@@ -305,7 +306,7 @@ export default function TooToGpSchedulePage() {
         ? row.plannedStartTime.split("T")[0]!
         : row.plannedStartTime.split(" ")[0]!;
       if (normalized < todayStr) continue;
-      const weekKey = getWeekKey(row.plannedStartTime);
+      const weekKey = getWeekKey(row.plannedStartTime, ACTIVE_CYCLE);
       if (!weekKey) continue;
       const ks =
         ((row.reviewedSingleExposureTimeSnapshot ?? 0) *
