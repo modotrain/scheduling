@@ -92,12 +92,15 @@ function normalizeForSearch(value: string): string {
 
 const CACHE_KEY = "cycle2-long-term-cache-v1";
 const CACHE_TTL_MS = 10 * 60 * 1000;
-const GP_SOURCE_ID_MAP_CACHE_KEY = "gp-cycle2-sourceid-map-v1";
+const GP_SOURCE_ID_MAP_CACHE_KEY = "gp-cycle2-sourceid-map-v2";
 const GP_SOURCE_ID_MAP_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// gp and gp-cal share the same underlying table, split only by client-side obs_type filtering.
+type GpLinkInfo = { id: number; basePath: "/gp" | "/gp-cal" };
 
 type GpSourceIdMapCachePayload = {
   ts: number;
-  map: Record<string, number>;
+  map: Record<string, GpLinkInfo>;
 };
 
 const TABLE_COLS: (keyof LongTermRow)[] = [
@@ -143,7 +146,7 @@ export default function Cycle2LongTermPage() {
   const [searchText, setSearchText] = useState("");
   const [weekFilter, setWeekFilter] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
-  const [gpSourceIdMap, setGpSourceIdMap] = useState<Record<string, number>>({});
+  const [gpLinkMap, setGpLinkMap] = useState<Record<string, GpLinkInfo>>({});
 
   const loadRows = useCallback(async () => {
     setLoading(true);
@@ -191,13 +194,13 @@ export default function Cycle2LongTermPage() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadGpSourceIdMap() {
+    async function loadGpLinkMap() {
       try {
         const rawCache = sessionStorage.getItem(`${GP_SOURCE_ID_MAP_CACHE_KEY}:cycle${cycle}`);
         if (rawCache) {
           const parsed = JSON.parse(rawCache) as GpSourceIdMapCachePayload;
           if (Date.now() - parsed.ts < GP_SOURCE_ID_MAP_CACHE_TTL_MS) {
-            if (!cancelled) setGpSourceIdMap(parsed.map ?? {});
+            if (!cancelled) setGpLinkMap(parsed.map ?? {});
             return;
           }
         }
@@ -206,16 +209,28 @@ export default function Cycle2LongTermPage() {
       }
 
       try {
-        const response = await fetch(`/api/gp${cycleQuery}`, { cache: 'no-store' });
-        const data = (await response.json()) as { rows?: { id: number; sourceId: string | null }[] };
-        if (!response.ok) return;
+        const sources: { basePath: "/gp" | "/gp-cal"; endpoint: string }[] = [
+          { basePath: "/gp", endpoint: "/api/gp" },
+          { basePath: "/gp-cal", endpoint: "/api/gp-cal" },
+        ];
 
-        const map: Record<string, number> = {};
-        for (const row of data.rows ?? []) {
-          if (row.sourceId) map[row.sourceId] = row.id;
+        const responses = await Promise.all(
+          sources.map(({ endpoint }) => fetch(`${endpoint}${cycleQuery}`, { cache: 'no-store' })),
+        );
+
+        const map: Record<string, GpLinkInfo> = {};
+        for (let i = 0; i < sources.length; i += 1) {
+          const response = responses[i];
+          if (!response.ok) continue;
+          const data = (await response.json()) as { rows?: { id: number; sourceId: string | null }[] };
+          for (const row of data.rows ?? []) {
+            if (row.sourceId && !(row.sourceId in map)) {
+              map[row.sourceId] = { id: row.id, basePath: sources[i].basePath };
+            }
+          }
         }
 
-        if (!cancelled) setGpSourceIdMap(map);
+        if (!cancelled) setGpLinkMap(map);
 
         try {
           sessionStorage.setItem(
@@ -226,11 +241,11 @@ export default function Cycle2LongTermPage() {
           // Ignore cache write failures.
         }
       } catch {
-        // Ignore lookup failures; the schedule-details button will simply be hidden.
+        // Ignore lookup failures; the Timeline button will simply be hidden.
       }
     }
 
-    void loadGpSourceIdMap();
+    void loadGpLinkMap();
     return () => {
       cancelled = true;
     };
@@ -457,9 +472,9 @@ export default function Cycle2LongTermPage() {
                         >
                           Plan
                         </Link>
-                        {row.sourceId && gpSourceIdMap[row.sourceId] !== undefined ? (
+                        {row.sourceId && gpLinkMap[row.sourceId] !== undefined ? (
                           <Link
-                            href={`/gp/${gpSourceIdMap[row.sourceId]}${cycleQuery}`}
+                            href={`${gpLinkMap[row.sourceId].basePath}/${gpLinkMap[row.sourceId].id}${cycleQuery}`}
                             title="View this source's GP observation schedule time table"
                             className="rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                           >
