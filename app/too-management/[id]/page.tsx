@@ -3,6 +3,7 @@
 import { SubmitEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ACTIVE_CYCLE } from "@/app/lib/cycles";
 import { getCycleWeekLabel, getWeekKey } from "@/app/lib/week-utils";
 import GpPlanVisibilityReferenceChart, {
   buildGpPlanVisitPreviews,
@@ -411,7 +412,7 @@ function computeAllVisitWindowsFE(
 // Returns the ISO week label (Wxx) anchored to the Tuesday-start week that
 // contains the date, avoiding Monday-boundary mismatches.
 function getWeekLabelFromDate(dateString: string | null): string {
-  return getCycleWeekLabel(dateString);
+  return getCycleWeekLabel(dateString, ACTIVE_CYCLE);
 }
 
 function addDaysToDateString(dateString: string, days: number): string {
@@ -467,7 +468,7 @@ function getUpcomingTuesdayWindows(count: number): PlanningWindowOption[] {
 
     return {
       value: `${start}:${end}`,
-      label: `${getCycleWeekLabel(start)} · ${formatDateDisplay(start)} – ${formatDateDisplay(end)}`,
+      label: `${getCycleWeekLabel(start, ACTIVE_CYCLE)} · ${formatDateDisplay(start)} – ${formatDateDisplay(end)}`,
       start,
       end,
     };
@@ -677,14 +678,14 @@ export default function TooManagementDetailPage() {
   const modalWeeklyExposure = useMemo(() => {
     // Always produce exactly 6 buckets matching the dropdown week options
     const buckets = planningWindowOptions.map((opt) => {
-      const weekKey = getWeekKey(opt.start) ?? opt.start;
+      const weekKey = getWeekKey(opt.start, ACTIVE_CYCLE) ?? opt.start;
       return { weekKey, label: weekKey.split("-")[1] ?? opt.start, ks: 0 };
     });
     const bucketIndex = new Map(buckets.map((b, i) => [b.weekKey, i]));
     for (const gpRow of gpPoolRows) {
       if (gpRow.scheduledStatus !== "queued") continue;
       if (!gpRow.plannedStartTime) continue;
-      const weekKey = getWeekKey(gpRow.plannedStartTime);
+      const weekKey = getWeekKey(gpRow.plannedStartTime, ACTIVE_CYCLE);
       if (!weekKey) continue;
       const idx = bucketIndex.get(weekKey);
       if (idx === undefined) continue;
@@ -1317,7 +1318,7 @@ export default function TooManagementDetailPage() {
               {(() => {
                 const todayStr = new Date().toISOString().split("T")[0]!;
                 const currentTuesdayStart = getTuesdayWindowForDateStringFE(todayStr).start;
-                const nextWeekLabel = getCycleWeekLabel(addDaysToDateString(currentTuesdayStart, 7));
+                const nextWeekLabel = getCycleWeekLabel(addDaysToDateString(currentTuesdayStart, 7), ACTIVE_CYCLE);
                 return weekPlanningGroups.map((group) => {
                 const allScheduled = group.scheduledCount === group.visitCount;
                 const anyScheduled = group.scheduledCount > 0;
