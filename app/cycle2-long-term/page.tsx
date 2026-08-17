@@ -77,6 +77,11 @@ function parseWeekId(value: string | null): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+function formatDateOnly(value: string): string {
+  const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : value;
+}
+
 function normalizeForSearch(value: string): string {
   return value
     .normalize("NFKC")
@@ -87,6 +92,13 @@ function normalizeForSearch(value: string): string {
 
 const CACHE_KEY = "cycle2-long-term-cache-v1";
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const GP_SOURCE_ID_MAP_CACHE_KEY = "gp-cycle2-sourceid-map-v1";
+const GP_SOURCE_ID_MAP_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type GpSourceIdMapCachePayload = {
+  ts: number;
+  map: Record<string, number>;
+};
 
 const TABLE_COLS: (keyof LongTermRow)[] = [
   "weekId",
@@ -131,6 +143,7 @@ export default function Cycle2LongTermPage() {
   const [searchText, setSearchText] = useState("");
   const [weekFilter, setWeekFilter] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
+  const [gpSourceIdMap, setGpSourceIdMap] = useState<Record<string, number>>({});
 
   const loadRows = useCallback(async () => {
     setLoading(true);
@@ -174,6 +187,54 @@ export default function Cycle2LongTermPage() {
   useEffect(() => {
     void loadRows();
   }, [loadRows]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadGpSourceIdMap() {
+      try {
+        const rawCache = sessionStorage.getItem(`${GP_SOURCE_ID_MAP_CACHE_KEY}:cycle${cycle}`);
+        if (rawCache) {
+          const parsed = JSON.parse(rawCache) as GpSourceIdMapCachePayload;
+          if (Date.now() - parsed.ts < GP_SOURCE_ID_MAP_CACHE_TTL_MS) {
+            if (!cancelled) setGpSourceIdMap(parsed.map ?? {});
+            return;
+          }
+        }
+      } catch {
+        // Ignore sessionStorage read/parse errors (quota/private mode/corrupted cache).
+      }
+
+      try {
+        const response = await fetch(`/api/gp${cycleQuery}`, { cache: 'no-store' });
+        const data = (await response.json()) as { rows?: { id: number; sourceId: string | null }[] };
+        if (!response.ok) return;
+
+        const map: Record<string, number> = {};
+        for (const row of data.rows ?? []) {
+          if (row.sourceId) map[row.sourceId] = row.id;
+        }
+
+        if (!cancelled) setGpSourceIdMap(map);
+
+        try {
+          sessionStorage.setItem(
+            `${GP_SOURCE_ID_MAP_CACHE_KEY}:cycle${cycle}`,
+            JSON.stringify({ ts: Date.now(), map } satisfies GpSourceIdMapCachePayload),
+          );
+        } catch {
+          // Ignore cache write failures.
+        }
+      } catch {
+        // Ignore lookup failures; the schedule-details button will simply be hidden.
+      }
+    }
+
+    void loadGpSourceIdMap();
+    return () => {
+      cancelled = true;
+    };
+  }, [cycle, cycleQuery]);
 
   function handleSort(col: keyof LongTermRow) {
     setSortConfig((prev) => ({
@@ -379,19 +440,33 @@ export default function Cycle2LongTermPage() {
                           <span className="text-slate-400">—</span>
                         ) : col === "weekId" ? (
                           parseWeekId(row.weekId) ?? <span className="text-slate-400">—</span>
+                        ) : col === "startTime" || col === "endTime" ? (
+                          formatDateOnly(String(row[col]))
                         ) : (
                           String(row[col])
                         )}
                       </td>
                     ))}
                     <td className="px-3 py-2">
-                      <Link
-                        href={`/long-term/${row.id}${cycleQuery}`}
-                        onClick={() => cacheDetailSourceName(row.id, row.sourceName)}
-                        className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
-                      >
-                        Details
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/long-term/${row.id}${cycleQuery}`}
+                          onClick={() => cacheDetailSourceName(row.id, row.sourceName)}
+                          title="View this weekly long-term plan entry"
+                          className="rounded-md bg-primary px-3 py-1 text-sm text-white hover:bg-brand-dark"
+                        >
+                          Plan
+                        </Link>
+                        {row.sourceId && gpSourceIdMap[row.sourceId] !== undefined ? (
+                          <Link
+                            href={`/gp/${gpSourceIdMap[row.sourceId]}${cycleQuery}`}
+                            title="View this source's GP observation schedule time table"
+                            className="rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            Timeline
+                          </Link>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))
