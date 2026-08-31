@@ -462,7 +462,8 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const selectedCycle2 = cycle2Rows.filter((r) => !excludedCycle2.has(r.id));
     const selectedGf = gfRows.filter((r) => !excludedGf.has(r.id));
-    const allRows: SourceRow[] = [...selectedCycle2, ...selectedGf, ...tooGpRows];
+    // ToO-GP entries lead the merged CSV, followed by cycle sources, then GF.
+    const allRows: SourceRow[] = [...tooGpRows, ...selectedCycle2, ...selectedGf];
 
     // Determine the week date range for column headers
     // Try to derive from start_time of sources, fallback to a calculated estimate

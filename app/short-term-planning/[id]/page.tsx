@@ -1248,6 +1248,8 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     isExcluded: false,
   }));
   const mergedAll: SourceRow[] = [...cycle2A, ...tooGpConverted, ...cycle2B, ...cycle2Other, ...gfIncluded];
+  // Preview table: exclude GF (priority D) rows and surface ToO-GP entries first.
+  const mergedPreviewRows: SourceRow[] = [...tooGpConverted, ...cycle2A, ...cycle2B, ...cycle2Other];
 
   function calcExpS(rows: SourceRow[]) {
     return rows.reduce((sum, r) => {
@@ -1720,7 +1722,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {mergedAll.slice(0, 50).map((row) => {
+                    {mergedPreviewRows.map((row) => {
                       const rowKey = getSourceRowKey(row);
                       const isSkyHighlighted = lockedSourceKey ? lockedSourceKey === rowKey : hoveredSourceKey === rowKey;
                       return (
@@ -1770,10 +1772,8 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                     );})}
                   </tbody>
                 </table>
-                {mergedAll.length > 50 && (
-                  <p className="px-3 py-2 text-center text-xs text-slate-400">… and {mergedAll.length - 50} more rows in the downloaded CSV</p>
-                )}
               </div>
+
 
               {/* Confirm + Download actions */}
               <div className="mt-5 flex flex-wrap items-center gap-3">
