@@ -461,13 +461,16 @@ export async function GET(request: Request, { params }: RouteParams) {
     });
 
     const selectedCycle2 = cycle2Rows.filter((r) => !excludedCycle2.has(r.id));
-    const selectedGf = gfRows.filter((r) => !excludedGf.has(r.id));
+    // GF rows never carry a real scheduled window in the merged CSV.
+    const selectedGf = gfRows
+      .filter((r) => !excludedGf.has(r.id))
+      .map((r) => ({ ...r, startTime: "null", endTime: "null" }));
     // ToO-GP entries lead the merged CSV, followed by cycle sources, then GF.
     const allRows: SourceRow[] = [...tooGpRows, ...selectedCycle2, ...selectedGf];
 
     // Determine the week date range for column headers
     // Try to derive from start_time of sources, fallback to a calculated estimate
-    const allStartTimes = allRows.map((r) => r.startTime).filter(Boolean) as string[];
+    const allStartTimes = allRows.map((r) => r.startTime).filter((t): t is string => !!t && t !== "null");
     let weekStartDate: Date;
     if (allStartTimes.length > 0) {
       const earliest = allStartTimes.sort()[0];
