@@ -16,7 +16,7 @@
         "d3-geo-projection": "^4.0.0",
         "dotenv": "^17.4.2",
         "drizzle-orm": "^0.45.2",
-        "neonctl": "^3.6.0",
+        "neonctl": "^4.13.0",
         "next": "16.3.3",
         "react": "19.2.8",
         "react-dom": "19.2.8",
@@ -287,11 +287,11 @@
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@0.2.12", "", { "dependencies": { "@emnapi/core": "^1.4.3", "@emnapi/runtime": "^1.4.3", "@tybys/wasm-util": "^0.10.0" } }, "sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ=="],
 
-    "@neon/config": ["@neon/config@1.0.1", "", { "dependencies": { "@neon/sdk": "2.1.0", "jiti": "^2.7.0", "zod": "^4.4.3" } }, "sha512-yQhCTbTmpzu4lwChyZSa6Mh923SU+EmVo/PDHCdweqY1ZxpRv5+Xx344yG4m5WTLQOMq5FXfF72NChcFV5EXCA=="],
+    "@neon/config": ["@neon/config@1.1.0", "", { "dependencies": { "@neon/sdk": "3.0.0", "jiti": "^2.7.0", "zod": "^4.4.3" } }, "sha512-INqhLuu0HFzrA/3OY3ck+4tfv9DYdQT7pooIzoG9+6jHvYetvgxE7rfa/cQ+Z86B9fdFBG/N+Oq9qPKmm+dbtg=="],
 
-    "@neon/config-runtime": ["@neon/config-runtime@1.0.1", "", { "dependencies": { "@neon/config": "1.0.1", "@vercel/nft": "^1.10.2", "esbuild": "^0.28.1", "fflate": "^0.8.3" } }, "sha512-70bkzE3XVsolyCIWcKxGiEHwT+llyiZFrUVk/6/886d38sLl0zXNeTU6iYE/WzPrMj8tfo2Szjg4Sl38vE9YHA=="],
+    "@neon/config-runtime": ["@neon/config-runtime@1.1.0", "", { "dependencies": { "@neon/config": "1.1.0", "@vercel/nft": "^1.10.2", "esbuild": "^0.28.1", "fflate": "^0.8.3" } }, "sha512-euYV8wBj+0vFqQORhuWRTGXFq6ERhMzAgzOuWxgSob4Sxww81cTsXA1B0n/IuSEbaTWaFF1+717sPJ70h1xO9w=="],
 
-    "@neon/sdk": ["@neon/sdk@2.1.0", "", {}, "sha512-TBTDbDTjgW9ygh+qAlOMkc35/ITBJAV1IQTR7vstix7xMdxgb45qmmYPVoB3Kdbtx8swf+49y3UzqVwHoHdW7g=="],
+    "@neon/sdk": ["@neon/sdk@3.0.0", "", {}, "sha512-HoWXk7t6MqTo0s5tbFinYNcuojsLAperd8I6oouibBLie2pnucIfTP10FtQZPfZVABvnU2SGm+QT9pQDmVfGeA=="],
 
     "@neondatabase/serverless": ["@neondatabase/serverless@1.1.0", "", {}, "sha512-r3ZZhRjEcfEdKIZnoB1RusNgvHuaBRqfCzV4Gi+5A9yUX0S4HTws/ASWqt13wL4y4I+0rqsWGdA2w7EQXHi3+Q=="],
 
@@ -1025,9 +1025,9 @@
 
     "natural-compare": ["natural-compare@1.4.0", "", {}, "sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw=="],
 
-    "neon": ["neon@3.6.0", "", { "dependencies": { "@clack/core": "0.4.2", "@clack/prompts": "0.10.1", "@hono/node-server": "2.0.4", "@neon/config": "1.0.1", "@neon/config-runtime": "1.0.1", "@neon/sdk": "2.1.0", "@segment/analytics-node": "1.3.0", "add-mcp": "2.0.0", "chalk": "5.3.0", "chokidar": "5.0.0", "cliui": "8.0.1", "diff": "5.2.0", "execa": "^9.5.2", "fflate": "^0.8.3", "open": "^10.2.0", "openid-client": "6.8.1", "pg-protocol": "^1.14.0", "picocolors": "^1.1.1", "prompts": "2.4.2", "undici": "^7.28.0", "which": "3.0.1", "yaml": "^2.9.0", "yargs": "17.7.2", "yoctocolors": "^2.1.2" }, "optionalDependencies": { "@napi-rs/keyring": "1.3.0", "esbuild": "0.28.1" }, "bin": { "neon": "dist/cli.js" } }, "sha512-IiyeppgDNByuZmPqurumZ4YYMxuycGYg/SCGkfFLlU3fwL9LKaIpZipVEK/Jmwzpa9cIcw7u2ki0wsJ/mA8URQ=="],
+    "neon": ["neon@4.13.0", "", { "dependencies": { "@clack/core": "0.4.2", "@clack/prompts": "0.10.1", "@hono/node-server": "2.0.4", "@neon/config": "1.1.0", "@neon/config-runtime": "1.1.0", "@neon/sdk": "3.0.0", "@segment/analytics-node": "1.3.0", "add-mcp": "2.0.0", "chalk": "5.3.0", "chokidar": "5.0.0", "cliui": "8.0.1", "diff": "5.2.0", "execa": "^9.5.2", "fflate": "^0.8.3", "open": "^10.2.0", "openid-client": "6.8.1", "pg-protocol": "^1.14.0", "picocolors": "^1.1.1", "prompts": "2.4.2", "undici": "^7.28.0", "which": "3.0.1", "yaml": "^2.9.0", "yargs": "17.7.2", "yoctocolors": "^2.1.2" }, "optionalDependencies": { "@napi-rs/keyring": "1.3.0", "esbuild": "0.28.1" }, "bin": { "neon": "dist/cli.js" } }, "sha512-huwuanD4ebhf1UGLnvZhfkZy5IrT9u7jwQdMsgQtPLJ7nR1fl8nyZrjvuUBEx451SaQvjVzaffKFkulhcPlFWA=="],
 
-    "neonctl": ["neonctl@3.6.0", "", { "dependencies": { "neon": "3.6.0" }, "bin": { "neonctl": "bin/cli.js", "neon": "bin/cli.js" } }, "sha512-ram9RcLh5cMXhuQibEkR7DUvE4qAiec0ixY1+ctxMHFCblVvMROis92fqtpvXUO30P/464T2UUKEppvY7LUyCQ=="],
+    "neonctl": ["neonctl@4.13.0", "", { "dependencies": { "neon": "4.13.0" }, "bin": { "neonctl": "bin/cli.js", "neon": "bin/cli.js" } }, "sha512-9gaHtPCh6Yk+G3KVwGbORKgaL8cOiZMPMe9/T0CNEPjDUhUU3tI1LrKkngHbV0NTb047q+X+HnF16CJwf71lUQ=="],
 
     "next": ["next@16.3.3", "", { "dependencies": { "@next/env": "16.3.3", "@swc/helpers": "0.5.23", "baseline-browser-mapping": "^2.9.19", "caniuse-lite": "^1.0.30001579", "postcss": "8.5.23", "styled-jsx": "5.1.6" }, "optionalDependencies": { "@next/swc-darwin-arm64": "16.3.3", "@next/swc-darwin-x64": "16.3.3", "@next/swc-linux-arm64-gnu": "16.3.3", "@next/swc-linux-arm64-musl": "16.3.3", "@next/swc-linux-x64-gnu": "16.3.3", "@next/swc-linux-x64-musl": "16.3.3", "@next/swc-win32-arm64-msvc": "16.3.3", "@next/swc-win32-x64-msvc": "16.3.3", "sharp": "^0.35.3" }, "peerDependencies": { "@opentelemetry/api": "^1.1.0", "@playwright/test": "^1.51.1", "babel-plugin-react-compiler": "*", "react": "^18.2.0 || 19.0.0-rc-de68d2f4-20241204 || ^19.0.0", "react-dom": "^18.2.0 || 19.0.0-rc-de68d2f4-20241204 || ^19.0.0", "sass": "^1.3.0" }, "optionalPeers": ["@opentelemetry/api", "@playwright/test", "babel-plugin-react-compiler", "sass"], "bin": { "next": "dist/bin/next" } }, "sha512-tuRTx1nQ/yVw83cwJBo9F+njGUgMn3UHQycreWHB8XsStvvAh1AthbI8/4IpKnFaF58F+iSiHejYOlMQ/eq83g=="],
 
