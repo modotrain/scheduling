@@ -246,17 +246,19 @@ export function evaluateGpVisibility({
 
   const visibleRanges: VisibilityRange[] = [];
   let activeStart: string | null = null;
-  for (const day of daySeries) {
-    if (day.visible && !activeStart) {
+  for (let index = 0; index < daySeries.length - 1; index += 1) {
+    const day = daySeries[index]!;
+    const segmentVisible = day.visible && daySeries[index + 1]!.visible;
+    if (segmentVisible && !activeStart) {
       activeStart = day.date;
     }
-    if (!day.visible && activeStart) {
+    if (!segmentVisible && activeStart) {
       visibleRanges.push({ start: activeStart, end: day.date });
       activeStart = null;
     }
   }
   if (activeStart) {
-    visibleRanges.push({ start: activeStart, end: addDays(daySeries[daySeries.length - 1]?.date ?? plannedStart, 1) });
+    visibleRanges.push({ start: activeStart, end: daySeries[daySeries.length - 1]!.date });
   }
 
   const dayLookup = new Map(daySeries.map((day) => [day.date, day]));
@@ -264,7 +266,7 @@ export function evaluateGpVisibility({
     const day = dayLookup.get(visit.dayKey) ?? null;
     return {
       ...visit,
-      visible: day ? day.visible : visit.visible,
+      visible: visibleRanges.some((range) => range.start < visit.end && visit.start < range.end),
       sunAngle: day ? day.sunAngle : visit.sunAngle,
       moonAngle: day ? day.moonAngle : visit.moonAngle,
     };
