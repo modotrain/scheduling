@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(readFileSync(filename, "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
 
-function loadVisibility(engine) {
+function loadChart(engine, activeCycle = 3, getCycleWeekLabel = () => "W43") {
   const compiledModule = { exports: {} };
   runInNewContext(compiled, {
     Date,
@@ -20,14 +20,15 @@ function loadVisibility(engine) {
     exports: compiledModule.exports,
     require: (name) => {
       if (name === "astronomy-engine") return engine;
-      if (name === "@/app/lib/week-utils") return { getCycleWeekLabel: () => "W43" };
+      if (name === "@/app/lib/cycles") return { ACTIVE_CYCLE: activeCycle };
+      if (name === "@/app/lib/week-utils") return { getCycleWeekLabel };
       return require(name);
     },
   }, { filename: filename.pathname });
-  return compiledModule.exports.evaluateGpVisibility;
+  return compiledModule.exports;
 }
 
-const evaluateControlled = loadVisibility({
+const { evaluateGpVisibility: evaluateControlled } = loadChart({
   Body: { Sun: "Sun", Moon: "Moon" },
   GeoVector: (body, date) => ({
     x: body === "Sun" || date.toISOString().slice(0, 10) !== "2026-10-23" ? -1 : 1,
@@ -45,6 +46,23 @@ function evaluate(evaluator, start, end, sourceRa = "0", sourceDec = "0") {
     visitPreviews: [{ visitNo: 1, start, end, weekId: "W43" }],
   });
 }
+
+test("visit week labels use the active cycle for every preview", () => {
+  for (const activeCycle of [3, 4]) {
+    const calls = [];
+    const { buildGpPlanVisitPreviews } = loadChart(Astronomy, activeCycle, (date, cycle) => {
+      calls.push({ date, cycle });
+      return `cycle${cycle}-${date}`;
+    });
+    const previews = buildGpPlanVisitPreviews("2026-10-20", "2026-10-27", 2, 7, "day");
+    assert.deepEqual(calls, [
+      { date: "2026-10-22", cycle: activeCycle },
+      { date: "2026-10-29", cycle: activeCycle },
+    ]);
+    assert.equal(previews[0].weekId, `cycle${activeCycle}-2026-10-22`);
+    assert.equal(previews[1].weekId, `cycle${activeCycle}-2026-10-29`);
+  }
+});
 
 test("a blocked midpoint does not reject a window with two visible ranges", () => {
   for (const start of ["2026-10-20", "2026-10-21"]) {
@@ -92,7 +110,7 @@ test("touching a visible range at an exclusive boundary is not overlap", () => {
 });
 
 test("real October 2026 ephemeris gives consistent daily geometry across ranges", () => {
-  const evaluateReal = loadVisibility(Astronomy);
+  const { evaluateGpVisibility: evaluateReal } = loadChart(Astronomy);
   const moon = Astronomy.GeoVector(Astronomy.Body.Moon, new Date("2026-10-23T00:00:00Z"), true);
   const sourceRa = String((Math.atan2(moon.y, moon.x) * 180 / Math.PI + 360) % 360);
   const sourceDec = String(Math.asin(moon.z / Math.hypot(moon.x, moon.y, moon.z)) * 180 / Math.PI);

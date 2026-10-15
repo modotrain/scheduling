@@ -3,6 +3,7 @@
 import { MouseEvent as ReactMouseEvent, ReactElement, useId, useMemo, useState } from "react";
 import * as Astronomy from "astronomy-engine";
 
+import { ACTIVE_CYCLE } from "@/app/lib/cycles";
 import { getCycleWeekLabel } from "@/app/lib/week-utils";
 
 const SUN_THRESHOLD_A1 = 94.5;
@@ -182,7 +183,7 @@ export function buildGpPlanVisitPreviews(
     visitNo: index + 1,
     start: window.start,
     end: window.end,
-    weekId: getCycleWeekLabel(window.weekStart),
+    weekId: getCycleWeekLabel(window.weekStart, ACTIVE_CYCLE),
   }));
 }
 
