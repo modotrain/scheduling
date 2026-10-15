@@ -18,12 +18,12 @@
     "csv-parse": "^7.0.3",
     "d3-geo": "^3.1.1",
     "d3-geo-projection": "^4.0.0",
-    "dotenv": "^18.0.7",
+    "dotenv": "^18.0.8",
     "drizzle-orm": "^0.45.4",
-    "neonctl": "^8.4.1",
-    "next": "16.4.0",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "neonctl": "^8.4.5",
+    "next": "16.4.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
@@ -32,7 +32,7 @@
     "@types/react-dom": "^19.3.0",
     "drizzle-kit": "^0.31.11",
     "eslint": "^10.12.0",
-    "eslint-config-next": "16.4.0",
+    "eslint-config-next": "16.4.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3"
   },
