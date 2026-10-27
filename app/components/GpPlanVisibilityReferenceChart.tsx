@@ -332,14 +332,14 @@ export default function GpPlanVisibilityReferenceChart({
     return fallbackToRight ? padding.left + chartWidth : padding.left;
   };
 
-  const dayBoundsForIndex = (index: number): { left: number; right: number } => {
-    const x = xForIndex(index);
-    const prev = index > 0 ? xForIndex(index - 1) : x;
-    const next = index < state.daySeries.length - 1 ? xForIndex(index + 1) : x;
-    const left = index === 0 ? padding.left : (prev + x) / 2;
-    const right = index === state.daySeries.length - 1 ? padding.left + chartWidth : (x + next) / 2;
-    return { left, right };
-  };
+  // const dayBoundsForIndex = (index: number): { left: number; right: number } => {
+  //   const x = xForIndex(index);
+  //   const prev = index > 0 ? xForIndex(index - 1) : x;
+  //   const next = index < state.daySeries.length - 1 ? xForIndex(index + 1) : x;
+  //   const left = index === 0 ? padding.left : (prev + x) / 2;
+  //   const right = index === state.daySeries.length - 1 ? padding.left + chartWidth : (x + next) / 2;
+  //   return { left, right };
+  // };
 
   const segmentBoundsForIndex = (index: number): { left: number; right: number } => {
     if (state.daySeries.length <= 1) {
