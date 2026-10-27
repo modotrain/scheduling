@@ -2014,7 +2014,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                               s.table === "gf"
                                 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                                 : "bg-primary/10 text-primary"
-                            }`}>{s.table === "gf" ? "GF" : "C2"}</span>
+                            }`}>{s.table === "gf" ? "GF" : `C${ACTIVE_CYCLE}`}</span>
                           </td>
                           <td className="px-3 py-2 font-mono text-[11px]">{s.sourceId ?? "—"}</td>
                           <td className="max-w-[130px] truncate px-3 py-2 font-medium">{s.sourceName ?? "—"}</td>
