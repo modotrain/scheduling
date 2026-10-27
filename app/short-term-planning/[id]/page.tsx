@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ACTIVE_CYCLE, getCycleLabel } from "@/app/lib/cycles";
+import { getCycleWeekDateRange } from "@/app/lib/week-utils";
 import SkyMap, { type SkyPayload, type SkyPoint } from "@/app/components/SkyMap";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -121,6 +122,12 @@ type WeekOption = {
   maxEnd: string | null;
 };
 
+type ReassignmentWindow = {
+  weekId: string;
+  startDate: string;
+  endDate: string;
+};
+
 type SchedulerMode = "unp-first" | "eff-first";
 
 type SchedulerJob = {
@@ -149,6 +156,33 @@ function fmtKs(seconds: number): string {
 function formatWeekId(weekId: string): string {
   const num = parseInt(weekId.replace(/\D/g, ""), 10);
   return isNaN(num) ? weekId : `W${String(num).padStart(2, "0")}`;
+}
+
+function shiftDate(dateString: string, days: number): string {
+  const date = new Date(`${dateString}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function makeReassignmentWindow(weekId: string): ReassignmentWindow {
+  const range = getCycleWeekDateRange(weekId, ACTIVE_CYCLE);
+  return {
+    weekId,
+    startDate: range?.start ?? "",
+    endDate: range?.end ?? "",
+  };
+}
+
+function isValidReassignmentWindow(window: ReassignmentWindow | undefined): window is ReassignmentWindow {
+  if (!window) return false;
+  const range = getCycleWeekDateRange(window.weekId, ACTIVE_CYCLE);
+  return Boolean(
+    range &&
+      window.startDate >= range.start &&
+      window.startDate < range.end &&
+      window.endDate > window.startDate &&
+      window.endDate <= range.end,
+  );
 }
 
 function normalizeDateOnly(value: string | null): string | null {
@@ -640,7 +674,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   // Post-confirm
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [assignments, setAssignments] = useState<Record<number, string>>({});
+  const [assignments, setAssignments] = useState<Record<number, ReassignmentWindow>>({});
   const [reassigning, setReassigning] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [availableWeeks, setAvailableWeeks] = useState<WeekOption[]>([]);
@@ -1022,9 +1056,10 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
       setUploadResult(data);
       setSession((prev) => prev ? { ...prev, status: "uploaded" } : prev);
       // Initialize assignments with current weekId as default
-      const defaults: Record<number, string> = {};
+      const defaults: Record<number, ReassignmentWindow> = {};
+      const nextWeekId = availableWeeks.find((week) => week.weekId !== session.weekId)?.weekId ?? "";
       for (const s of data.unscheduledSources) {
-        defaults[s.rowId] = availableWeeks.find((w) => w.weekId !== session.weekId)?.weekId ?? session.weekId;
+        defaults[s.rowId] = makeReassignmentWindow(nextWeekId);
       }
       setAssignments(defaults);
     } finally {
@@ -1035,15 +1070,25 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
 
   async function handleReassign() {
     if (!session || !uploadResult) return;
-    const toAssign = uploadResult.unscheduledSources.filter((s) => assignments[s.rowId]);
+    const toAssign = uploadResult.unscheduledSources.filter((s) => assignments[s.rowId]?.weekId);
     if (toAssign.length === 0) { alert("No sources to reassign."); return; }
+    if (toAssign.some((source) => !isValidReassignmentWindow(assignments[source.rowId]))) {
+      alert("Each reassignment date range must be valid and remain within its selected week.");
+      return;
+    }
     setReassigning(true);
     try {
       const res = await fetch(`/api/short-term-plan/sessions/${session.id}/reassign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          assignments: toAssign.map((s) => ({ rowId: s.rowId, table: s.table, newWeekId: assignments[s.rowId] })),
+          assignments: toAssign.map((s) => ({
+            rowId: s.rowId,
+            table: s.table,
+            newWeekId: assignments[s.rowId]!.weekId,
+            startDate: assignments[s.rowId]!.startDate,
+            endDate: assignments[s.rowId]!.endDate,
+          })),
         }),
       });
       if (!res.ok) { alert("Failed to reassign. Please try again."); return; }
@@ -1940,11 +1985,14 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                       <button
                         onClick={() => {
                           // Set all assignments to the next available week
-                          const nextWeek = availableWeeks.find((w) => w.weekId !== session.weekId)?.weekId ?? session.weekId;
-                          const bulk: Record<number, string> = {};
-                          for (const s of uploadResult.unscheduledSources) bulk[s.rowId] = nextWeek;
+                          const nextWeek = availableWeeks.find((week) => week.weekId !== session.weekId)?.weekId ?? "";
+                          const bulk: Record<number, ReassignmentWindow> = {};
+                          for (const source of uploadResult.unscheduledSources) {
+                            bulk[source.rowId] = makeReassignmentWindow(nextWeek);
+                          }
                           setAssignments(bulk);
                         }}
+                        disabled={availableWeeks.length === 0}
                         className="text-xs text-primary underline-offset-1 hover:underline"
                       >
                         Set all to next week
@@ -1963,7 +2011,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                   These sources were not found in the uploaded scheduling result. Assign them to a future week to keep them in the plan.
                 </p>
                 <div className="overflow-x-auto rounded-lg border border-amber-200/60 dark:border-amber-800/30">
-                  <table className="w-full text-xs">
+                  <table className="min-w-[980px] w-full text-xs">
                     <thead>
                       <tr className="border-b border-amber-200/60 bg-amber-50 text-left text-[11px] uppercase tracking-wider text-slate-500 dark:border-amber-800/30 dark:bg-amber-900/20 dark:text-slate-400">
                         <th className="px-3 py-2">Cycle</th>
@@ -1977,6 +2025,11 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                     <tbody className="divide-y divide-amber-100/60 dark:divide-amber-900/20">
                       {uploadResult.unscheduledSources.map((s) => (
                         <tr key={`${s.table}-${s.rowId}`} className="bg-white dark:bg-slate-900/60">
+                          {(() => {
+                            const assignment = assignments[s.rowId];
+                            const weekRange = getCycleWeekDateRange(assignment?.weekId, ACTIVE_CYCLE);
+                            return (
+                              <>
                           <td className="px-3 py-2">
                             <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
                               s.table === "gf"
@@ -1988,22 +2041,72 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
                           <td className="max-w-[130px] truncate px-3 py-2 font-medium">{s.sourceName ?? "—"}</td>
                           <td className="px-3 py-2 text-[10px]">{s.obsType ?? "—"}</td>
                           <td className="px-3 py-2 font-mono">{formatWeekId(session.weekId)}</td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-2 align-top">
                             {isCompleted ? (
-                              <span className="font-mono text-green-600 dark:text-green-400">{assignments[s.rowId] ?? "—"}</span>
+                              <span className="font-mono text-green-600 dark:text-green-400">
+                                {assignment?.weekId ? `${formatWeekId(assignment.weekId)} · ${assignment.startDate} – ${assignment.endDate}` : "—"}
+                              </span>
                             ) : (
-                              <select
-                                value={assignments[s.rowId] ?? ""}
-                                onChange={(e) => setAssignments((prev) => ({ ...prev, [s.rowId]: e.target.value }))}
-                                className="rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
-                              >
-                                <option value="">— skip —</option>
-                                {availableWeeks.filter((w) => w.weekId !== session.weekId).map((w) => (
-                                  <option key={w.weekId} value={w.weekId}>{formatWeekId(w.weekId)}{w.minStart ? ` (${w.minStart.slice(0, 10)})` : ""}</option>
-                                ))}
-                              </select>
+                              <div className="min-w-[18rem] space-y-1.5">
+                                <select
+                                  value={assignment?.weekId ?? ""}
+                                  onChange={(event) => {
+                                    const nextAssignment = makeReassignmentWindow(event.target.value);
+                                    setAssignments((prev) => ({ ...prev, [s.rowId]: nextAssignment }));
+                                  }}
+                                  disabled={reassigning}
+                                  className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-600 dark:bg-slate-800"
+                                >
+                                  <option value="">— skip —</option>
+                                  {availableWeeks.filter((week) => week.weekId !== session.weekId).map((week) => (
+                                    <option key={week.weekId} value={week.weekId}>{formatWeekId(week.weekId)}</option>
+                                  ))}
+                                </select>
+                                {weekRange ? (
+                                  <>
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      <label className="min-w-0 text-[10px] text-slate-500 dark:text-slate-400">
+                                        Start
+                                        <input
+                                          type="date"
+                                          value={assignment?.startDate ?? ""}
+                                          min={weekRange.start}
+                                          max={shiftDate(weekRange.end, -1)}
+                                          disabled={!assignment?.weekId || reassigning}
+                                          onChange={(event) => setAssignments((prev) => ({
+                                            ...prev,
+                                            [s.rowId]: { ...assignment!, startDate: event.target.value },
+                                          }))}
+                                          className="mt-0.5 block w-full rounded border border-slate-300 bg-white px-1.5 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                                        />
+                                      </label>
+                                      <label className="min-w-0 text-[10px] text-slate-500 dark:text-slate-400">
+                                        End (exclusive)
+                                        <input
+                                          type="date"
+                                          value={assignment?.endDate ?? ""}
+                                          min={assignment?.startDate ? shiftDate(assignment.startDate, 1) : weekRange.start}
+                                          max={weekRange.end}
+                                          disabled={!assignment?.weekId || reassigning}
+                                          onChange={(event) => setAssignments((prev) => ({
+                                            ...prev,
+                                            [s.rowId]: { ...assignment!, endDate: event.target.value },
+                                          }))}
+                                          className="mt-0.5 block w-full rounded border border-slate-300 bg-white px-1.5 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                                        />
+                                      </label>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                                      Allowed: {weekRange.start} – {weekRange.end}
+                                    </p>
+                                  </>
+                                ) : null}
+                              </div>
                             )}
                           </td>
+                              </>
+                            );
+                          })()}
                         </tr>
                       ))}
                     </tbody>

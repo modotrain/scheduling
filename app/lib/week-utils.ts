@@ -51,3 +51,22 @@ export function getWeekKey(
   if (label === "—") return null;
   return `cycle${cycle}-${label}`;
 }
+
+export function getCycleWeekDateRange(
+  weekId: string | null | undefined,
+  cycle = 2,
+): { start: string; end: string } | null {
+  if (!weekId) return null;
+  const weekNo = Number.parseInt(weekId.replace(/\D/g, ""), 10);
+  if (!Number.isInteger(weekNo) || weekNo < 1) return null;
+
+  const start = new Date(`${epochForCycle(cycle)}T00:00:00Z`);
+  start.setUTCDate(start.getUTCDate() + (weekNo - 1) * 7);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 7);
+
+  const toDateOnly = (date: Date) =>
+    [date.getUTCFullYear(), String(date.getUTCMonth() + 1).padStart(2, "0"), String(date.getUTCDate()).padStart(2, "0")].join("-");
+
+  return { start: toDateOnly(start), end: toDateOnly(end) };
+}

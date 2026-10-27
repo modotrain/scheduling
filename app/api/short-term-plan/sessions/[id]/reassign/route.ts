@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { ACTIVE_CYCLE } from "@/app/lib/cycles";
+import { getCycleWeekDateRange } from "@/app/lib/week-utils";
 import { db } from "@/src/db/client";
 import { getCycleTables } from "@/src/db/cycle-tables";
 import { shortTermPlanSessions, type WeekIdChange } from "@/src/db/schema";
@@ -14,7 +15,17 @@ type Assignment = {
   rowId: number;
   table: "cycle" | "cycle2" | "gf";
   newWeekId: string;
+  startDate: string;
+  endDate: string;
 };
+
+type ValidatedAssignment = Assignment & { startTime: string; endTime: string };
+
+function isDateOnly(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
 
 export async function POST(request: Request, { params }: RouteParams) {
   try {
@@ -45,9 +56,42 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "assignments array required" }, { status: 400 });
     }
 
+    const validatedAssignments: ValidatedAssignment[] = [];
+    for (const assignment of body.assignments) {
+      if (
+        !Number.isInteger(assignment.rowId) ||
+        !["cycle", "cycle2", "gf"].includes(assignment.table) ||
+        typeof assignment.newWeekId !== "string"
+      ) {
+        return NextResponse.json({ error: "Invalid assignment" }, { status: 400 });
+      }
+
+      const weekRange = getCycleWeekDateRange(assignment.newWeekId, ACTIVE_CYCLE);
+      if (!weekRange || !isDateOnly(assignment.startDate) || !isDateOnly(assignment.endDate)) {
+        return NextResponse.json({ error: "Invalid assignment dates or week" }, { status: 400 });
+      }
+      if (
+        assignment.startDate < weekRange.start ||
+        assignment.startDate >= weekRange.end ||
+        assignment.endDate <= assignment.startDate ||
+        assignment.endDate > weekRange.end
+      ) {
+        return NextResponse.json(
+          { error: `Date range must be within ${weekRange.start} to ${weekRange.end} for ${assignment.newWeekId}` },
+          { status: 400 },
+        );
+      }
+
+      validatedAssignments.push({
+        ...assignment,
+        startTime: `${assignment.startDate}T00:00:00`,
+        endTime: `${assignment.endDate}T00:00:00`,
+      });
+    }
+
     const changes: WeekIdChange[] = [];
 
-    for (const assignment of body.assignments) {
+    for (const assignment of validatedAssignments) {
       if (assignment.table === "gf") {
         const [row] = await db
           .select({ weekId: longTermGf.weekId })
@@ -58,7 +102,12 @@ export async function POST(request: Request, { params }: RouteParams) {
           changes.push({ rowId: assignment.rowId, table: "gf", oldWeekId: row.weekId, newWeekId: assignment.newWeekId });
           await db
             .update(longTermGf)
-            .set({ weekId: assignment.newWeekId, updatedAt: sql`now()` })
+            .set({
+              weekId: assignment.newWeekId,
+              startTime: assignment.startTime,
+              endTime: assignment.endTime,
+              updatedAt: sql`now()`,
+            })
             .where(eq(longTermGf.id, assignment.rowId));
         }
       } else {
@@ -71,7 +120,12 @@ export async function POST(request: Request, { params }: RouteParams) {
           changes.push({ rowId: assignment.rowId, table: "cycle", oldWeekId: row.weekId, newWeekId: assignment.newWeekId });
           await db
             .update(longTermCycle)
-            .set({ weekId: assignment.newWeekId, updatedAt: sql`now()` })
+            .set({
+              weekId: assignment.newWeekId,
+              startTime: assignment.startTime,
+              endTime: assignment.endTime,
+              updatedAt: sql`now()`,
+            })
             .where(eq(longTermCycle.id, assignment.rowId));
         }
       }
