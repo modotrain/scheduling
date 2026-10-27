@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -145,11 +145,6 @@ function fmtKs(seconds: number): string {
   return (seconds / 1000).toFixed(1) + " ks";
 }
 
-function formatWeekRange(minStart: string | null, maxEnd: string | null): string {
-  if (!minStart) return "";
-  return `${minStart.slice(0, 10)} – ${(maxEnd ?? "?").slice(0, 10)}`;
-}
-
 /** Normalize any week ID to "W42" display format (handles "42", "WK42", "W42"). */
 function formatWeekId(weekId: string): string {
   const num = parseInt(weekId.replace(/\D/g, ""), 10);
@@ -243,6 +238,35 @@ function groupTooGpRows(rows: TooGpSourceRow[]): TooGpGroupedRow[] {
 const SKYMAP_VISIBLE_STORAGE_KEY = "short-term-planning:skymap-visible";
 const SKYMAP_POPUP_LAYOUT_STORAGE_KEY = "short-term-planning:skymap-popup-layout";
 const SKYMAP_GF_STORAGE_KEY = "short-term-planning:skymap-gf";
+const PREFERENCES_CHANGE_EVENT = "short-term-planning:preferences-change";
+
+function subscribeToPreferences(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(PREFERENCES_CHANGE_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(PREFERENCES_CHANGE_EVENT, onChange);
+  };
+}
+
+function useLocalStoragePreference(key: string, defaultValue: string): [string, (value: string) => void] {
+  const value = useSyncExternalStore(
+    subscribeToPreferences,
+    () => window.localStorage.getItem(key) ?? defaultValue,
+    () => defaultValue,
+  );
+
+  const updateValue = useCallback((nextValue: string) => {
+    try {
+      window.localStorage.setItem(key, nextValue);
+      window.dispatchEvent(new Event(PREFERENCES_CHANGE_EVENT));
+    } catch {
+      // Ignore local preference write failures.
+    }
+  }, [key]);
+
+  return [value, updateValue];
+}
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -602,20 +626,14 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
 
   // Step 2 & 3 data
   const [cycle2Rows, setCycle2Rows] = useState<SourceRow[]>([]);
-  const [cycle2Stats, setCycle2Stats] = useState<SourceStats | null>(null);
-  const [cycle2Loading, setCycle2Loading] = useState(false);
   const [cycle2Loaded, setCycle2Loaded] = useState(false);
   const [excludedCycle2, setExcludedCycle2] = useState<Set<number>>(new Set());
 
   const [gfRows, setGfRows] = useState<SourceRow[]>([]);
-  const [gfStats, setGfStats] = useState<SourceStats | null>(null);
-  const [gfLoading, setGfLoading] = useState(false);
   const [gfLoaded, setGfLoaded] = useState(false);
   const [excludedGf, setExcludedGf] = useState<Set<number>>(new Set());
 
   const [tooGpRows, setTooGpRows] = useState<TooGpSourceRow[]>([]);
-  const [tooGpStats, setTooGpStats] = useState<SourceStats | null>(null);
-  const [tooGpLoading, setTooGpLoading] = useState(false);
   const [tooGpLoaded, setTooGpLoaded] = useState(false);
   const [excludedTooGp, setExcludedTooGp] = useState<Set<number>>(new Set());
 
@@ -633,17 +651,21 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
 
   // Scheduler state
   const [schedulerJob, setSchedulerJob] = useState<SchedulerJob | null>(null);
-  const [schedulerLoading, setSchedulerLoading] = useState(false);
+  const [schedulerLoading, setSchedulerLoading] = useState(true);
   const [schedulerStarting, setSchedulerStarting] = useState(false);
   const [schedulerMode, setSchedulerMode] = useState<SchedulerMode>("unp-first");
   const [schedulerRuns, setSchedulerRuns] = useState(1000);
   const [schedulerWorkers, setSchedulerWorkers] = useState(4);
   const [hoveredSourceKey, setHoveredSourceKey] = useState<string | null>(null);
   const [lockedSourceKey, setLockedSourceKey] = useState<string | null>(null);
-  const [showSkyMapGf, setShowSkyMapGf] = useState(true);
-  const [isSessionMapVisible, setIsSessionMapVisible] = useState(true);
+  const [storedShowGf, setStoredShowGf] = useLocalStoragePreference(SKYMAP_GF_STORAGE_KEY, "1");
+  const [storedMapVisible, setStoredMapVisible] = useLocalStoragePreference(SKYMAP_VISIBLE_STORAGE_KEY, "1");
+  const [storedPopupLayout, setStoredPopupLayout] = useLocalStoragePreference(SKYMAP_POPUP_LAYOUT_STORAGE_KEY, "floating");
+  const showSkyMapGf = storedShowGf !== "0";
+  const isSessionMapVisible = storedMapVisible !== "0";
+  const sessionMapPopupLayout: "floating" | "side" = storedPopupLayout === "side" ? "side" : "floating";
+  const setShowSkyMapGf = useCallback((value: boolean) => setStoredShowGf(value ? "1" : "0"), [setStoredShowGf]);
   const [isSessionMapExpanded, setIsSessionMapExpanded] = useState(false);
-  const [sessionMapPopupLayout, setSessionMapPopupLayout] = useState<"floating" | "side">("floating");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sessionMapRef = useRef<HTMLDivElement>(null);
@@ -659,7 +681,6 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   }, [params]);
 
   const loadSession = useCallback(async (id: number) => {
-    setSessionLoading(true);
     try {
       const res = await fetch(`/api/short-term-plan/sessions/${id}`);
       if (!res.ok) { router.push("/short-term-planning"); return; }
@@ -669,12 +690,12 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
       setCycle2Rows([]);
       setGfRows([]);
       setTooGpRows([]);
-      setCycle2Stats(null);
-      setGfStats(null);
-      setTooGpStats(null);
       setCycle2Loaded(false);
       setGfLoaded(false);
       setTooGpLoaded(false);
+      setHoveredSourceKey(null);
+      setLockedSourceKey(null);
+      setIsSessionMapExpanded(false);
       setExcludedCycle2(new Set(s.excludedCycle2Ids));
       setExcludedGf(new Set(s.excludedGfIds));
       setExcludedTooGp(new Set(s.excludedTooGpIds ?? []));
@@ -708,7 +729,6 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
 
   const loadSchedulerJob = useCallback(async () => {
     if (!session) return;
-    setSchedulerLoading(true);
     try {
       const res = await fetch(`/api/short-term-plan/sessions/${session.id}/scheduler`);
       if (!res.ok) return;
@@ -733,56 +753,6 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
     }, 1500);
     return () => clearInterval(timer);
   }, [session, schedulerJob, loadSchedulerJob]);
-
-  useEffect(() => {
-    setHoveredSourceKey(null);
-    setLockedSourceKey(null);
-    setIsSessionMapExpanded(false);
-  }, [currentStep, sessionId]);
-
-  useEffect(() => {
-    try {
-      const visibleRaw = localStorage.getItem(SKYMAP_VISIBLE_STORAGE_KEY);
-      const popupLayoutRaw = localStorage.getItem(SKYMAP_POPUP_LAYOUT_STORAGE_KEY);
-      const showGfRaw = localStorage.getItem(SKYMAP_GF_STORAGE_KEY);
-
-      if (visibleRaw === "0" || visibleRaw === "1") {
-        setIsSessionMapVisible(visibleRaw === "1");
-      }
-      if (popupLayoutRaw === "floating" || popupLayoutRaw === "side") {
-        setSessionMapPopupLayout(popupLayoutRaw);
-      }
-      if (showGfRaw === "0" || showGfRaw === "1") {
-        setShowSkyMapGf(showGfRaw === "1");
-      }
-    } catch {
-      // Ignore local preference read failures.
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(SKYMAP_VISIBLE_STORAGE_KEY, isSessionMapVisible ? "1" : "0");
-    } catch {
-      // Ignore local preference write failures.
-    }
-  }, [isSessionMapVisible]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(SKYMAP_POPUP_LAYOUT_STORAGE_KEY, sessionMapPopupLayout);
-    } catch {
-      // Ignore local preference write failures.
-    }
-  }, [sessionMapPopupLayout]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(SKYMAP_GF_STORAGE_KEY, showSkyMapGf ? "1" : "0");
-    } catch {
-      // Ignore local preference write failures.
-    }
-  }, [showSkyMapGf]);
 
   useEffect(() => {
     return () => {
@@ -825,88 +795,80 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   // ── Load sources on step change ──────────────────────────────────────────
 
   useEffect(() => {
-    if ((currentStep === 1 || currentStep === 4) && session && cycle2Rows.length === 0) {
-      setCycle2Loading(true);
+    if ((currentStep === 1 || currentStep === 4) && session && !cycle2Loaded) {
       fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=cycle`)
         .then((r) => r.json())
-        .then((d: { rows: SourceRow[]; stats: SourceStats }) => {
+        .then((d: { rows: SourceRow[] }) => {
           setCycle2Rows(d.rows ?? []);
-          setCycle2Stats(d.stats);
           setExcludedCycle2(new Set(session.excludedCycle2Ids));
         })
         .catch(console.error)
         .finally(() => {
-          setCycle2Loading(false);
           setCycle2Loaded(true);
         });
     }
-  }, [currentStep, session, cycle2Rows.length]);
+  }, [currentStep, session, cycle2Loaded]);
 
   useEffect(() => {
-    if ((currentStep === 2 || currentStep === 4) && session && gfRows.length === 0) {
-      setGfLoading(true);
+    if ((currentStep === 2 || currentStep === 4) && session && !gfLoaded) {
       fetch(`/api/short-term-plan/sessions/${session.id}/sources?type=gf`)
         .then((r) => r.json())
-        .then((d: { rows: SourceRow[]; stats: SourceStats }) => {
+        .then((d: { rows: SourceRow[] }) => {
           setGfRows(d.rows ?? []);
-          setGfStats(d.stats);
           setExcludedGf(new Set(session.excludedGfIds));
         })
         .catch(console.error)
         .finally(() => {
-          setGfLoading(false);
           setGfLoaded(true);
         });
     }
-  }, [currentStep, session, gfRows.length]);
-
-  // Recalculate stats when exclusion changes
-  useEffect(() => {
-    if (!cycle2Rows.length) return;
-    const included = cycle2Rows.filter((r) => !excludedCycle2.has(r.id));
-    const totalExposureS = included.reduce((sum, r) => {
-      const v = parseFloat(r.totalExposureTimeAll ?? r.totalExposureTime ?? "0");
-      const unit = r.exposureTimeUnit?.toLowerCase() ?? "";
-      return sum + (unit === "ks" ? v * 1000 : unit === "hr" ? v * 3600 : v);
-    }, 0);
-    setCycle2Stats({ count: included.length, totalCount: cycle2Rows.length, totalExposureS: Math.round(totalExposureS) });
-  }, [excludedCycle2, cycle2Rows]);
+  }, [currentStep, session, gfLoaded]);
 
   useEffect(() => {
-    if (!gfRows.length) return;
-    const included = gfRows.filter((r) => !excludedGf.has(r.id));
-    const totalExposureS = included.reduce((sum, r) => {
-      const v = parseFloat(r.totalExposureTimeAll ?? r.totalExposureTime ?? "0");
-      const unit = r.exposureTimeUnit?.toLowerCase() ?? "";
-      return sum + (unit === "ks" ? v * 1000 : unit === "hr" ? v * 3600 : v);
-    }, 0);
-    setGfStats({ count: included.length, totalCount: gfRows.length, totalExposureS: Math.round(totalExposureS) });
-  }, [excludedGf, gfRows]);
-
-  useEffect(() => {
-    if (!tooGpRows.length) return;
-    const included = tooGpRows.filter((r) => !excludedTooGp.has(r.id));
-    const totalExposureS = included.reduce((sum, r) => sum + (r.reviewedSingleExposureTimeSnapshot ?? 0), 0);
-    setTooGpStats({ count: included.length, totalCount: tooGpRows.length, totalExposureS });
-  }, [excludedTooGp, tooGpRows]);
-
-  useEffect(() => {
-    if ((currentStep === 3 || currentStep === 4) && session && tooGpRows.length === 0) {
-      setTooGpLoading(true);
+    if ((currentStep === 3 || currentStep === 4) && session && !tooGpLoaded) {
       fetch(`/api/short-term-plan/sessions/${session.id}/too-gp-sources`)
         .then((r) => r.json())
         .then((d: { rows: TooGpSourceRow[]; stats: SourceStats }) => {
           setTooGpRows(d.rows ?? []);
-          setTooGpStats(d.stats);
           setExcludedTooGp(new Set(session.excludedTooGpIds ?? []));
         })
         .catch(console.error)
         .finally(() => {
-          setTooGpLoading(false);
           setTooGpLoaded(true);
         });
     }
-  }, [currentStep, session, tooGpRows.length]);
+  }, [currentStep, session, tooGpLoaded]);
+
+  const cycle2Stats = useMemo<SourceStats | null>(() => {
+    if (cycle2Rows.length === 0) return null;
+    const included = cycle2Rows.filter((row) => !excludedCycle2.has(row.id));
+    const totalExposureS = included.reduce(
+      (sum, row) => sum + parseExposureToSeconds(row.totalExposureTimeAll ?? row.totalExposureTime, row.exposureTimeUnit),
+      0,
+    );
+    return { count: included.length, totalCount: cycle2Rows.length, totalExposureS: Math.round(totalExposureS) };
+  }, [cycle2Rows, excludedCycle2]);
+
+  const gfStats = useMemo<SourceStats | null>(() => {
+    if (gfRows.length === 0) return null;
+    const included = gfRows.filter((row) => !excludedGf.has(row.id));
+    const totalExposureS = included.reduce(
+      (sum, row) => sum + parseExposureToSeconds(row.totalExposureTimeAll ?? row.totalExposureTime, row.exposureTimeUnit),
+      0,
+    );
+    return { count: included.length, totalCount: gfRows.length, totalExposureS: Math.round(totalExposureS) };
+  }, [gfRows, excludedGf]);
+
+  const tooGpStats = useMemo<SourceStats | null>(() => {
+    if (tooGpRows.length === 0) return null;
+    const included = tooGpRows.filter((row) => !excludedTooGp.has(row.id));
+    const totalExposureS = included.reduce((sum, row) => sum + (row.reviewedSingleExposureTimeSnapshot ?? 0), 0);
+    return { count: included.length, totalCount: tooGpRows.length, totalExposureS };
+  }, [tooGpRows, excludedTooGp]);
+
+  const cycle2Loading = Boolean(session) && (currentStep === 1 || currentStep === 4) && !cycle2Loaded;
+  const gfLoading = Boolean(session) && (currentStep === 2 || currentStep === 4) && !gfLoaded;
+  const tooGpLoading = Boolean(session) && (currentStep === 3 || currentStep === 4) && !tooGpLoaded;
 
   // ── Load unscheduled if session was already uploaded ──────────────────────
 
@@ -946,6 +908,13 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
 
   // ── Navigation helpers ─────────────────────────────────────────────────────
 
+  function changeStep(nextStep: number) {
+    setHoveredSourceKey(null);
+    setLockedSourceKey(null);
+    setIsSessionMapExpanded(false);
+    setCurrentStep(nextStep);
+  }
+
   async function saveAndNext() {
     if (!session) return;
     setSaving(true);
@@ -958,7 +927,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
           body: JSON.stringify({ currentStep: 1 }),
         });
         if (!res.ok) { alert("Failed to save. Please try again."); return; }
-        setCurrentStep(1);
+        changeStep(1);
       } else if (currentStep === 1) {
         const nextStep = returnToOverviewAfterSave ? 4 : 2;
         const res = await fetch(`/api/short-term-plan/sessions/${session.id}`, {
@@ -967,7 +936,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
           body: JSON.stringify({ excludedCycle2Ids: [...excludedCycle2], currentStep: nextStep }),
         });
         if (!res.ok) { alert("Failed to save. Please try again."); return; }
-        setCurrentStep(nextStep);
+        changeStep(nextStep);
         setReturnToOverviewAfterSave(false);
       } else if (currentStep === 2) {
         const nextStep = returnToOverviewAfterSave ? 4 : 3;
@@ -977,7 +946,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
           body: JSON.stringify({ excludedGfIds: [...excludedGf], currentStep: nextStep }),
         });
         if (!res.ok) { alert("Failed to save. Please try again."); return; }
-        setCurrentStep(nextStep);
+        changeStep(nextStep);
         setReturnToOverviewAfterSave(false);
       } else if (currentStep === 3) {
         const nextStep = returnToOverviewAfterSave ? 4 : 4;
@@ -987,7 +956,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
           body: JSON.stringify({ excludedTooGpIds: [...excludedTooGp], currentStep: nextStep }),
         });
         if (!res.ok) { alert("Failed to save. Please try again."); return; }
-        setCurrentStep(nextStep);
+        changeStep(nextStep);
         setReturnToOverviewAfterSave(false);
       }
     } finally {
@@ -1147,7 +1116,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   function goBackToStep(step: number) {
     if (isConfirmed) return;
     setReturnToOverviewAfterSave(true);
-    setCurrentStep(step);
+    changeStep(step);
     if (session) {
       void fetch(`/api/short-term-plan/sessions/${session.id}`, {
         method: "PATCH",
@@ -1261,7 +1230,6 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
   const cycle2ExpS = calcExpS(cycle2Included);
   const gfExpS = calcExpS(gfIncluded);
   const tooGpExpS = tooGpGroupedIncluded.reduce((sum, r) => sum + r.totalExposureS, 0);
-  const mergedExpS = cycle2ExpS + gfExpS + tooGpExpS;
   const overviewCardsLoading = currentStep === 4 && (!cycle2Loaded || !gfLoaded || !tooGpLoaded);
   const schedulerProgressPct = schedulerJob && schedulerJob.totalRuns > 0
     ? Math.min(100, Math.round((schedulerJob.completedRuns / schedulerJob.totalRuns) * 100))
@@ -1475,14 +1443,14 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setSessionMapPopupLayout((prev) => (prev === "floating" ? "side" : "floating"))}
+                  onClick={() => setStoredPopupLayout(sessionMapPopupLayout === "floating" ? "side" : "floating")}
                   className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   Popup: {sessionMapPopupLayout === "floating" ? "Floating" : "Side"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsSessionMapVisible((prev) => !prev)}
+                  onClick={() => setStoredMapVisible(isSessionMapVisible ? "0" : "1")}
                   className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   {isSessionMapVisible ? "Hide mini map" : "Show mini map"}
@@ -1805,7 +1773,7 @@ export default function WizardPage({ params }: { params: Promise<{ id: string }>
         {/* Navigation buttons */}
         <div className="mt-4 flex justify-between">
           <button
-            onClick={() => setCurrentStep((s) => Math.max(0, s - 1))}
+            onClick={() => changeStep(Math.max(0, currentStep - 1))}
             disabled={currentStep === 0}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-40 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
           >
