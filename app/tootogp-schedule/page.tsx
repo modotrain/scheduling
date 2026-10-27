@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { getWeekKey } from "@/app/lib/week-utils";
 import { ACTIVE_CYCLE } from "@/app/lib/cycles";
@@ -69,11 +69,40 @@ const GP_PLANNING_CACHE_KEY = "tootogp-schedule-cache-v2";
 const GP_PLANNING_CACHE_TTL_MS = 10 * 1000;
 const GP_PLANNING_VIEW_KEY = "tootogp-schedule-view-v1";
 const GP_PLANNING_LIST_MODE_KEY = "tootogp-schedule-list-mode-v1";
+const PREFERENCES_CHANGE_EVENT = "tootogp-schedule:preferences-change";
 
 type GpPlanningCachePayload = {
   ts: number;
   rows: GpPlanningListRow[];
 };
+
+function subscribeToPreferences(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(PREFERENCES_CHANGE_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(PREFERENCES_CHANGE_EVENT, onChange);
+  };
+}
+
+function useLocalStoragePreference(key: string, defaultValue: string): [string, (value: string) => void] {
+  const value = useSyncExternalStore(
+    subscribeToPreferences,
+    () => window.localStorage.getItem(key) ?? defaultValue,
+    () => defaultValue,
+  );
+
+  const updateValue = useCallback((nextValue: string) => {
+    try {
+      window.localStorage.setItem(key, nextValue);
+      window.dispatchEvent(new Event(PREFERENCES_CHANGE_EVENT));
+    } catch {
+      // Ignore local preference write failures.
+    }
+  }, [key]);
+
+  return [value, updateValue];
+}
 
 function addWeekId(r: Omit<GpPlanningListRow, "weekId">): GpPlanningListRow {
   return {
@@ -106,43 +135,27 @@ function StatusIndicator({ status }: { status: GpPlanningListRow["scheduledStatu
 
 export default function TooToGpSchedulePage() {
   const [rows, setRows] = useState<GpPlanningListRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [rowsLoaded, setRowsLoaded] = useState(false);
+  const loading = !rowsLoaded;
   const [message, setMessage] = useState("");
-  const [hydrated, setHydrated] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "queued" | "scheduled">("queued");
-  const [listViewMode, setListViewMode] = useState<ListViewMode>("visit");
+  const [storedStatusFilter, setStoredStatusFilter] = useLocalStoragePreference(GP_PLANNING_VIEW_KEY, "queued");
+  const [storedListViewMode, setStoredListViewMode] = useLocalStoragePreference(GP_PLANNING_LIST_MODE_KEY, "visit");
+  const statusFilter = storedStatusFilter === "all" || storedStatusFilter === "scheduled" ? storedStatusFilter : "queued";
+  const listViewMode: ListViewMode = storedListViewMode === "merged" ? "merged" : "visit";
   const [sortConfig, setSortConfig] = useState<SortConfig>({ col: null, dir: "asc" });
 
-  const effectiveStatusFilter = hydrated ? statusFilter : "queued";
-
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(GP_PLANNING_VIEW_KEY);
-    if (stored === "all" || stored === "queued" || stored === "scheduled") {
-      setStatusFilter(stored);
-    }
-
-    const storedListMode = localStorage.getItem(GP_PLANNING_LIST_MODE_KEY);
-    if (storedListMode === "visit" || storedListMode === "merged") {
-      setListViewMode(storedListMode);
-    }
-  }, []);
+  const effectiveStatusFilter = statusFilter;
 
   const loadRows = useCallback(async () => {
-    setLoading(true);
     try {
       const rawCache = sessionStorage.getItem(GP_PLANNING_CACHE_KEY);
       if (rawCache) {
         const parsed = JSON.parse(rawCache) as GpPlanningCachePayload;
         if (Date.now() - parsed.ts < GP_PLANNING_CACHE_TTL_MS) {
           setRows((parsed.rows ?? []).map(addWeekId));
-          setLoading(false);
           return;
         }
       }
@@ -159,12 +172,12 @@ export default function TooToGpSchedulePage() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to load GP planning list");
     } finally {
-      setLoading(false);
+      setRowsLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    void loadRows();
+    void Promise.resolve().then(loadRows);
   }, [loadRows]);
 
   function handleSort(col: keyof GpPlanningListRow) {
@@ -175,13 +188,11 @@ export default function TooToGpSchedulePage() {
   }
 
   function handleStatusFilterChange(next: "all" | "queued" | "scheduled") {
-    setStatusFilter(next);
-    localStorage.setItem(GP_PLANNING_VIEW_KEY, next);
+    setStoredStatusFilter(next);
   }
 
   function handleListViewModeChange(next: ListViewMode) {
-    setListViewMode(next);
-    localStorage.setItem(GP_PLANNING_LIST_MODE_KEY, next);
+    setStoredListViewMode(next);
   }
 
   function mergeRowsByPlannedDbIdAndWeek(inputRows: GpPlanningListRow[]): GpPlanningListRow[] {

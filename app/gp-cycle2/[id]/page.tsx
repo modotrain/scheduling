@@ -1,6 +1,6 @@
 "use client";
 
-import { SubmitEvent, useCallback, useEffect, useLayoutEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { SubmitEvent, useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCycle } from "@/app/lib/useCycle";
@@ -295,17 +295,20 @@ export default function GpCycle2DetailPage() {
   const pathname = usePathname();
   const id = pathname?.split("/").at(-1) ?? "";
   const { cycle, query: cycleQuery, isReady } = useCycle();
+  const detailRequestKey = `${id}${cycleQuery}`;
 
   // obs list state
   const [obsList, setObsList] = useState<ObsListRow[]>([]);
   const [obsTotal, setObsTotal] = useState(0);
   const [lastValidNomRatio, setLastValidNomRatio] = useState(0);
   const [validTimeRatio, setValidTimeRatio] = useState(0);
-  const [obsLoading, setObsLoading] = useState(true);
+  const [loadedObsKey, setLoadedObsKey] = useState("");
+  const obsLoading = !isReady || loadedObsKey !== detailRequestKey;
   const [onlyNonZero, setOnlyNonZero] = useState<"all" | "nonzero" | "zerosonly">("all");
   const [obsSort, setObsSort] = useState<ObsSortConfig>({ col: null, dir: "asc" });
   const [plannedList, setPlannedList] = useState<PlannedObsRow[]>([]);
-  const [plannedLoading, setPlannedLoading] = useState(true);
+  const [loadedPlannedKey, setLoadedPlannedKey] = useState("");
+  const plannedLoading = !isReady || loadedPlannedKey !== detailRequestKey;
   const [plannedSort, setPlannedSort] = useState<PlannedSortConfig>({ col: "weekId", dir: "asc" });
   const [hoverPlannedScheduleKey, setHoverPlannedScheduleKey] = useState<string | null>(null);
   const [lockedPlannedScheduleKey, setLockedPlannedScheduleKey] = useState<string | null>(null);
@@ -355,19 +358,25 @@ export default function GpCycle2DetailPage() {
   const [input, setInput] = useState<FieldInput>({} as FieldInput);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loadedRowKey, setLoadedRowKey] = useState("");
+  const loading = !isReady || loadedRowKey !== detailRequestKey;
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
-  const [prefetchedSourceName, setPrefetchedSourceName] = useState("");
+  const [prefetchedSourceEntry, setPrefetchedSourceEntry] = useState<{ id: string; name: string }>({ id: "", name: "" });
+  const prefetchedSourceName = prefetchedSourceEntry.id === id ? prefetchedSourceEntry.name : "";
   const titleSourceName = row?.sourceName || prefetchedSourceName || `Record #${id}`;
 
-  useLayoutEffect(() => {
-    const cachedSourceName =
-      sessionStorage.getItem(`${GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX}${id}`)?.trim() ?? "";
-    setPrefetchedSourceName(cachedSourceName);
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      const cachedSourceName =
+        sessionStorage.getItem(`${GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX}${id}`)?.trim() ?? "";
+      if (!cancelled) setPrefetchedSourceEntry({ id, name: cachedSourceName });
+    });
+    return () => { cancelled = true; };
   }, [id]);
 
   useEffect(() => {
@@ -425,7 +434,6 @@ export default function GpCycle2DetailPage() {
   }
 
   const loadObsList = useCallback(async () => {
-    setObsLoading(true);
     try {
       const res = await fetch(`/api/gp/${id}/obs-list${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as {
@@ -462,12 +470,11 @@ export default function GpCycle2DetailPage() {
     } catch {
       // silently ignore obs list errors — main record still loads
     } finally {
-      setObsLoading(false);
+      setLoadedObsKey(detailRequestKey);
     }
-  }, [id, cycleQuery]);
+  }, [id, cycleQuery, detailRequestKey]);
 
   const loadPlannedList = useCallback(async () => {
-    setPlannedLoading(true);
     try {
       const res = await fetch(`/api/gp/${id}/planned-list${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as {
@@ -479,12 +486,11 @@ export default function GpCycle2DetailPage() {
     } catch {
       // silently ignore planned list errors — main record still loads
     } finally {
-      setPlannedLoading(false);
+      setLoadedPlannedKey(detailRequestKey);
     }
-  }, [id, cycleQuery]);
+  }, [id, cycleQuery, detailRequestKey]);
 
   const loadRow = useCallback(async () => {
-    setLoading(true);
     try {
       const res = await fetch(`/api/gp/${id}${cycleQuery}`, { cache: "no-store" });
       const data = (await res.json()) as { row?: GpCycle2Row; error?: string };
@@ -497,21 +503,22 @@ export default function GpCycle2DetailPage() {
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Failed to load", "error");
     } finally {
-      setLoading(false);
+      setLoadedRowKey(detailRequestKey);
     }
-  }, [id, cycleQuery]);
+  }, [id, cycleQuery, detailRequestKey]);
 
   useEffect(() => {
     if (!isReady) return;
-    void loadRow();
-    void loadPlannedList();
-    void loadObsList();
+    void Promise.resolve().then(() => {
+      void loadRow();
+      void loadPlannedList();
+      void loadObsList();
+    });
   }, [isReady, loadRow, loadPlannedList, loadObsList]);
 
   useEffect(() => {
     if (!row?.sourceName) return;
     sessionStorage.setItem(`${GP_CYCLE2_DETAIL_TITLE_CACHE_KEY_PREFIX}${id}`, row.sourceName);
-    setPrefetchedSourceName(row.sourceName);
   }, [id, row?.sourceName]);
 
   async function commitSave() {
