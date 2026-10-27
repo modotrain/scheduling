@@ -343,71 +343,67 @@ function getTuesdayWindowForDateStringFE(dateString: string): { start: string; e
   return { start, end: addDaysToDateString(start, 7) };
 }
 
-function addFractionalDaysFE(dateString: string, days: number): string {
-  const ms = new Date(`${dateString}T00:00:00Z`).getTime() + days * 86_400_000;
-  const d = new Date(ms);
-  return [d.getUTCFullYear(), String(d.getUTCMonth() + 1).padStart(2, "0"), String(d.getUTCDate()).padStart(2, "0")].join("-");
-}
-
-function computeAllVisitWindowsFE(
-  firstStart: string,
-  firstEnd: string,
-  numberOfVisits: number,
-  cadenceVal: number,
-  cadenceUnit: string,
-): Array<{ start: string; end: string; weekStart: string }> {
-  const cadenceDays =
-    cadenceVal > 0
-      ? cadenceUnit === "orbit"
-        ? (cadenceVal * 97 * 60) / 86_400
-        : cadenceVal
-      : 0;
-  const safeEnd = firstEnd || addDaysToDateString(firstStart, 7);
-  const rangeDays =
-    (new Date(`${safeEnd}T00:00:00Z`).getTime() - new Date(`${firstStart}T00:00:00Z`).getTime()) /
-    86_400_000;
-
-  // Step 1: how many visits fit in the first week
-  let numberInFirstWeek: number;
-  if (cadenceDays <= 0 || cadenceDays >= 7) {
-    numberInFirstWeek = 1;
-  } else {
-    numberInFirstWeek = Math.max(1, Math.ceil((rangeDays - 1) / cadenceDays));
-  }
-
-  // Step 2: narrow the actual first range
-  const actualStart = firstStart;
-  let actualEnd = addFractionalDaysFE(safeEnd, -(cadenceDays * (numberInFirstWeek - 1)));
-  if (
-    new Date(`${actualEnd}T00:00:00Z`).getTime() - new Date(`${actualStart}T00:00:00Z`).getTime() <
-    86_400_000
-  ) {
-    actualEnd = addDaysToDateString(actualStart, 1);
-  }
-
-  // Step 3: anchor point at 1/3 of actual range
-  const actualDurationDays =
-    (new Date(`${actualEnd}T00:00:00Z`).getTime() -
-      new Date(`${actualStart}T00:00:00Z`).getTime()) /
-    86_400_000;
-  const time1 = addFractionalDaysFE(actualStart, Math.floor(actualDurationDays / 3));
-
-  // Step 4: per-visit window = intersection(week window, cadence-shifted actual range)
-  return Array.from({ length: numberOfVisits }, (_, n) => {
-    const timeN = addFractionalDaysFE(time1, cadenceDays * n);
-    const weekWindow = getTuesdayWindowForDateStringFE(timeN);
-    const shiftedStart = addFractionalDaysFE(actualStart, cadenceDays * n);
-    const shiftedEnd = addFractionalDaysFE(actualEnd, cadenceDays * n);
-
-    const intStart = shiftedStart > weekWindow.start ? shiftedStart : weekWindow.start;
-    const intEnd = shiftedEnd < weekWindow.end ? shiftedEnd : weekWindow.end;
-    const weekStart = weekWindow.start;
-    if (intStart < intEnd) {
-      return { start: intStart, end: intEnd, weekStart };
-    }
-    return { start: shiftedStart, end: shiftedEnd, weekStart };
-  });
-}
+// Previous visit-window implementation retained for reference. The active
+// implementation is buildGpPlanVisitPreviews in GpPlanVisibilityReferenceChart.
+// function addFractionalDaysFE(dateString: string, days: number): string {
+//   const ms = new Date(`${dateString}T00:00:00Z`).getTime() + days * 86_400_000;
+//   const d = new Date(ms);
+//   return [d.getUTCFullYear(), String(d.getUTCMonth() + 1).padStart(2, "0"), String(d.getUTCDate()).padStart(2, "0")].join("-");
+// }
+//
+// function computeAllVisitWindowsFE(
+//   firstStart: string,
+//   firstEnd: string,
+//   numberOfVisits: number,
+//   cadenceVal: number,
+//   cadenceUnit: string,
+// ): Array<{ start: string; end: string; weekStart: string }> {
+//   const cadenceDays =
+//     cadenceVal > 0
+//       ? cadenceUnit === "orbit"
+//         ? (cadenceVal * 97 * 60) / 86_400
+//         : cadenceVal
+//       : 0;
+//   const safeEnd = firstEnd || addDaysToDateString(firstStart, 7);
+//   const rangeDays =
+//     (new Date(`${safeEnd}T00:00:00Z`).getTime() - new Date(`${firstStart}T00:00:00Z`).getTime()) /
+//     86_400_000;
+//
+//   let numberInFirstWeek: number;
+//   if (cadenceDays <= 0 || cadenceDays >= 7) {
+//     numberInFirstWeek = 1;
+//   } else {
+//     numberInFirstWeek = Math.max(1, Math.ceil((rangeDays - 1) / cadenceDays));
+//   }
+//
+//   const actualStart = firstStart;
+//   let actualEnd = addFractionalDaysFE(safeEnd, -(cadenceDays * (numberInFirstWeek - 1)));
+//   if (
+//     new Date(`${actualEnd}T00:00:00Z`).getTime() - new Date(`${actualStart}T00:00:00Z`).getTime() <
+//     86_400_000
+//   ) {
+//     actualEnd = addDaysToDateString(actualStart, 1);
+//   }
+//
+//   const actualDurationDays =
+//     (new Date(`${actualEnd}T00:00:00Z`).getTime() -
+//       new Date(`${actualStart}T00:00:00Z`).getTime()) /
+//     86_400_000;
+//   const time1 = addFractionalDaysFE(actualStart, Math.floor(actualDurationDays / 3));
+//
+//   return Array.from({ length: numberOfVisits }, (_, n) => {
+//     const timeN = addFractionalDaysFE(time1, cadenceDays * n);
+//     const weekWindow = getTuesdayWindowForDateStringFE(timeN);
+//     const shiftedStart = addFractionalDaysFE(actualStart, cadenceDays * n);
+//     const shiftedEnd = addFractionalDaysFE(actualEnd, cadenceDays * n);
+//     const start = shiftedStart > weekWindow.start ? shiftedStart : weekWindow.start;
+//     const end = shiftedEnd < weekWindow.end ? shiftedEnd : weekWindow.end;
+//     const weekStart = weekWindow.start;
+//     return start < end
+//       ? { start, end, weekStart }
+//       : { start: shiftedStart, end: shiftedEnd, weekStart };
+//   });
+// }
 
 // Returns the ISO week label (Wxx) anchored to the Tuesday-start week that
 // contains the date, avoiding Monday-boundary mismatches.
@@ -483,19 +479,22 @@ export default function TooManagementDetailPage() {
   const [input, setInput] = useState<InputRow>({} as InputRow);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loadedRowId, setLoadedRowId] = useState<string | null>(null);
+  const loading = loadedRowId !== id;
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error">("success");
   const [userRole, setUserRole] = useState<'viewer' | 'operator' | 'admin'>('viewer');
   const [cachedSourceName, setCachedSourceName] = useState<string | null>(null);
   const [changeLog, setChangeLog] = useState<ChangeLogEntry[]>([]);
-  const [changeLogLoading, setChangeLogLoading] = useState(true);
+  const [loadedChangeLogId, setLoadedChangeLogId] = useState<string | null>(null);
+  const changeLogLoading = loadedChangeLogId !== id;
   const [changeLogExpanded, setChangeLogExpanded] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<FieldChange[]>([]);
   const [planningRows, setPlanningRows] = useState<PlanningRow[]>([]);
-  const [planningLoading, setPlanningLoading] = useState(true);
+  const [loadedPlanningId, setLoadedPlanningId] = useState<string | null>(null);
+  const planningLoading = loadedPlanningId !== id;
   const [planningSubmitting, setPlanningSubmitting] = useState(false);
   const [planningModalOpen, setPlanningModalOpen] = useState(false);
   const [editingPlanningId, setEditingPlanningId] = useState<number | null>(null);
@@ -509,9 +508,11 @@ export default function TooManagementDetailPage() {
   const [planningNumberOfVisits, setPlanningNumberOfVisits] = useState("1");
   const [planningNotes, setPlanningNotes] = useState("");
   const [scheduleRows, setScheduleRows] = useState<ScheduleRow[]>([]);
-  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [loadedScheduleId, setLoadedScheduleId] = useState<string | null>(null);
+  const scheduleLoading = loadedScheduleId !== id;
   const [gpPoolRows, setGpPoolRows] = useState<GpPoolRow[]>([]);
-  const [gpPoolLoading, setGpPoolLoading] = useState(false);
+  const [gpPoolLoaded, setGpPoolLoaded] = useState(false);
+  const gpPoolLoading = planningModalOpen && !gpPoolLoaded;
   const [gpPlanView, setGpPlanView] = useState<'card' | 'list'>('card');
   const pageLoading = loading || planningLoading || scheduleLoading;
   const canEdit = userRole === 'operator' || userRole === 'admin';
@@ -741,7 +742,6 @@ export default function TooManagementDetailPage() {
   }
 
   const loadRow = useCallback(async () => {
-    setLoading(true);
     try {
       const response = await fetch(`/api/approved-too/${id}`, { cache: "no-store" });
       const data = (await response.json()) as { row?: ApprovedTooRow; error?: string };
@@ -755,28 +755,29 @@ export default function TooManagementDetailPage() {
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to load", "error");
     } finally {
-      setLoading(false);
+      setLoadedRowId(id);
     }
   }, [id]);
 
   useEffect(() => {
-    void loadRow();
+    void Promise.resolve().then(loadRow);
   }, [loadRow]);
 
   useEffect(() => {
-    try {
-      const rawCache = sessionStorage.getItem(TOO_MANAGEMENT_CACHE_KEY);
-      if (!rawCache) {
-        setCachedSourceName(null);
-        return;
+    let cancelled = false;
+    async function readCachedSourceName() {
+      await Promise.resolve();
+      try {
+        const rawCache = sessionStorage.getItem(TOO_MANAGEMENT_CACHE_KEY);
+        const parsed = rawCache ? (JSON.parse(rawCache) as TooManagementCachePayload) : null;
+        const hit = parsed?.rows?.find((item) => String(item.id) === id);
+        if (!cancelled) setCachedSourceName(hit?.sourceName ?? null);
+      } catch {
+        if (!cancelled) setCachedSourceName(null);
       }
-
-      const parsed = JSON.parse(rawCache) as TooManagementCachePayload;
-      const hit = parsed.rows?.find((item) => String(item.id) === id);
-      setCachedSourceName(hit?.sourceName ?? null);
-    } catch {
-      setCachedSourceName(null);
     }
+    void readCachedSourceName();
+    return () => { cancelled = true; };
   }, [id]);
 
   useEffect(() => {
@@ -804,7 +805,6 @@ export default function TooManagementDetailPage() {
   }, []);
 
   const loadChangeLog = useCallback(async () => {
-    setChangeLogLoading(true);
     try {
       const response = await fetch(`/api/approved-too/${id}/change-log`, { cache: "no-store" });
       const data = (await response.json()) as { rows?: ChangeLogEntry[]; error?: string };
@@ -813,16 +813,15 @@ export default function TooManagementDetailPage() {
     } catch {
       setChangeLog([]);
     } finally {
-      setChangeLogLoading(false);
+      setLoadedChangeLogId(id);
     }
   }, [id]);
 
   useEffect(() => {
-    void loadChangeLog();
+    void Promise.resolve().then(loadChangeLog);
   }, [loadChangeLog]);
 
   const loadPlanning = useCallback(async () => {
-    setPlanningLoading(true);
     try {
       const response = await fetch(`/api/approved-too/${id}/gp-planning`, { cache: "no-store" });
       const data = (await response.json()) as { rows?: PlanningRow[]; error?: string };
@@ -833,20 +832,15 @@ export default function TooManagementDetailPage() {
     } catch {
       setPlanningRows([]);
     } finally {
-      setPlanningLoading(false);
+      setLoadedPlanningId(id);
     }
   }, [id]);
 
   useEffect(() => {
-    void loadPlanning();
+    void Promise.resolve().then(loadPlanning);
   }, [loadPlanning]);
 
-  useEffect(() => {
-    resetPlanningForm();
-  }, [resetPlanningForm]);
-
   const loadSchedule = useCallback(async () => {
-    setScheduleLoading(true);
     try {
       const response = await fetch(`/api/approved-too/${id}/schedule`, { cache: "no-store" });
       const data = (await response.json()) as { rows?: ScheduleRow[]; error?: string };
@@ -857,23 +851,22 @@ export default function TooManagementDetailPage() {
     } catch {
       setScheduleRows([]);
     } finally {
-      setScheduleLoading(false);
+      setLoadedScheduleId(id);
     }
   }, [id]);
 
   useEffect(() => {
-    void loadSchedule();
+    void Promise.resolve().then(loadSchedule);
   }, [loadSchedule]);
 
   useEffect(() => {
     if (!planningModalOpen) return;
     const controller = new AbortController();
-    setGpPoolLoading(true);
     void fetch("/api/tootogp-schedule", { cache: "no-store", signal: controller.signal })
       .then((r) => (r.ok ? (r.json() as Promise<{ rows?: GpPoolRow[] }>) : Promise.reject()))
       .then((data: { rows?: GpPoolRow[] }) => { setGpPoolRows(data.rows ?? []); })
       .catch(() => { setGpPoolRows([]); })
-      .finally(() => { setGpPoolLoading(false); });
+      .finally(() => { setGpPoolLoaded(true); });
     return () => { controller.abort(); };
   }, [planningModalOpen]);
 
@@ -1058,6 +1051,7 @@ export default function TooManagementDetailPage() {
   }
 
   function handleEditPlanning(item: PlanningRow) {
+    setGpPoolLoaded(false);
     setPlanningModalOpen(true);
     setEditingPlanningId(item.id);
     setPlanningWindowPreset("custom");
@@ -1079,6 +1073,7 @@ export default function TooManagementDetailPage() {
     const reviewedVisitsStr = row?.reviewedNumberOfVisits ?? "1";
     const reviewedVisitsN = Number(reviewedVisitsStr);
     const isSingleVisit = !reviewedVisitsStr || reviewedVisitsN <= 1;
+    setGpPoolLoaded(false);
     setPlanningModalOpen(true);
     setEditingPlanningId(null);
     setPlanningWindowPreset(fallback?.value ?? "custom");
