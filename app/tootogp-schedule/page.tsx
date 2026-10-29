@@ -212,14 +212,12 @@ export default function TooToGpSchedulePage() {
       const first = group[0]!;
 
       let totalVisits = 0;
-      let totalExpAll = 0;
       let earliestStart: string | null = null;
       let latestEnd: string | null = null;
       let latestUpdatedAt: string | null = null;
 
       for (const row of group) {
         totalVisits += row.reviewedNumberOfVisitsSnapshot ?? 0;
-        totalExpAll += row.reviewedTotalExposureTimeSnapshot ?? 0;
 
         if (row.plannedStartTime && (!earliestStart || row.plannedStartTime < earliestStart)) {
           earliestStart = row.plannedStartTime;
@@ -237,7 +235,6 @@ export default function TooToGpSchedulePage() {
         plannedStartTime: earliestStart,
         plannedEndTime: latestEnd,
         reviewedNumberOfVisitsSnapshot: totalVisits,
-        reviewedTotalExposureTimeSnapshot: totalExpAll,
         updatedAt: latestUpdatedAt,
       };
     });
@@ -303,7 +300,13 @@ export default function TooToGpSchedulePage() {
   }
 
   const mergedRows = useMemo(() => mergeRowsByPlannedDbIdAndWeek(rows), [rows]);
-  const viewRows = listViewMode === "merged" ? mergedRows : rows;
+  const viewRows = (listViewMode === "merged" ? mergedRows : rows).map((row) => ({
+    ...row,
+    reviewedTotalExposureTimeSnapshot:
+      row.reviewedSingleExposureTimeSnapshot === null || row.reviewedNumberOfVisitsSnapshot === null
+        ? null
+        : row.reviewedSingleExposureTimeSnapshot * row.reviewedNumberOfVisitsSnapshot,
+  }));
   const displayRows = getSortedAndFilteredRows(viewRows);
 
   const todayStr = new Date().toISOString().split("T")[0]!;
@@ -337,7 +340,7 @@ export default function TooToGpSchedulePage() {
           <div>
             <h1 className="text-2xl font-semibold">GP Planning Pool</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Track all ToO-to-GP planning visits.
+              Track all ToO-to-GP planning visits. Total = Single Exp × Visits.
             </p>
           </div>
           <div className="flex items-center gap-2">
