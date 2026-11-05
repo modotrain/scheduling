@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/src/db/client";
@@ -13,7 +13,9 @@ export async function GET(_request: Request, { params }: Params) {
     const [row] = await db
       .select()
       .from(approvedToO)
-      .where(and(eq(approvedToO.proposalId, proposalId), eq(approvedToO.sourceId, sourceId)));
+      .where(and(eq(approvedToO.proposalId, proposalId), eq(approvedToO.sourceId, sourceId)))
+      .orderBy(desc(approvedToO.id))
+      .limit(1);
     if (!row) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }

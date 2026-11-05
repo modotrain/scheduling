@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/src/db/client";
 import { approvedToO } from "@/src/db/schema";
@@ -12,7 +12,9 @@ export default async function ProposalSourceRedirectPage({ params }: Props) {
   const [row] = await db
     .select({ id: approvedToO.id })
     .from(approvedToO)
-    .where(and(eq(approvedToO.proposalId, proposalId), eq(approvedToO.sourceId, sourceId)));
+    .where(and(eq(approvedToO.proposalId, proposalId), eq(approvedToO.sourceId, sourceId)))
+    .orderBy(desc(approvedToO.id))
+    .limit(1);
 
   if (!row) {
     redirect("/too-management");
