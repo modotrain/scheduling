@@ -20,8 +20,8 @@
     "d3-geo-projection": "^4.0.0",
     "dotenv": "^18.0.10",
     "drizzle-orm": "^0.45.4",
-    "neonctl": "^9.2.0",
-    "next": "16.4.5",
+    "neonctl": "^9.3.2",
+    "next": "16.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
@@ -32,7 +32,7 @@
     "@types/react-dom": "^19.3.0",
     "drizzle-kit": "^0.31.11",
     "eslint": "^10.14.0",
-    "eslint-config-next": "16.4.5",
+    "eslint-config-next": "16.4.6",
     "tailwindcss": "^4.3.5",
     "typescript": "^6.0.3"
   },
